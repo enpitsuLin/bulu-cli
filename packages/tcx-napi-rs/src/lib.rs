@@ -12,6 +12,10 @@ use tcx_tron::TronAddress;
 
 const DEFAULT_ETH_DERIVATION_PATH: &str = "m/44'/60'/0'/0/0";
 const DEFAULT_TRON_DERIVATION_PATH: &str = "m/44'/195'/0'/0/0";
+const DEFAULT_ETH_MAINNET_CHAIN_ID: &str = "eip155:1";
+const DEFAULT_ETH_TESTNET_CHAIN_ID: &str = "eip155:11155111";
+const DEFAULT_TRON_MAINNET_CHAIN_ID: &str = "tron:0x2b6653dc";
+const DEFAULT_TRON_TESTNET_CHAIN_ID: &str = "tron:0xcd8690dc";
 
 #[napi(string_enum = "UPPERCASE")]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -38,9 +42,8 @@ impl From<IdentityNetwork> for WalletNetwork {
   }
 }
 
-#[napi(string_enum = "UPPERCASE")]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum WalletChain {
+enum ChainKind {
   Ethereum,
   Tron,
 }
@@ -127,17 +130,17 @@ pub struct DeriveAccountsInput {
 
 #[napi(object)]
 pub struct DerivationInput {
-  pub chain: WalletChain,
+  #[napi(js_name = "chainId")]
+  pub chain_id: String,
   #[napi(js_name = "derivationPath")]
   pub derivation_path: Option<String>,
   pub network: Option<WalletNetwork>,
-  #[napi(js_name = "chainId")]
-  pub chain_id: Option<String>,
 }
 
 #[napi(object)]
 pub struct WalletAccount {
-  pub chain: WalletChain,
+  #[napi(js_name = "chainId")]
+  pub chain_id: String,
   pub address: String,
   #[napi(js_name = "publicKey")]
   pub public_key: String,
@@ -174,16 +177,16 @@ pub struct WalletResult {
   pub mnemonic: Option<String>,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 struct ResolvedDerivation {
-  chain: WalletChain,
+  chain_kind: ChainKind,
   network: IdentityNetwork,
+  chain_id: String,
 }
 
 struct DerivationRequest {
   resolved: ResolvedDerivation,
   derivation_path: String,
-  chain_id: String,
 }
 
 #[napi(js_name = "createWallet")]
@@ -449,7 +452,7 @@ fn derive_accounts_for_wallet(
   network: IdentityNetwork,
   derivations: Option<Vec<DerivationInput>>,
 ) -> Result<Vec<WalletAccount>> {
-  let requests = resolve_derivations(derivations, network, keystore.derivable());
+  let requests = resolve_derivations(derivations, network, keystore.derivable())?;
   let mut accounts = Vec::with_capacity(requests.len());
 
   for request in requests {
@@ -463,13 +466,13 @@ fn resolve_derivations(
   derivations: Option<Vec<DerivationInput>>,
   network: IdentityNetwork,
   derivable: bool,
-) -> Vec<DerivationRequest> {
+) -> Result<Vec<DerivationRequest>> {
   match derivations.filter(|items| !items.is_empty()) {
     Some(items) => items
       .into_iter()
       .map(|item| resolve_derivation(item, network, derivable))
       .collect(),
-    None => default_derivations(network, derivable),
+    None => Ok(default_derivations(network, derivable)),
   }
 }
 
@@ -477,32 +480,37 @@ fn resolve_derivation(
   derivation: DerivationInput,
   wallet_network: IdentityNetwork,
   derivable: bool,
-) -> DerivationRequest {
+) -> Result<DerivationRequest> {
+  let chain_id = normalize_chain_id(derivation.chain_id)?;
   let resolved = ResolvedDerivation {
-    chain: derivation.chain,
+    chain_kind: chain_kind_from_chain_id(&chain_id)?,
     network: resolve_derivation_network(wallet_network, derivation.network),
+    chain_id,
   };
   let derivation_path = if derivable {
     sanitize_optional_text(derivation.derivation_path)
-      .unwrap_or_else(|| default_derivation_path(resolved.chain).to_string())
+      .unwrap_or_else(|| default_derivation_path(resolved.chain_kind).to_string())
   } else {
     String::new()
   };
 
-  DerivationRequest {
+  Ok(DerivationRequest {
     resolved,
     derivation_path,
-    chain_id: sanitize_optional_text(derivation.chain_id).unwrap_or_default(),
-  }
+  })
 }
 
 fn default_derivations(network: IdentityNetwork, derivable: bool) -> Vec<DerivationRequest> {
-  [WalletChain::Ethereum, WalletChain::Tron]
+  [ChainKind::Ethereum, ChainKind::Tron]
     .into_iter()
-    .map(|chain| {
-      let resolved = ResolvedDerivation { chain, network };
+    .map(|chain_kind| {
+      let resolved = ResolvedDerivation {
+        chain_kind,
+        network,
+        chain_id: default_chain_id(chain_kind, network).to_string(),
+      };
       let derivation_path = if derivable {
-        default_derivation_path(chain).to_string()
+        default_derivation_path(chain_kind).to_string()
       } else {
         String::new()
       };
@@ -510,23 +518,77 @@ fn default_derivations(network: IdentityNetwork, derivable: bool) -> Vec<Derivat
       DerivationRequest {
         resolved,
         derivation_path,
-        chain_id: String::new(),
       }
     })
     .collect()
 }
 
-fn default_derivation_path(chain: WalletChain) -> &'static str {
-  match chain {
-    WalletChain::Ethereum => DEFAULT_ETH_DERIVATION_PATH,
-    WalletChain::Tron => DEFAULT_TRON_DERIVATION_PATH,
+fn default_chain_id(chain_kind: ChainKind, network: IdentityNetwork) -> &'static str {
+  match (chain_kind, network) {
+    (ChainKind::Ethereum, IdentityNetwork::Mainnet) => DEFAULT_ETH_MAINNET_CHAIN_ID,
+    (ChainKind::Ethereum, IdentityNetwork::Testnet) => DEFAULT_ETH_TESTNET_CHAIN_ID,
+    (ChainKind::Tron, IdentityNetwork::Mainnet) => DEFAULT_TRON_MAINNET_CHAIN_ID,
+    (ChainKind::Tron, IdentityNetwork::Testnet) => DEFAULT_TRON_TESTNET_CHAIN_ID,
   }
 }
 
-fn derive_account(keystore: &mut TcxKeystore, request: &DerivationRequest) -> Result<WalletAccount> {
+fn normalize_chain_id(chain_id: String) -> Result<String> {
+  let chain_id = require_trimmed(chain_id, "chainId")?;
+  let (namespace, reference) = parse_caip2_chain_id(&chain_id)?;
+  Ok(format!("{namespace}:{reference}"))
+}
+
+fn parse_caip2_chain_id(chain_id: &str) -> Result<(String, &str)> {
+  let Some((namespace, reference)) = chain_id.split_once(':') else {
+    return Err(Error::from_reason(format!(
+      "chainId must be a CAIP-2 chain id, received `{chain_id}`"
+    )));
+  };
+
+  let namespace = namespace.to_ascii_lowercase();
+  if namespace.is_empty()
+    || reference.is_empty()
+    || reference.contains(':')
+    || !namespace
+      .chars()
+      .all(|char| char.is_ascii_lowercase() || char.is_ascii_digit() || char == '-')
+    || !reference
+      .chars()
+      .all(|char| char.is_ascii_alphanumeric() || char == '-' || char == '_')
+  {
+    return Err(Error::from_reason(format!(
+      "chainId must be a valid CAIP-2 chain id, received `{chain_id}`"
+    )));
+  }
+
+  Ok((namespace, reference))
+}
+
+fn chain_kind_from_chain_id(chain_id: &str) -> Result<ChainKind> {
+  let (namespace, _) = parse_caip2_chain_id(chain_id)?;
+  match namespace.as_str() {
+    "eip155" => Ok(ChainKind::Ethereum),
+    "tron" => Ok(ChainKind::Tron),
+    _ => Err(Error::from_reason(format!(
+      "unsupported chainId namespace `{namespace}`"
+    ))),
+  }
+}
+
+fn default_derivation_path(chain_kind: ChainKind) -> &'static str {
+  match chain_kind {
+    ChainKind::Ethereum => DEFAULT_ETH_DERIVATION_PATH,
+    ChainKind::Tron => DEFAULT_TRON_DERIVATION_PATH,
+  }
+}
+
+fn derive_account(
+  keystore: &mut TcxKeystore,
+  request: &DerivationRequest,
+) -> Result<WalletAccount> {
   let coin_info = CoinInfo {
-    chain_id: request.chain_id.clone(),
-    coin: chain_name(request.resolved.chain).to_string(),
+    chain_id: request.resolved.chain_id.clone(),
+    coin: chain_name(request.resolved.chain_kind).to_string(),
     derivation_path: request.derivation_path.clone(),
     curve: CurveType::SECP256k1,
     network: request.resolved.network.to_string(),
@@ -534,14 +596,14 @@ fn derive_account(keystore: &mut TcxKeystore, request: &DerivationRequest) -> Re
     contract_code: String::new(),
   };
 
-  let account = match request.resolved.chain {
-    WalletChain::Ethereum => keystore.derive_coin::<EthAddress>(&coin_info),
-    WalletChain::Tron => keystore.derive_coin::<TronAddress>(&coin_info),
+  let account = match request.resolved.chain_kind {
+    ChainKind::Ethereum => keystore.derive_coin::<EthAddress>(&coin_info),
+    ChainKind::Tron => keystore.derive_coin::<TronAddress>(&coin_info),
   }
   .map_err(to_napi_err)?;
 
   Ok(WalletAccount {
-    chain: request.resolved.chain,
+    chain_id: request.resolved.chain_id.clone(),
     address: account.address,
     public_key: encode_public_key(&account.public_key),
     derivation_path: empty_to_none(account.derivation_path),
@@ -549,10 +611,10 @@ fn derive_account(keystore: &mut TcxKeystore, request: &DerivationRequest) -> Re
   })
 }
 
-fn chain_name(chain: WalletChain) -> &'static str {
-  match chain {
-    WalletChain::Ethereum => "ETHEREUM",
-    WalletChain::Tron => "TRON",
+fn chain_name(chain_kind: ChainKind) -> &'static str {
+  match chain_kind {
+    ChainKind::Ethereum => "ETHEREUM",
+    ChainKind::Tron => "TRON",
   }
 }
 
@@ -592,8 +654,8 @@ mod tests {
     assert_eq!(wallet.meta.source, WalletSource::NewMnemonic);
     assert_eq!(wallet.meta.network, WalletNetwork::Testnet);
     assert_eq!(wallet.accounts.len(), 2);
-    assert_eq!(wallet.accounts[0].chain, WalletChain::Ethereum);
-    assert_eq!(wallet.accounts[1].chain, WalletChain::Tron);
+    assert_eq!(wallet.accounts[0].chain_id, DEFAULT_ETH_TESTNET_CHAIN_ID);
+    assert_eq!(wallet.accounts[1].chain_id, DEFAULT_TRON_TESTNET_CHAIN_ID);
     assert_eq!(wallet.meta.version, 12000);
     assert!(wallet.meta.derivable);
     assert!(wallet.keystore_json.contains("\"version\":12000"));
@@ -613,16 +675,14 @@ mod tests {
       network: None,
       derivations: Some(vec![
         DerivationInput {
-          chain: WalletChain::Tron,
+          chain_id: DEFAULT_TRON_MAINNET_CHAIN_ID.to_string(),
           derivation_path: None,
           network: None,
-          chain_id: None,
         },
         DerivationInput {
-          chain: WalletChain::Ethereum,
+          chain_id: DEFAULT_ETH_MAINNET_CHAIN_ID.to_string(),
           derivation_path: Some("m/44'/60'/0'/0/1".to_string()),
           network: None,
-          chain_id: Some("1".to_string()),
         },
       ]),
     })
@@ -631,7 +691,7 @@ mod tests {
     assert_eq!(wallet.meta.source, WalletSource::Mnemonic);
     assert_eq!(wallet.meta.network, WalletNetwork::Mainnet);
     assert_eq!(wallet.accounts.len(), 2);
-    assert_eq!(wallet.accounts[0].chain, WalletChain::Tron);
+    assert_eq!(wallet.accounts[0].chain_id, DEFAULT_TRON_MAINNET_CHAIN_ID);
     assert_eq!(
       wallet.accounts[1].derivation_path.as_deref(),
       Some("m/44'/60'/0'/0/1")
@@ -648,10 +708,9 @@ mod tests {
       password_hint: None,
       network: None,
       derivations: Some(vec![DerivationInput {
-        chain: WalletChain::Tron,
+        chain_id: DEFAULT_TRON_TESTNET_CHAIN_ID.to_string(),
         derivation_path: Some("m/44'/195'/0'/0/99".to_string()),
         network: Some(WalletNetwork::Testnet),
-        chain_id: None,
       }]),
     })
     .expect("private key import should succeed");
@@ -659,7 +718,7 @@ mod tests {
     assert_eq!(wallet.meta.source, WalletSource::Private);
     assert_eq!(wallet.meta.network, WalletNetwork::Mainnet);
     assert_eq!(wallet.accounts.len(), 1);
-    assert_eq!(wallet.accounts[0].chain, WalletChain::Tron);
+    assert_eq!(wallet.accounts[0].chain_id, DEFAULT_TRON_TESTNET_CHAIN_ID);
     assert!(wallet.accounts[0].derivation_path.is_none());
     assert!(wallet.accounts[0].ext_pub_key.is_none());
     assert_eq!(wallet.meta.version, 12001);
@@ -684,10 +743,9 @@ mod tests {
       keystore_json: source_wallet.keystore_json.clone(),
       password: TEST_PASSWORD.to_string(),
       derivations: Some(vec![DerivationInput {
-        chain: WalletChain::Ethereum,
+        chain_id: DEFAULT_ETH_MAINNET_CHAIN_ID.to_string(),
         derivation_path: Some("m/44'/60'/0'/0/1".to_string()),
         network: None,
-        chain_id: None,
       }]),
     })
     .expect("load wallet should succeed");
@@ -719,24 +777,22 @@ mod tests {
       password: TEST_PASSWORD.to_string(),
       derivations: Some(vec![
         DerivationInput {
-          chain: WalletChain::Ethereum,
+          chain_id: DEFAULT_ETH_MAINNET_CHAIN_ID.to_string(),
           derivation_path: Some(DEFAULT_ETH_DERIVATION_PATH.to_string()),
           network: None,
-          chain_id: Some("1".to_string()),
         },
         DerivationInput {
-          chain: WalletChain::Ethereum,
+          chain_id: DEFAULT_ETH_MAINNET_CHAIN_ID.to_string(),
           derivation_path: Some("m/44'/60'/0'/0/1".to_string()),
           network: None,
-          chain_id: Some("1".to_string()),
         },
       ]),
     })
     .expect("derive accounts should succeed");
 
     assert_eq!(accounts.len(), 2);
-    assert_eq!(accounts[0].chain, WalletChain::Ethereum);
-    assert_eq!(accounts[1].chain, WalletChain::Ethereum);
+    assert_eq!(accounts[0].chain_id, DEFAULT_ETH_MAINNET_CHAIN_ID);
+    assert_eq!(accounts[1].chain_id, DEFAULT_ETH_MAINNET_CHAIN_ID);
     assert_eq!(
       accounts[0].derivation_path.as_deref(),
       Some(DEFAULT_ETH_DERIVATION_PATH)
@@ -746,5 +802,32 @@ mod tests {
       Some("m/44'/60'/0'/0/1")
     );
     assert_ne!(accounts[0].address, accounts[1].address);
+  }
+
+  #[test]
+  fn derive_accounts_rejects_unsupported_chain_id_namespace() {
+    let source_wallet = import_wallet_mnemonic(ImportWalletMnemonicInput {
+      mnemonic: TEST_MNEMONIC.to_string(),
+      password: TEST_PASSWORD.to_string(),
+      name: Some("Imported mnemonic".to_string()),
+      password_hint: None,
+      network: None,
+      derivations: None,
+    })
+    .expect("mnemonic import should succeed");
+
+    let err = derive_accounts(DeriveAccountsInput {
+      keystore_json: source_wallet.keystore_json,
+      password: TEST_PASSWORD.to_string(),
+      derivations: Some(vec![DerivationInput {
+        chain_id: "bip122:000000000019d6689c085ae165831e93".to_string(),
+        derivation_path: None,
+        network: None,
+      }]),
+    })
+    .err()
+    .expect("unsupported namespaces should fail");
+
+    assert_eq!(err.reason, "unsupported chainId namespace `bip122`");
   }
 }

@@ -581,6 +581,5 @@ module.exports.deriveAccounts = nativeBinding.deriveAccounts
 module.exports.importWalletMnemonic = nativeBinding.importWalletMnemonic
 module.exports.importWalletPrivateKey = nativeBinding.importWalletPrivateKey
 module.exports.loadWallet = nativeBinding.loadWallet
-module.exports.WalletChain = nativeBinding.WalletChain
 module.exports.WalletNetwork = nativeBinding.WalletNetwork
 module.exports.WalletSource = nativeBinding.WalletSource

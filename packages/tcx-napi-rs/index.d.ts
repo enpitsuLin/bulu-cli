@@ -12,10 +12,9 @@ export interface CreateWalletInput {
 }
 
 export interface DerivationInput {
-  chain: WalletChain
+  chainId: string
   derivationPath?: string
   network?: WalletNetwork
-  chainId?: string
 }
 
 export declare function deriveAccounts(input: DeriveAccountsInput): Array<WalletAccount>
@@ -57,16 +56,11 @@ export interface LoadWalletInput {
 }
 
 export interface WalletAccount {
-  chain: WalletChain
+  chainId: string
   address: string
   publicKey: string
   derivationPath?: string
   extPubKey?: string
-}
-
-export declare const enum WalletChain {
-  Ethereum = 'ETHEREUM',
-  Tron = 'TRON',
 }
 
 export interface WalletMeta {
