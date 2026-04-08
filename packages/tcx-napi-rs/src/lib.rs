@@ -19,8 +19,11 @@ const DEFAULT_TRON_TESTNET_CHAIN_ID: &str = "tron:0xcd8690dc";
 
 #[napi(string_enum = "UPPERCASE")]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+/// Wallet network used for metadata and default account derivations.
 pub enum WalletNetwork {
+  /// Production network defaults.
   Mainnet,
+  /// Test network defaults.
   Testnet,
 }
 
@@ -50,17 +53,24 @@ enum ChainKind {
 
 #[napi(string_enum = "UPPERCASE")]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+/// Source used to create or import the wallet.
 pub enum WalletSource {
+  /// Imported from WIF.
   #[napi(value = "WIF")]
   Wif,
+  /// Imported from a raw private key.
   #[napi(value = "PRIVATE")]
   Private,
+  /// Imported from a V3 keystore JSON payload.
   #[napi(value = "KEYSTORE_V3")]
   KeystoreV3,
+  /// Imported from a Substrate keystore payload.
   #[napi(value = "SUBSTRATE_KEYSTORE")]
   SubstrateKeystore,
+  /// Imported from an existing mnemonic phrase.
   #[napi(value = "MNEMONIC")]
   Mnemonic,
+  /// Created from a newly generated mnemonic phrase.
   #[napi(value = "NEW_MNEMONIC")]
   NewMnemonic,
 }
@@ -79,101 +89,157 @@ impl From<Source> for WalletSource {
 }
 
 #[napi(object)]
+/// Parameters for creating a new mnemonic-backed wallet.
 pub struct CreateWalletInput {
+  /// Password used to encrypt the generated keystore.
   pub password: String,
+  /// Optional wallet name stored in metadata.
   pub name: Option<String>,
+  /// Optional password hint stored in metadata.
   #[napi(js_name = "passwordHint")]
   pub password_hint: Option<String>,
+  /// Wallet network. Defaults to `MAINNET`.
   pub network: Option<WalletNetwork>,
+  /// Optional hex entropy used to deterministically generate the mnemonic.
   pub entropy: Option<String>,
+  /// Accounts to derive. Defaults to Ethereum and Tron accounts for the wallet network.
   pub derivations: Option<Vec<DerivationInput>>,
 }
 
 #[napi(object)]
+/// Parameters for importing a mnemonic-backed wallet.
 pub struct ImportWalletMnemonicInput {
+  /// BIP-39 mnemonic phrase to import.
   pub mnemonic: String,
+  /// Password used to encrypt the imported keystore.
   pub password: String,
+  /// Optional wallet name stored in metadata.
   pub name: Option<String>,
+  /// Optional password hint stored in metadata.
   #[napi(js_name = "passwordHint")]
   pub password_hint: Option<String>,
+  /// Wallet network. Defaults to `MAINNET`.
   pub network: Option<WalletNetwork>,
+  /// Accounts to derive. Defaults to Ethereum and Tron accounts for the wallet network.
   pub derivations: Option<Vec<DerivationInput>>,
 }
 
 #[napi(object)]
+/// Parameters for importing a private-key-backed wallet.
 pub struct ImportWalletPrivateKeyInput {
+  /// Hex-encoded private key.
   #[napi(js_name = "privateKey")]
   pub private_key: String,
+  /// Password used to encrypt the imported keystore.
   pub password: String,
+  /// Optional wallet name stored in metadata.
   pub name: Option<String>,
+  /// Optional password hint stored in metadata.
   #[napi(js_name = "passwordHint")]
   pub password_hint: Option<String>,
+  /// Wallet network stored in metadata. Defaults to `MAINNET`.
   pub network: Option<WalletNetwork>,
+  /// Accounts to derive. Defaults to Ethereum and Tron accounts for the wallet network.
   pub derivations: Option<Vec<DerivationInput>>,
 }
 
 #[napi(object)]
+/// Parameters for loading an existing keystore JSON.
 pub struct LoadWalletInput {
+  /// Serialized keystore JSON previously returned by this module.
   #[napi(js_name = "keystoreJson")]
   pub keystore_json: String,
+  /// Password used to unlock the keystore.
   pub password: String,
+  /// Accounts to derive. Defaults to Ethereum and Tron accounts for the wallet network.
   pub derivations: Option<Vec<DerivationInput>>,
 }
 
 #[napi(object)]
+/// Parameters for deriving accounts from an existing keystore JSON.
 pub struct DeriveAccountsInput {
+  /// Serialized keystore JSON previously returned by this module.
   #[napi(js_name = "keystoreJson")]
   pub keystore_json: String,
+  /// Password used to unlock the keystore.
   pub password: String,
+  /// Accounts to derive. Defaults to Ethereum and Tron accounts for the wallet network.
   pub derivations: Option<Vec<DerivationInput>>,
 }
 
 #[napi(object)]
+/// A requested account derivation.
 pub struct DerivationInput {
+  /// CAIP-2 chain id, for example `eip155:1` or `tron:0x2b6653dc`.
   #[napi(js_name = "chainId")]
   pub chain_id: String,
+  /// Derivation path to use for derivable wallets.
   #[napi(js_name = "derivationPath")]
   pub derivation_path: Option<String>,
+  /// Network to use for this derivation. Defaults to the wallet network.
   pub network: Option<WalletNetwork>,
 }
 
 #[napi(object)]
+/// A derived account returned to JavaScript.
 pub struct WalletAccount {
+  /// CAIP-2 chain id of the derived account.
   #[napi(js_name = "chainId")]
   pub chain_id: String,
+  /// Chain-specific account address.
   pub address: String,
+  /// Hex-encoded public key.
   #[napi(js_name = "publicKey")]
   pub public_key: String,
+  /// Derivation path used for this account when available.
   #[napi(js_name = "derivationPath")]
   pub derivation_path: Option<String>,
+  /// Extended public key when supported by the wallet source.
   #[napi(js_name = "extPubKey")]
   pub ext_pub_key: Option<String>,
 }
 
 #[napi(object)]
+/// Wallet metadata exposed to JavaScript.
 pub struct WalletMeta {
+  /// Keystore identifier.
   pub id: String,
+  /// Keystore version.
   pub version: i64,
+  /// Fingerprint of the original wallet source.
   #[napi(js_name = "sourceFingerprint")]
   pub source_fingerprint: String,
+  /// Source used to create or import the wallet.
   pub source: WalletSource,
+  /// Wallet network stored in metadata.
   pub network: WalletNetwork,
+  /// Wallet name stored in metadata.
   pub name: String,
+  /// Optional password hint stored in metadata.
   #[napi(js_name = "passwordHint")]
   pub password_hint: Option<String>,
+  /// Metadata timestamp from the keystore.
   pub timestamp: i64,
+  /// Whether the wallet can derive child accounts from paths.
   pub derivable: bool,
+  /// Curve name when available.
   pub curve: Option<String>,
+  /// Optional chain types identified by the underlying keystore.
   #[napi(js_name = "identifiedChainTypes")]
   pub identified_chain_types: Option<Vec<String>>,
 }
 
 #[napi(object)]
+/// Wallet payload returned by create, import, and load operations.
 pub struct WalletResult {
+  /// Serialized keystore JSON.
   #[napi(js_name = "keystoreJson")]
   pub keystore_json: String,
+  /// Wallet metadata.
   pub meta: WalletMeta,
+  /// Derived accounts requested for the operation.
   pub accounts: Vec<WalletAccount>,
+  /// Mnemonic phrase when creating or importing from mnemonic.
   pub mnemonic: Option<String>,
 }
 
@@ -190,6 +256,11 @@ struct DerivationRequest {
 }
 
 #[napi(js_name = "createWallet")]
+/// Creates a new mnemonic-backed wallet.
+///
+/// If `entropy` is omitted, random 16-byte entropy is generated.
+/// If `derivations` is omitted, default Ethereum and Tron accounts are derived
+/// for the selected wallet network.
 pub fn create_wallet(input: CreateWalletInput) -> Result<WalletResult> {
   let CreateWalletInput {
     password,
@@ -217,6 +288,10 @@ pub fn create_wallet(input: CreateWalletInput) -> Result<WalletResult> {
 }
 
 #[napi(js_name = "importWalletMnemonic")]
+/// Imports an existing mnemonic-backed wallet.
+///
+/// If `derivations` is omitted, default Ethereum and Tron accounts are derived
+/// for the selected wallet network.
 pub fn import_wallet_mnemonic(input: ImportWalletMnemonicInput) -> Result<WalletResult> {
   let ImportWalletMnemonicInput {
     mnemonic,
@@ -247,6 +322,10 @@ pub fn import_wallet_mnemonic(input: ImportWalletMnemonicInput) -> Result<Wallet
 }
 
 #[napi(js_name = "importWalletPrivateKey")]
+/// Imports a private key as a non-derivable wallet.
+///
+/// If `derivations` is omitted, default Ethereum and Tron accounts are
+/// returned. Derivation paths are ignored for non-derivable wallets.
 pub fn import_wallet_private_key(input: ImportWalletPrivateKeyInput) -> Result<WalletResult> {
   let ImportWalletPrivateKeyInput {
     private_key,
@@ -281,6 +360,10 @@ pub fn import_wallet_private_key(input: ImportWalletPrivateKeyInput) -> Result<W
 }
 
 #[napi(js_name = "loadWallet")]
+/// Loads a serialized keystore JSON and derives accounts from it.
+///
+/// If `derivations` is omitted, default Ethereum and Tron accounts are derived
+/// for the wallet network stored in the keystore.
 pub fn load_wallet(input: LoadWalletInput) -> Result<WalletResult> {
   let LoadWalletInput {
     keystore_json,
@@ -297,6 +380,10 @@ pub fn load_wallet(input: LoadWalletInput) -> Result<WalletResult> {
 }
 
 #[napi(js_name = "deriveAccounts")]
+/// Derives accounts from a serialized keystore JSON in a single unlock flow.
+///
+/// If `derivations` is omitted, default Ethereum and Tron accounts are derived
+/// for the wallet network stored in the keystore.
 pub fn derive_accounts(input: DeriveAccountsInput) -> Result<Vec<WalletAccount>> {
   let DeriveAccountsInput {
     keystore_json,
