@@ -3,12 +3,7 @@
   "version": "1.0.0",
   "description": "Template project for writing node package with napi-rs",
   "main": "index.js",
-  "repository": {
-    "type": "git",
-    "url": "git+ssh://git@github.com/napi-rs/package-template.git"
-  },
   "license": "MIT",
-  "browser": "browser.js",
   "keywords": [
     "napi-rs",
     "NAPI",
@@ -54,7 +49,7 @@
     "test": "ava",
     "preversion": "napi build --platform && git add .",
     "version": "napi version",
-    "prepare": "husky"
+    "prepare": "simple-git-hooks"
   },
   "devDependencies": {
     "@emnapi/core": "^1.5.0",
@@ -65,11 +60,11 @@
     "@tybys/wasm-util": "^0.10.0",
     "ava": "^7.0.0",
     "chalk": "^5.6.2",
-    "husky": "^9.1.7",
     "lint-staged": "^16.1.6",
     "npm-run-all2": "^8.0.4",
     "oxlint": "^1.14.0",
     "prettier": "^3.6.2",
+    "simple-git-hooks": "^2.13.1",
     "tinybench": "^6.0.0",
     "typescript": "^6.0.0"
   },
