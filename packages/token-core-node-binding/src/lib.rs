@@ -247,6 +247,7 @@ fn build_metadata(
   }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn build_hd_wallet(
   mnemonic: String,
   password: String,
