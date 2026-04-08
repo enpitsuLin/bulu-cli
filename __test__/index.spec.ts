@@ -1,6 +1,11 @@
 import { expect, test } from 'vitest'
 
-import { createWallet, importWalletMnemonic, importWalletPrivateKey } from '../index'
+import {
+  WalletNetwork,
+  createWallet,
+  importWalletMnemonic,
+  importWalletPrivateKey,
+} from '../index'
 
 const PASSWORD = 'imToken'
 const MNEMONIC = 'inject kidney empty canal shadow pact comfort wife crush horse wife sketch'
@@ -11,12 +16,12 @@ test('createWallet returns a standard HD keystore', () => {
     password: PASSWORD,
     name: 'Created',
     passwordHint: 'hint',
-    network: 'TESTNET',
+    network: WalletNetwork.Testnet,
     entropy: '000102030405060708090a0b0c0d0e0f',
   })
 
   expect(wallet.source).toBe('NEW_MNEMONIC')
-  expect(wallet.network).toBe('TESTNET')
+  expect(wallet.network).toBe(WalletNetwork.Testnet)
   expect(wallet.mnemonic).toBeTruthy()
   expect(wallet.accounts).toHaveLength(2)
   expect(
@@ -33,7 +38,7 @@ test('importWalletMnemonic returns a standard mnemonic keystore', () => {
   })
 
   expect(wallet.source).toBe('MNEMONIC')
-  expect(wallet.network).toBe('MAINNET')
+  expect(wallet.network).toBe(WalletNetwork.Mainnet)
   expect(wallet.accounts[0]?.derivationPath).toBe("m/44'/60'/0'/0/0")
   expect(wallet.accounts[1]?.derivationPath).toBe("m/44'/195'/0'/0/0")
   expect(wallet.mnemonic).toBeFalsy()
@@ -48,8 +53,7 @@ test('importWalletPrivateKey returns a standard private keystore', () => {
 
   expect(wallet.source).toBe('PRIVATE')
   expect(wallet.accounts).toHaveLength(2)
-  expect(
-    wallet.accounts.every((account) => account.derivationPath === undefined),
-  ).toBe(true)
+  expect(wallet.accounts.every((account) => account.derivationPath === '')).toBe(true)
+  expect(wallet.accounts.every((account) => account.extPubKey === '')).toBe(true)
   expect(wallet.keystoreJson).toBeTruthy()
 })

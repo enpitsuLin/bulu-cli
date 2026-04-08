@@ -6,7 +6,7 @@ export interface CreateWalletInput {
   password: string
   name?: string
   passwordHint?: string
-  network?: string
+  network?: WalletNetwork
   entropy?: string
 }
 
@@ -17,7 +17,7 @@ export interface ImportWalletMnemonicInput {
   password: string
   name?: string
   passwordHint?: string
-  network?: string
+  network?: WalletNetwork
 }
 
 export declare function importWalletPrivateKey(input: ImportWalletPrivateKeyInput): WalletResult
@@ -27,7 +27,7 @@ export interface ImportWalletPrivateKeyInput {
   password: string
   name?: string
   passwordHint?: string
-  network?: string
+  network?: WalletNetwork
 }
 
 export interface WalletAccount {
@@ -38,10 +38,15 @@ export interface WalletAccount {
   extPubKey?: string
 }
 
+export declare const enum WalletNetwork {
+  Mainnet = 'MAINNET',
+  Testnet = 'TESTNET'
+}
+
 export interface WalletResult {
   id: string
   source: string
-  network: string
+  network: WalletNetwork
   mnemonic?: string
   keystoreJson: string
   accounts: Array<WalletAccount>

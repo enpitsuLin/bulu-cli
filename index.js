@@ -579,3 +579,4 @@ module.exports = nativeBinding
 module.exports.createWallet = nativeBinding.createWallet
 module.exports.importWalletMnemonic = nativeBinding.importWalletMnemonic
 module.exports.importWalletPrivateKey = nativeBinding.importWalletPrivateKey
+module.exports.WalletNetwork = nativeBinding.WalletNetwork
