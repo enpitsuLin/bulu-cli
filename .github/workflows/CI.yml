@@ -274,7 +274,7 @@ jobs:
         with:
           path: ${{ env.PACKAGE_DIR }}/artifacts
       - name: Move artifacts
-        run: pnpm artifacts
+        run: pnpm --dir ${{ env.PACKAGE_DIR }} artifacts
       - name: List packages
         run: ls -R ./${{ env.PACKAGE_DIR }}/npm
         shell: bash
