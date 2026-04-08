@@ -3,6 +3,7 @@ env:
   DEBUG: napi:*
   APP_NAME: token-core-node-binding
   PACKAGE_DIR: packages/token-core-node-binding
+  RUST_TOOLCHAIN: nightly-2026-04-06
   MACOSX_DEPLOYMENT_TARGET: '10.13'
   CARGO_INCREMENTAL: '1'
 'on':
@@ -35,10 +36,10 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
-      - name: Install
-        uses: dtolnay/rust-toolchain@stable
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: nightly-2026-04-06
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
           components: clippy, rustfmt
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -85,10 +86,10 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
-      - name: Install
-        uses: dtolnay/rust-toolchain@stable
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: nightly-2026-04-06
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
           targets: ${{ matrix.settings.target }}
       - name: Cache cargo
         uses: actions/cache@v5
