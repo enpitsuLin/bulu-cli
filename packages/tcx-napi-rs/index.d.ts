@@ -10,6 +10,13 @@ export interface CreateWalletInput {
   entropy?: string
 }
 
+export declare function importWalletKeystore(input: ImportWalletKeystoreInput): WalletResult
+
+export interface ImportWalletKeystoreInput {
+  keystore: string
+  password: string
+}
+
 export declare function importWalletMnemonic(input: ImportWalletMnemonicInput): WalletResult
 
 export interface ImportWalletMnemonicInput {

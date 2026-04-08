@@ -577,6 +577,7 @@ if (!nativeBinding) {
 
 module.exports = nativeBinding
 module.exports.createWallet = nativeBinding.createWallet
+module.exports.importWalletKeystore = nativeBinding.importWalletKeystore
 module.exports.importWalletMnemonic = nativeBinding.importWalletMnemonic
 module.exports.importWalletPrivateKey = nativeBinding.importWalletPrivateKey
 module.exports.WalletNetwork = nativeBinding.WalletNetwork

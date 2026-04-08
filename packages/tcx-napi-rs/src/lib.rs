@@ -71,6 +71,12 @@ pub struct ImportWalletPrivateKeyInput {
 }
 
 #[napi(object)]
+pub struct ImportWalletKeystoreInput {
+  pub keystore: String,
+  pub password: String,
+}
+
+#[napi(object)]
 pub struct WalletAccount {
   pub chain: String,
   pub address: String,
@@ -279,6 +285,29 @@ pub fn import_wallet_private_key(input: ImportWalletPrivateKeyInput) -> Result<W
   Ok(wallet)
 }
 
+#[napi(js_name = "importWalletKeystore")]
+pub fn import_wallet_keystore(input: ImportWalletKeystoreInput) -> Result<WalletResult> {
+  let ImportWalletKeystoreInput { keystore, password } = input;
+
+  require_non_empty(&password, "password")?;
+
+  let normalized_keystore = keystore.trim().to_string();
+  require_non_empty(&normalized_keystore, "keystore")?;
+
+  let mut keystore = TcxKeystore::from_json(&normalized_keystore).map_err(to_napi_err)?;
+  let network = keystore.meta().network;
+
+  keystore
+    .unlock_by_password(&password)
+    .map_err(to_napi_err)?;
+
+  let accounts = derive_imported_accounts(&mut keystore, network)?;
+  let wallet = build_wallet_result(&keystore, network, accounts, None)?;
+  keystore.lock();
+
+  Ok(wallet)
+}
+
 fn to_napi_err(err: impl std::fmt::Display) -> Error {
   Error::from_reason(err.to_string())
 }
@@ -417,6 +446,17 @@ fn derive_private_accounts(
     derive_eth_account(keystore, &network, None, true)?,
     derive_tron_account(keystore, &network, None, true)?,
   ])
+}
+
+fn derive_imported_accounts(
+  keystore: &mut TcxKeystore,
+  network: IdentityNetwork,
+) -> Result<Vec<WalletAccount>> {
+  if keystore.derivable() {
+    derive_hd_accounts(keystore, network)
+  } else {
+    derive_private_accounts(keystore, network)
+  }
 }
 
 fn derive_eth_account(
@@ -575,6 +615,69 @@ mod tests {
 
     assert_eq!(wallet.keystore.version, 12001);
     assert_eq!(wallet.keystore.im_token_meta.source, "PRIVATE");
+    assert_eq!(wallet.keystore.curve.as_deref(), Some("secp256k1"));
+  }
+
+  #[test]
+  fn import_wallet_keystore_restores_hd_keystore() {
+    let metadata = build_metadata(
+      Some("Imported mnemonic".to_string()),
+      None,
+      IdentityNetwork::Mainnet,
+      Source::Mnemonic,
+      "Imported Mnemonic Wallet",
+    );
+    let hd_keystore =
+      TcxKeystore::from_mnemonic(TEST_MNEMONIC, TEST_PASSWORD, metadata).expect("build keystore");
+
+    let wallet = import_wallet_keystore(ImportWalletKeystoreInput {
+      keystore: hd_keystore.to_json(),
+      password: TEST_PASSWORD.to_string(),
+    })
+    .expect("keystore import should succeed");
+
+    assert_eq!(wallet.source, "MNEMONIC");
+    assert_eq!(wallet.network, WalletNetwork::Mainnet);
+    assert_eq!(wallet.accounts.len(), 2);
+    assert!(wallet.mnemonic.is_none());
+    assert_eq!(
+      wallet.accounts[0].derivation_path.as_deref(),
+      Some(DEFAULT_ETH_DERIVATION_PATH)
+    );
+    assert_eq!(wallet.keystore.version, 12000);
+  }
+
+  #[test]
+  fn import_wallet_keystore_restores_private_keystore() {
+    let metadata = build_metadata(
+      Some("Imported private key".to_string()),
+      None,
+      IdentityNetwork::Mainnet,
+      Source::Private,
+      "Imported Private Key",
+    );
+    let private_keystore = TcxKeystore::from_private_key(
+      TEST_PRIVATE_KEY,
+      TEST_PASSWORD,
+      CurveType::SECP256k1,
+      metadata,
+      None,
+    )
+    .expect("build keystore");
+
+    let wallet = import_wallet_keystore(ImportWalletKeystoreInput {
+      keystore: private_keystore.to_json(),
+      password: TEST_PASSWORD.to_string(),
+    })
+    .expect("keystore import should succeed");
+
+    assert_eq!(wallet.source, "PRIVATE");
+    assert_eq!(wallet.network, WalletNetwork::Mainnet);
+    assert_eq!(wallet.accounts.len(), 2);
+    assert!(wallet.accounts.iter().all(|account| {
+      account.derivation_path.as_deref() == Some("") && account.ext_pub_key.as_deref() == Some("")
+    }));
+    assert_eq!(wallet.keystore.version, 12001);
     assert_eq!(wallet.keystore.curve.as_deref(), Some("secp256k1"));
   }
 }

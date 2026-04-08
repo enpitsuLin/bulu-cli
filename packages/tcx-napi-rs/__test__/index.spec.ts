@@ -1,6 +1,12 @@
 import { expect, test } from 'vitest'
 
-import { WalletNetwork, createWallet, importWalletMnemonic, importWalletPrivateKey } from '../index'
+import {
+  WalletNetwork,
+  createWallet,
+  importWalletKeystore,
+  importWalletMnemonic,
+  importWalletPrivateKey,
+} from '../index'
 
 const PASSWORD = 'imToken'
 const MNEMONIC = 'inject kidney empty canal shadow pact comfort wife crush horse wife sketch'
@@ -57,4 +63,47 @@ test('importWalletPrivateKey returns a standard private keystore', () => {
   expect(wallet.keystore.version).toBe(12001)
   expect(wallet.keystore.curve).toBe('secp256k1')
   expect(wallet.keystore.imTokenMeta.source).toBe('PRIVATE')
+})
+
+test('importWalletKeystore restores an HD keystore json', () => {
+  const sourceWallet = importWalletMnemonic({
+    mnemonic: MNEMONIC,
+    password: PASSWORD,
+    name: 'Imported Mnemonic',
+  })
+
+  const wallet = importWalletKeystore({
+    keystore: JSON.stringify(sourceWallet.keystore),
+    password: PASSWORD,
+  })
+
+  expect(wallet.source).toBe('MNEMONIC')
+  expect(wallet.network).toBe(WalletNetwork.Mainnet)
+  expect(wallet.accounts).toHaveLength(2)
+  expect(wallet.accounts[0]?.address).toBe(sourceWallet.accounts[0]?.address)
+  expect(wallet.accounts[0]?.derivationPath).toBe("m/44'/60'/0'/0/0")
+  expect(wallet.mnemonic).toBeFalsy()
+  expect(wallet.keystore.version).toBe(12000)
+})
+
+test('importWalletKeystore restores a private keystore json', () => {
+  const sourceWallet = importWalletPrivateKey({
+    privateKey: PRIVATE_KEY,
+    password: PASSWORD,
+    name: 'Imported Private Key',
+  })
+
+  const wallet = importWalletKeystore({
+    keystore: JSON.stringify(sourceWallet.keystore),
+    password: PASSWORD,
+  })
+
+  expect(wallet.source).toBe('PRIVATE')
+  expect(wallet.network).toBe(WalletNetwork.Mainnet)
+  expect(wallet.accounts).toHaveLength(2)
+  expect(wallet.accounts[0]?.address).toBe(sourceWallet.accounts[0]?.address)
+  expect(wallet.accounts.every((account) => account.derivationPath === '')).toBe(true)
+  expect(wallet.accounts.every((account) => account.extPubKey === '')).toBe(true)
+  expect(wallet.keystore.version).toBe(12001)
+  expect(wallet.keystore.curve).toBe('secp256k1')
 })
