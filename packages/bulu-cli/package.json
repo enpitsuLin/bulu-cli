@@ -1,5 +1,5 @@
 {
-  "name": "bulu-cli",
+  "name": "@bulu-cli/core",
   "type": "module",
   "version": "0.0.0",
   "bin": {
@@ -31,6 +31,6 @@
   "dependencies": {
     "@clack/prompts": "^1.2.0",
     "citty": "^0.2.2",
-    "token-core-node-binding": "workspace:*"
+    "@bulu-cli/token-core-node-binding": "workspace:*"
   }
 }

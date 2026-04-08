@@ -28,15 +28,15 @@ importers:
 
   packages/bulu-cli:
     dependencies:
+      '@bulu-cli/token-core-node-binding':
+        specifier: workspace:*
+        version: link:../token-core-node-binding
       '@clack/prompts':
         specifier: ^1.2.0
         version: 1.2.0
       citty:
         specifier: ^0.2.2
         version: 0.2.2
-      token-core-node-binding:
-        specifier: workspace:*
-        version: link:../token-core-node-binding
     devDependencies:
       '@types/node':
         specifier: ^25.5.0

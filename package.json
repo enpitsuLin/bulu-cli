@@ -1,5 +1,5 @@
 {
-  "name": "bulu-cli",
+  "name": "@bulu-cli/monorepo",
   "private": true,
   "packageManager": "pnpm@10.33.0",
   "scripts": {
