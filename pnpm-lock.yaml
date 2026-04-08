@@ -28,9 +28,9 @@ importers:
 
   packages/bulu-cli:
     dependencies:
-      '@bulu-cli/token-core-node-binding':
+      '@bulu-cli/tcx-node':
         specifier: workspace:*
-        version: link:../token-core-node-binding
+        version: link:../tcx-node
       '@clack/prompts':
         specifier: ^1.2.0
         version: 1.2.0
@@ -57,7 +57,7 @@ importers:
         specifier: ^4.1.2
         version: 4.1.3(@types/node@25.5.2)(vite@8.0.7(@types/node@25.5.2)(jiti@2.6.1)(yaml@2.8.3))
 
-  packages/token-core-node-binding:
+  packages/tcx-node:
     devDependencies:
       '@emnapi/core':
         specifier: ^1.9.2

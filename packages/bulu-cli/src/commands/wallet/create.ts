@@ -1,4 +1,4 @@
-import { createWallet } from '@bulu-cli/token-core-node-binding'
+import { createWallet } from '@bulu-cli/tcx-napi-rs'
 import { defineCommand } from 'citty'
 import { resolveTCXPassphrase } from '../../core/tcx'
 

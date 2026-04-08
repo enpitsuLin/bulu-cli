@@ -1,5 +1,5 @@
 {
-  "name": "@bulu-cli/token-core-node-binding",
+  "name": "@bulu-cli/tcx-napi-rs",
   "version": "0.1.0",
   "main": "index.js",
   "types": "index.d.ts",
@@ -17,7 +17,7 @@
     "browser.js"
   ],
   "napi": {
-    "binaryName": "token-core-node-binding",
+    "binaryName": "tcx-napi-rs",
     "targets": [
       "x86_64-pc-windows-msvc",
       "x86_64-apple-darwin",

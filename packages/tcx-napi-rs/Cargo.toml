@@ -1,7 +1,8 @@
 
 [package]
 edition = "2021"
-name    = "token_core_napi_rs"
+name    = "tcx_napi_rs"
+publish = false
 version = "0.1.0"
 
 [lib]
