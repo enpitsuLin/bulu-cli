@@ -10,6 +10,6 @@ export default defineConfig({
   minify: true,
   deps: {
     neverBundle: ['token-core-node-binding'],
-    onlyAllowBundle: false,
+    onlyBundle: false,
   },
 })
