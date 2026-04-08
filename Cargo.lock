@@ -1636,6 +1636,8 @@ dependencies = [
  "napi",
  "napi-build",
  "napi-derive",
+ "serde",
+ "serde_json",
  "tcx-common",
  "tcx-constants",
  "tcx-eth",

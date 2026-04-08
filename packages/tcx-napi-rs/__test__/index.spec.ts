@@ -20,7 +20,10 @@ test('createWallet returns a standard HD keystore', () => {
   expect(wallet.mnemonic).toBeTruthy()
   expect(wallet.accounts).toHaveLength(2)
   expect(wallet.accounts.map((account) => account.chain)).toEqual(['ETHEREUM', 'TRON'])
-  expect(wallet.keystoreJson).toBeTruthy()
+  expect(wallet.keystore.version).toBe(12000)
+  expect(wallet.keystore.imTokenMeta.source).toBe('NEW_MNEMONIC')
+  expect(wallet.keystore.imTokenMeta.network).toBe('TESTNET')
+  expect(wallet.keystore.curve).toBeUndefined()
 })
 
 test('importWalletMnemonic returns a standard mnemonic keystore', () => {
@@ -35,6 +38,9 @@ test('importWalletMnemonic returns a standard mnemonic keystore', () => {
   expect(wallet.accounts[0]?.derivationPath).toBe("m/44'/60'/0'/0/0")
   expect(wallet.accounts[1]?.derivationPath).toBe("m/44'/195'/0'/0/0")
   expect(wallet.mnemonic).toBeFalsy()
+  expect(wallet.keystore.version).toBe(12000)
+  expect(wallet.keystore.crypto.kdf).toBe('pbkdf2')
+  expect(wallet.keystore.imTokenMeta.source).toBe('MNEMONIC')
 })
 
 test('importWalletPrivateKey returns a standard private keystore', () => {
@@ -48,5 +54,7 @@ test('importWalletPrivateKey returns a standard private keystore', () => {
   expect(wallet.accounts).toHaveLength(2)
   expect(wallet.accounts.every((account) => account.derivationPath === '')).toBe(true)
   expect(wallet.accounts.every((account) => account.extPubKey === '')).toBe(true)
-  expect(wallet.keystoreJson).toBeTruthy()
+  expect(wallet.keystore.version).toBe(12001)
+  expect(wallet.keystore.curve).toBe('secp256k1')
+  expect(wallet.keystore.imTokenMeta.source).toBe('PRIVATE')
 })

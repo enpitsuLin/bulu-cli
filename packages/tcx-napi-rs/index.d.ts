@@ -30,6 +30,61 @@ export interface ImportWalletPrivateKeyInput {
   network?: WalletNetwork
 }
 
+export interface Keystore {
+  id: string
+  version: number
+  sourceFingerprint: string
+  crypto: KeystoreCrypto
+  identity: KeystoreIdentity
+  curve?: string
+  encOriginal: KeystoreEncPair
+  imTokenMeta: KeystoreMetadata
+}
+
+export interface KeystoreCipherParams {
+  iv: string
+}
+
+export interface KeystoreCrypto {
+  cipher: string
+  cipherparams: KeystoreCipherParams
+  ciphertext: string
+  kdf: string
+  kdfparams: KeystoreKdfParams
+  mac: string
+}
+
+export interface KeystoreEncPair {
+  encStr: string
+  nonce: string
+}
+
+export interface KeystoreIdentity {
+  encAuthKey: KeystoreEncPair
+  encKey: string
+  identifier: string
+  ipfsId: string
+}
+
+export interface KeystoreKdfParams {
+  dklen: number
+  salt: string
+  c?: number
+  prf?: string
+  n?: number
+  p?: number
+  r?: number
+}
+
+export interface KeystoreMetadata {
+  name: string
+  passwordHint?: string
+  timestamp: number
+  source: string
+  network: string
+  identifiedChainTypes?: Array<string>
+}
+
 export interface WalletAccount {
   chain: string
   address: string
@@ -48,6 +103,6 @@ export interface WalletResult {
   source: string
   network: WalletNetwork
   mnemonic?: string
-  keystoreJson: string
+  keystore: Keystore
   accounts: Array<WalletAccount>
 }
