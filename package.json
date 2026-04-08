@@ -1,5 +1,5 @@
 {
-  "name": "bulu-cli",
+  "name": "token-core-node-binding",
   "version": "1.0.0",
   "main": "index.js",
   "keywords": [
@@ -16,7 +16,7 @@
     "browser.js"
   ],
   "napi": {
-    "binaryName": "bulu-cli",
+    "binaryName": "token-core-node-binding",
     "targets": [
       "x86_64-pc-windows-msvc",
       "x86_64-apple-darwin",
