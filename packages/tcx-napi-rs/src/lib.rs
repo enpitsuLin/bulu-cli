@@ -93,7 +93,6 @@ pub struct WalletResult {
   pub id: String,
   pub source: String,
   pub network: WalletNetwork,
-  pub mnemonic: Option<String>,
   pub keystore: Keystore,
   pub accounts: Vec<WalletAccount>,
 }
@@ -210,7 +209,6 @@ pub fn create_wallet(input: CreateWalletInput) -> Result<WalletResult> {
     network,
     Source::NewMnemonic,
     "New Wallet",
-    true,
   )
 }
 
@@ -237,7 +235,6 @@ pub fn import_wallet_mnemonic(input: ImportWalletMnemonicInput) -> Result<Wallet
     network,
     Source::Mnemonic,
     "Imported Mnemonic Wallet",
-    false,
   )
 }
 
@@ -279,7 +276,7 @@ pub fn import_wallet_private_key(input: ImportWalletPrivateKeyInput) -> Result<W
     .map_err(to_napi_err)?;
 
   let accounts = derive_private_accounts(&mut keystore, network)?;
-  let wallet = build_wallet_result(&keystore, network, accounts, None)?;
+  let wallet = build_wallet_result(&keystore, network, accounts)?;
   keystore.lock();
 
   Ok(wallet)
@@ -302,7 +299,7 @@ pub fn import_wallet_keystore(input: ImportWalletKeystoreInput) -> Result<Wallet
     .map_err(to_napi_err)?;
 
   let accounts = derive_imported_accounts(&mut keystore, network)?;
-  let wallet = build_wallet_result(&keystore, network, accounts, None)?;
+  let wallet = build_wallet_result(&keystore, network, accounts)?;
   keystore.lock();
 
   Ok(wallet)
@@ -376,7 +373,6 @@ fn build_hd_wallet(
   network: Option<WalletNetwork>,
   source: Source,
   default_name: &str,
-  expose_mnemonic: bool,
 ) -> Result<WalletResult> {
   let network = resolve_network(network);
   let metadata = build_metadata(name, password_hint, network, source, default_name);
@@ -388,12 +384,7 @@ fn build_hd_wallet(
     .map_err(to_napi_err)?;
 
   let accounts = derive_hd_accounts(&mut keystore, network)?;
-  let mnemonic = if expose_mnemonic {
-    Some(mnemonic)
-  } else {
-    None
-  };
-  let wallet = build_wallet_result(&keystore, network, accounts, mnemonic)?;
+  let wallet = build_wallet_result(&keystore, network, accounts)?;
   keystore.lock();
 
   Ok(wallet)
@@ -403,7 +394,6 @@ fn build_wallet_result(
   keystore: &TcxKeystore,
   network: IdentityNetwork,
   accounts: Vec<WalletAccount>,
-  mnemonic: Option<String>,
 ) -> Result<WalletResult> {
   let metadata = keystore.meta();
 
@@ -411,7 +401,6 @@ fn build_wallet_result(
     id: keystore.id(),
     source: metadata.source.to_string(),
     network: network.into(),
-    mnemonic,
     keystore: parse_keystore(keystore)?,
     accounts,
   })
@@ -559,7 +548,6 @@ mod tests {
     assert_eq!(wallet.source, "NEW_MNEMONIC");
     assert_eq!(wallet.network, WalletNetwork::Testnet);
     assert_eq!(wallet.accounts.len(), 2);
-    assert!(wallet.mnemonic.is_some());
     assert!(wallet
       .accounts
       .iter()
@@ -585,7 +573,6 @@ mod tests {
     assert_eq!(wallet.source, "MNEMONIC");
     assert_eq!(wallet.network, WalletNetwork::Mainnet);
     assert_eq!(wallet.accounts.len(), 2);
-    assert!(wallet.mnemonic.is_none());
     assert_eq!(
       wallet.accounts[0].derivation_path.as_deref(),
       Some(DEFAULT_ETH_DERIVATION_PATH)
@@ -639,7 +626,6 @@ mod tests {
     assert_eq!(wallet.source, "MNEMONIC");
     assert_eq!(wallet.network, WalletNetwork::Mainnet);
     assert_eq!(wallet.accounts.len(), 2);
-    assert!(wallet.mnemonic.is_none());
     assert_eq!(
       wallet.accounts[0].derivation_path.as_deref(),
       Some(DEFAULT_ETH_DERIVATION_PATH)

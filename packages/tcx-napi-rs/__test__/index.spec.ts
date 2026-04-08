@@ -23,7 +23,6 @@ test('createWallet returns a standard HD keystore', () => {
 
   expect(wallet.source).toBe('NEW_MNEMONIC')
   expect(wallet.network).toBe(WalletNetwork.Testnet)
-  expect(wallet.mnemonic).toBeTruthy()
   expect(wallet.accounts).toHaveLength(2)
   expect(wallet.accounts.map((account) => account.chain)).toEqual(['ETHEREUM', 'TRON'])
   expect(wallet.keystore.version).toBe(12000)
@@ -43,7 +42,6 @@ test('importWalletMnemonic returns a standard mnemonic keystore', () => {
   expect(wallet.network).toBe(WalletNetwork.Mainnet)
   expect(wallet.accounts[0]?.derivationPath).toBe("m/44'/60'/0'/0/0")
   expect(wallet.accounts[1]?.derivationPath).toBe("m/44'/195'/0'/0/0")
-  expect(wallet.mnemonic).toBeFalsy()
   expect(wallet.keystore.version).toBe(12000)
   expect(wallet.keystore.crypto.kdf).toBe('pbkdf2')
   expect(wallet.keystore.imTokenMeta.source).toBe('MNEMONIC')
@@ -82,7 +80,6 @@ test('importWalletKeystore restores an HD keystore json', () => {
   expect(wallet.accounts).toHaveLength(2)
   expect(wallet.accounts[0]?.address).toBe(sourceWallet.accounts[0]?.address)
   expect(wallet.accounts[0]?.derivationPath).toBe("m/44'/60'/0'/0/0")
-  expect(wallet.mnemonic).toBeFalsy()
   expect(wallet.keystore.version).toBe(12000)
 })
 

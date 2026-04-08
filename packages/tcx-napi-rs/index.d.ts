@@ -109,7 +109,6 @@ export interface WalletResult {
   id: string
   source: string
   network: WalletNetwork
-  mnemonic?: string
   keystore: Keystore
   accounts: Array<WalletAccount>
 }
