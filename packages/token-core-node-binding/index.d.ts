@@ -40,7 +40,7 @@ export interface WalletAccount {
 
 export declare const enum WalletNetwork {
   Mainnet = 'MAINNET',
-  Testnet = 'TESTNET'
+  Testnet = 'TESTNET',
 }
 
 export interface WalletResult {

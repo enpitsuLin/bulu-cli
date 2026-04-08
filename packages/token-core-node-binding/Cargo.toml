@@ -1,0 +1,21 @@
+
+[package]
+edition = "2021"
+name    = "token_core_napi_rs"
+version = "0.1.0"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+napi          = "3.0.0"
+napi-derive   = "3.0.0"
+tcx-common    = { git = "https://github.com/consenlabs/token-core-monorepo", branch = "feat/keyless" }
+tcx-constants = { git = "https://github.com/consenlabs/token-core-monorepo", branch = "feat/keyless" }
+tcx-eth       = { git = "https://github.com/consenlabs/token-core-monorepo", branch = "feat/keyless", default-features = false }
+tcx-keystore  = { git = "https://github.com/consenlabs/token-core-monorepo", branch = "feat/keyless", default-features = false }
+tcx-primitive = { git = "https://github.com/consenlabs/token-core-monorepo", branch = "feat/keyless", default-features = false }
+tcx-tron      = { git = "https://github.com/consenlabs/token-core-monorepo", branch = "feat/keyless" }
+
+[build-dependencies]
+napi-build = "2"

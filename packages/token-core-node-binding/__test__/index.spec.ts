@@ -1,11 +1,6 @@
 import { expect, test } from 'vitest'
 
-import {
-  WalletNetwork,
-  createWallet,
-  importWalletMnemonic,
-  importWalletPrivateKey,
-} from '../index'
+import { WalletNetwork, createWallet, importWalletMnemonic, importWalletPrivateKey } from '../index'
 
 const PASSWORD = 'imToken'
 const MNEMONIC = 'inject kidney empty canal shadow pact comfort wife crush horse wife sketch'
@@ -24,9 +19,7 @@ test('createWallet returns a standard HD keystore', () => {
   expect(wallet.network).toBe(WalletNetwork.Testnet)
   expect(wallet.mnemonic).toBeTruthy()
   expect(wallet.accounts).toHaveLength(2)
-  expect(
-    wallet.accounts.map((account) => account.chain),
-  ).toEqual(['ETHEREUM', 'TRON'])
+  expect(wallet.accounts.map((account) => account.chain)).toEqual(['ETHEREUM', 'TRON'])
   expect(wallet.keystoreJson).toBeTruthy()
 })
 

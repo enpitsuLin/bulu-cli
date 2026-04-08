@@ -1,7 +1,8 @@
 name: CI
 env:
   DEBUG: napi:*
-  APP_NAME: bulu-cli
+  APP_NAME: token-core-node-binding
+  PACKAGE_DIR: packages/token-core-node-binding
   MACOSX_DEPLOYMENT_TARGET: '10.13'
   CARGO_INCREMENTAL: '1'
 'on':
@@ -26,23 +27,28 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
       - name: Setup node
         uses: actions/setup-node@v6
         with:
           node-version: 24
-          cache: yarn
+          cache: pnpm
       - name: Install
         uses: dtolnay/rust-toolchain@stable
         with:
+          toolchain: nightly-2026-04-06
           components: clippy, rustfmt
       - name: Install dependencies
-        run: yarn install
+        run: pnpm install --frozen-lockfile
       - name: Oxlint
-        run: yarn lint
+        run: pnpm lint
       - name: Cargo fmt
-        run: cargo fmt -- --check
+        run: cargo fmt --all -- --check
       - name: Clippy
-        run: cargo clippy
+        run: cargo clippy -p token_core_napi_rs
+
   build:
     strategy:
       fail-fast: false
@@ -50,35 +56,38 @@ jobs:
         settings:
           - host: macos-latest
             target: x86_64-apple-darwin
-            build: yarn build --target x86_64-apple-darwin
+            build: pnpm build -- --target x86_64-apple-darwin
           - host: windows-latest
-            build: yarn build --target x86_64-pc-windows-msvc
             target: x86_64-pc-windows-msvc
+            build: pnpm build -- --target x86_64-pc-windows-msvc
           - host: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            build: yarn build --target x86_64-unknown-linux-gnu --use-napi-cross
+            build: pnpm build -- --target x86_64-unknown-linux-gnu --use-napi-cross
           - host: macos-latest
             target: aarch64-apple-darwin
-            build: yarn build --target aarch64-apple-darwin
+            build: pnpm build -- --target aarch64-apple-darwin
           - host: ubuntu-latest
             target: aarch64-unknown-linux-gnu
-            build: yarn build --target aarch64-unknown-linux-gnu --use-napi-cross
+            build: pnpm build -- --target aarch64-unknown-linux-gnu --use-napi-cross
           - host: windows-latest
             target: aarch64-pc-windows-msvc
-            build: yarn build --target aarch64-pc-windows-msvc
-    name: stable - ${{ matrix.settings.target }} - node@22
+            build: pnpm build -- --target aarch64-pc-windows-msvc
+    name: nightly - ${{ matrix.settings.target }} - node@24
     runs-on: ${{ matrix.settings.host }}
     steps:
       - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
       - name: Setup node
         uses: actions/setup-node@v6
         with:
           node-version: 24
-          cache: yarn
+          cache: pnpm
       - name: Install
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
+          toolchain: nightly-2026-04-06
           targets: ${{ matrix.settings.target }}
       - name: Cache cargo
         uses: actions/cache@v5
@@ -107,7 +116,7 @@ jobs:
         if: ${{ matrix.settings.setup }}
         shell: bash
       - name: Install dependencies
-        run: yarn install
+        run: pnpm install --frozen-lockfile
       - name: Build
         run: ${{ matrix.settings.build }}
         shell: bash
@@ -116,9 +125,10 @@ jobs:
         with:
           name: bindings-${{ matrix.settings.target }}
           path: |
-            ${{ env.APP_NAME }}.*.node
-            ${{ env.APP_NAME }}.*.wasm
+            ${{ env.PACKAGE_DIR }}/${{ env.APP_NAME }}.*.node
+            ${{ env.PACKAGE_DIR }}/${{ env.APP_NAME }}.*.wasm
           if-no-files-found: error
+
   test-macOS-windows-binding:
     name: Test bindings on ${{ matrix.settings.target }} - node@${{ matrix.node }}
     needs:
@@ -145,24 +155,28 @@ jobs:
     runs-on: ${{ matrix.settings.host }}
     steps:
       - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
       - name: Setup node
         uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node }}
-          cache: yarn
+          cache: pnpm
           architecture: ${{ matrix.settings.architecture }}
       - name: Install dependencies
-        run: yarn install
+        run: pnpm install --frozen-lockfile
       - name: Download artifacts
         uses: actions/download-artifact@v8
         with:
           name: bindings-${{ matrix.settings.target }}
-          path: .
+          path: ${{ env.PACKAGE_DIR }}
       - name: List packages
-        run: ls -R .
+        run: ls -R ${{ env.PACKAGE_DIR }}
         shell: bash
       - name: Test bindings
-        run: yarn test
+        run: pnpm test
+
   test-linux-binding:
     name: Test ${{ matrix.target }} - node@${{ matrix.node }}
     needs:
@@ -179,11 +193,14 @@ jobs:
     runs-on: ${{ contains(matrix.target, 'aarch64') && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
       - name: Setup node
         uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node }}
-          cache: yarn
+          cache: pnpm
       - name: Output docker params
         id: docker
         run: |
@@ -204,17 +221,14 @@ jobs:
             }
           " >> $GITHUB_OUTPUT
       - name: Install dependencies
-        run: |
-          yarn config set --json supportedArchitectures.cpu '["current", "arm64", "x64", "arm"]'
-          yarn config set --json supportedArchitectures.libc '["current", "musl", "gnu"]'
-          yarn install
+        run: pnpm install --frozen-lockfile
       - name: Download artifacts
         uses: actions/download-artifact@v8
         with:
           name: bindings-${{ matrix.target }}
-          path: .
+          path: ${{ env.PACKAGE_DIR }}
       - name: List packages
-        run: ls -R .
+        run: ls -R ${{ env.PACKAGE_DIR }}
         shell: bash
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
@@ -229,7 +243,8 @@ jobs:
           image: ${{ steps.docker.outputs.IMAGE }}
           name: test-bindings-${{ matrix.target }}
           options: '-v ${{ github.workspace }}:${{ github.workspace }} -w ${{ github.workspace }} --platform ${{ steps.docker.outputs.PLATFORM }}'
-          args: yarn test
+          args: sh -lc "corepack enable && pnpm test"
+
   publish:
     name: Publish
     runs-on: ubuntu-latest
@@ -242,23 +257,26 @@ jobs:
       - test-linux-binding
     steps:
       - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
       - name: Setup node
         uses: actions/setup-node@v6
         with:
           node-version: 24
-          cache: yarn
+          cache: pnpm
       - name: Install dependencies
-        run: yarn install
+        run: pnpm install --frozen-lockfile
       - name: create npm dirs
-        run: yarn napi create-npm-dirs
+        run: pnpm --dir ${{ env.PACKAGE_DIR }} exec napi create-npm-dirs
       - name: Download all artifacts
         uses: actions/download-artifact@v8
         with:
-          path: artifacts
+          path: ${{ env.PACKAGE_DIR }}/artifacts
       - name: Move artifacts
-        run: yarn artifacts
+        run: pnpm artifacts
       - name: List packages
-        run: ls -R ./npm
+        run: ls -R ./${{ env.PACKAGE_DIR }}/npm
         shell: bash
       - name: Publish
         run: |
@@ -266,10 +284,12 @@ jobs:
           if git log -1 --pretty=%B | grep "^[0-9]\+\.[0-9]\+\.[0-9]\+$";
           then
             echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
+            cd "$PACKAGE_DIR"
             npm publish --access public
           elif git log -1 --pretty=%B | grep "^[0-9]\+\.[0-9]\+\.[0-9]\+";
           then
             echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
+            cd "$PACKAGE_DIR"
             npm publish --tag next --access public
           else
             echo "Not a release, skipping publish"
