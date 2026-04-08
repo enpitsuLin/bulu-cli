@@ -15,8 +15,13 @@ export default defineCommand({
     const passphrase = await resolveTCXPassphrase()
     const wallet = createWallet({
       password: passphrase,
+      name: args.name,
     })
 
-    console.log({ wallet })
+    console.log({
+      mnemonic: wallet.mnemonic,
+      meta: wallet.meta,
+      accounts: wallet.accounts,
+    })
   },
 })

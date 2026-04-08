@@ -8,13 +8,22 @@ export interface CreateWalletInput {
   passwordHint?: string
   network?: WalletNetwork
   entropy?: string
+  derivations?: Array<DerivationInput>
 }
 
-export declare function importWalletKeystore(input: ImportWalletKeystoreInput): WalletResult
+export interface DerivationInput {
+  chain: WalletChain
+  derivationPath?: string
+  network?: WalletNetwork
+  chainId?: string
+}
 
-export interface ImportWalletKeystoreInput {
-  keystore: string
+export declare function deriveAccounts(input: DeriveAccountsInput): Array<WalletAccount>
+
+export interface DeriveAccountsInput {
+  keystoreJson: string
   password: string
+  derivations?: Array<DerivationInput>
 }
 
 export declare function importWalletMnemonic(input: ImportWalletMnemonicInput): WalletResult
@@ -25,6 +34,7 @@ export interface ImportWalletMnemonicInput {
   name?: string
   passwordHint?: string
   network?: WalletNetwork
+  derivations?: Array<DerivationInput>
 }
 
 export declare function importWalletPrivateKey(input: ImportWalletPrivateKeyInput): WalletResult
@@ -35,69 +45,42 @@ export interface ImportWalletPrivateKeyInput {
   name?: string
   passwordHint?: string
   network?: WalletNetwork
+  derivations?: Array<DerivationInput>
 }
 
-export interface Keystore {
-  id: string
-  version: number
-  sourceFingerprint: string
-  crypto: KeystoreCrypto
-  identity: KeystoreIdentity
-  curve?: string
-  encOriginal: KeystoreEncPair
-  imTokenMeta: KeystoreMetadata
-}
+export declare function loadWallet(input: LoadWalletInput): WalletResult
 
-export interface KeystoreCipherParams {
-  iv: string
-}
-
-export interface KeystoreCrypto {
-  cipher: string
-  cipherparams: KeystoreCipherParams
-  ciphertext: string
-  kdf: string
-  kdfparams: KeystoreKdfParams
-  mac: string
-}
-
-export interface KeystoreEncPair {
-  encStr: string
-  nonce: string
-}
-
-export interface KeystoreIdentity {
-  encAuthKey: KeystoreEncPair
-  encKey: string
-  identifier: string
-  ipfsId: string
-}
-
-export interface KeystoreKdfParams {
-  dklen: number
-  salt: string
-  c?: number
-  prf?: string
-  n?: number
-  p?: number
-  r?: number
-}
-
-export interface KeystoreMetadata {
-  name: string
-  passwordHint?: string
-  timestamp: number
-  source: string
-  network: string
-  identifiedChainTypes?: Array<string>
+export interface LoadWalletInput {
+  keystoreJson: string
+  password: string
+  derivations?: Array<DerivationInput>
 }
 
 export interface WalletAccount {
-  chain: string
+  chain: WalletChain
   address: string
   publicKey: string
   derivationPath?: string
   extPubKey?: string
+}
+
+export declare const enum WalletChain {
+  Ethereum = 'ETHEREUM',
+  Tron = 'TRON',
+}
+
+export interface WalletMeta {
+  id: string
+  version: number
+  sourceFingerprint: string
+  source: WalletSource
+  network: WalletNetwork
+  name: string
+  passwordHint?: string
+  timestamp: number
+  derivable: boolean
+  curve?: string
+  identifiedChainTypes?: Array<string>
 }
 
 export declare const enum WalletNetwork {
@@ -106,9 +89,17 @@ export declare const enum WalletNetwork {
 }
 
 export interface WalletResult {
-  id: string
-  source: string
-  network: WalletNetwork
-  keystore: Keystore
+  keystoreJson: string
+  meta: WalletMeta
   accounts: Array<WalletAccount>
+  mnemonic?: string
+}
+
+export declare const enum WalletSource {
+  Wif = 'WIF',
+  Private = 'PRIVATE',
+  KeystoreV3 = 'KEYSTORE_V3',
+  SubstrateKeystore = 'SUBSTRATE_KEYSTORE',
+  Mnemonic = 'MNEMONIC',
+  NewMnemonic = 'NEW_MNEMONIC',
 }
