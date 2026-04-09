@@ -438,7 +438,7 @@ dependencies = [
 [[package]]
 name = "ed25519-dalek-bip32"
 version = "0.3.0"
-source = "git+https://github.com/consenlabs/token-core-monorepo?branch=feat%2Fkeyless#dc8409bab6f47679827a79db3d4eb760219a5fd2"
+source = "git+https://github.com/consenlabs/token-core-monorepo?branch=feat%2Fkeyless#17b95ccd96cc71e6d00d35d0f0ff828e1bc457ab"
 dependencies = [
  "derivation-path",
  "ed25519-dalek",
@@ -1459,7 +1459,7 @@ checksum = "55937e1799185b12863d447f42597ed69d9928686b8d88a1df17376a097d8369"
 [[package]]
 name = "tcx-common"
 version = "0.1.0"
-source = "git+https://github.com/consenlabs/token-core-monorepo?branch=feat%2Fkeyless#dc8409bab6f47679827a79db3d4eb760219a5fd2"
+source = "git+https://github.com/consenlabs/token-core-monorepo?branch=feat%2Fkeyless#17b95ccd96cc71e6d00d35d0f0ff828e1bc457ab"
 dependencies = [
  "aes",
  "anyhow",
@@ -1478,7 +1478,7 @@ dependencies = [
 [[package]]
 name = "tcx-constants"
 version = "0.1.0"
-source = "git+https://github.com/consenlabs/token-core-monorepo?branch=feat%2Fkeyless#dc8409bab6f47679827a79db3d4eb760219a5fd2"
+source = "git+https://github.com/consenlabs/token-core-monorepo?branch=feat%2Fkeyless#17b95ccd96cc71e6d00d35d0f0ff828e1bc457ab"
 dependencies = [
  "anyhow",
  "lazy_static",
@@ -1491,7 +1491,7 @@ dependencies = [
 [[package]]
 name = "tcx-crypto"
 version = "0.1.0"
-source = "git+https://github.com/consenlabs/token-core-monorepo?branch=feat%2Fkeyless#dc8409bab6f47679827a79db3d4eb760219a5fd2"
+source = "git+https://github.com/consenlabs/token-core-monorepo?branch=feat%2Fkeyless#17b95ccd96cc71e6d00d35d0f0ff828e1bc457ab"
 dependencies = [
  "aes",
  "anyhow",
@@ -1521,7 +1521,7 @@ dependencies = [
 [[package]]
 name = "tcx-eth"
 version = "0.1.0"
-source = "git+https://github.com/consenlabs/token-core-monorepo?branch=feat%2Fkeyless#dc8409bab6f47679827a79db3d4eb760219a5fd2"
+source = "git+https://github.com/consenlabs/token-core-monorepo?branch=feat%2Fkeyless#17b95ccd96cc71e6d00d35d0f0ff828e1bc457ab"
 dependencies = [
  "anyhow",
  "ethereum-types",
@@ -1540,7 +1540,7 @@ dependencies = [
 [[package]]
 name = "tcx-keystore"
 version = "0.1.0"
-source = "git+https://github.com/consenlabs/token-core-monorepo?branch=feat%2Fkeyless#dc8409bab6f47679827a79db3d4eb760219a5fd2"
+source = "git+https://github.com/consenlabs/token-core-monorepo?branch=feat%2Fkeyless#17b95ccd96cc71e6d00d35d0f0ff828e1bc457ab"
 dependencies = [
  "anyhow",
  "bitcoin",
@@ -1571,7 +1571,7 @@ dependencies = [
 [[package]]
 name = "tcx-primitive"
 version = "0.1.0"
-source = "git+https://github.com/consenlabs/token-core-monorepo?branch=feat%2Fkeyless#dc8409bab6f47679827a79db3d4eb760219a5fd2"
+source = "git+https://github.com/consenlabs/token-core-monorepo?branch=feat%2Fkeyless#17b95ccd96cc71e6d00d35d0f0ff828e1bc457ab"
 dependencies = [
  "anyhow",
  "bitcoin",
@@ -1602,7 +1602,7 @@ dependencies = [
 [[package]]
 name = "tcx-tron"
 version = "0.1.0"
-source = "git+https://github.com/consenlabs/token-core-monorepo?branch=feat%2Fkeyless#dc8409bab6f47679827a79db3d4eb760219a5fd2"
+source = "git+https://github.com/consenlabs/token-core-monorepo?branch=feat%2Fkeyless#17b95ccd96cc71e6d00d35d0f0ff828e1bc457ab"
 dependencies = [
  "anyhow",
  "bitcoin",
