@@ -13,13 +13,6 @@ export interface BuluConfig {
     format?: 'table' | 'csv' | 'json'
   }
   chains?: Record<string, { rpc?: string }>
-  okxOnchain?: {
-    apiKey?: string
-    secret?: string
-    passphrase?: string
-    baseUrl?: string
-  }
-  [protocol: string]: unknown
 }
 
 export const CONFIG_DEFAULTS: BuluConfig = {
