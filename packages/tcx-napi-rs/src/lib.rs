@@ -206,8 +206,8 @@ struct DerivationRequest {
 /// If `entropy` is omitted, random 16-byte entropy is generated.
 /// If `derivations` is omitted, default Ethereum and Tron accounts are derived
 /// for the selected wallet network.
-pub fn create_wallet(name: String, passphare: String) -> Result<WalletResult> {
-  require_non_empty(&passphare, "passphare")?;
+pub fn create_wallet(name: String, passphrase: String) -> Result<WalletResult> {
+  require_non_empty(&passphrase, "passphrase")?;
 
   let mnemonic = create_mnemonic(None)?;
   let metadata = build_metadata(
@@ -218,9 +218,9 @@ pub fn create_wallet(name: String, passphare: String) -> Result<WalletResult> {
     "New Wallet",
   );
   let keystore =
-    TcxKeystore::from_mnemonic(&mnemonic, &passphare, metadata).map_err(to_napi_err)?;
+    TcxKeystore::from_mnemonic(&mnemonic, &passphrase, metadata).map_err(to_napi_err)?;
 
-  finalize_wallet(keystore, &passphare, Some(mnemonic), None)
+  finalize_wallet(keystore, &passphrase, Some(mnemonic), None)
 }
 
 #[napi(js_name = "importWalletMnemonic")]
@@ -231,9 +231,9 @@ pub fn create_wallet(name: String, passphare: String) -> Result<WalletResult> {
 pub fn import_wallet_mnemonic(
   name: String,
   mnemonic: String,
-  passphare: String,
+  passphrase: String,
 ) -> Result<WalletResult> {
-  require_non_empty(&passphare, "passphare")?;
+  require_non_empty(&passphrase, "passphrase")?;
 
   let normalized_mnemonic = normalize_mnemonic(&mnemonic);
   require_non_empty(&normalized_mnemonic, "mnemonic")?;
@@ -246,9 +246,9 @@ pub fn import_wallet_mnemonic(
     "Imported Mnemonic Wallet",
   );
   let keystore =
-    TcxKeystore::from_mnemonic(&normalized_mnemonic, &passphare, metadata).map_err(to_napi_err)?;
+    TcxKeystore::from_mnemonic(&normalized_mnemonic, &passphrase, metadata).map_err(to_napi_err)?;
 
-  finalize_wallet(keystore, &passphare, Some(normalized_mnemonic), None)
+  finalize_wallet(keystore, &passphrase, Some(normalized_mnemonic), None)
 }
 
 #[napi(js_name = "importWalletPrivateKey")]
@@ -259,9 +259,9 @@ pub fn import_wallet_mnemonic(
 pub fn import_wallet_private_key(
   name: String,
   private_key: String,
-  passphare: String,
+  passphrase: String,
 ) -> Result<WalletResult> {
-  require_non_empty(&passphare, "passphare")?;
+  require_non_empty(&passphrase, "passphrase")?;
 
   let normalized_private_key = require_trimmed(private_key, "privateKey")?;
   let metadata = build_metadata(
@@ -273,14 +273,14 @@ pub fn import_wallet_private_key(
   );
   let keystore = TcxKeystore::from_private_key(
     &normalized_private_key,
-    &passphare,
+    &passphrase,
     CurveType::SECP256k1,
     metadata,
     None,
   )
   .map_err(to_napi_err)?;
 
-  finalize_wallet(keystore, &passphare, None, None)
+  finalize_wallet(keystore, &passphrase, None, None)
 }
 
 #[napi(js_name = "loadWallet")]

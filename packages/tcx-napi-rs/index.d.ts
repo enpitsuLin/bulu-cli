@@ -7,7 +7,7 @@
  * If `derivations` is omitted, default Ethereum and Tron accounts are derived
  * for the selected wallet network.
  */
-export declare function createWallet(name: string, passphare: string): WalletResult
+export declare function createWallet(name: string, passphrase: string): WalletResult
 
 /** A requested account derivation. */
 export interface DerivationInput {
@@ -43,7 +43,7 @@ export interface DeriveAccountsInput {
  * If `derivations` is omitted, default Ethereum and Tron accounts are derived
  * for the selected wallet network.
  */
-export declare function importWalletMnemonic(name: string, mnemonic: string, passphare: string): WalletResult
+export declare function importWalletMnemonic(name: string, mnemonic: string, passphrase: string): WalletResult
 
 /**
  * Imports a private key as a non-derivable wallet.
@@ -51,7 +51,7 @@ export declare function importWalletMnemonic(name: string, mnemonic: string, pas
  * If `derivations` is omitted, default Ethereum and Tron accounts are
  * returned. Derivation paths are ignored for non-derivable wallets.
  */
-export declare function importWalletPrivateKey(name: string, privateKey: string, passphare: string): WalletResult
+export declare function importWalletPrivateKey(name: string, privateKey: string, passphrase: string): WalletResult
 
 /**
  * Loads a serialized keystore JSON and derives accounts from it.
