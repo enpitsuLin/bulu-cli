@@ -89,61 +89,6 @@ impl From<Source> for WalletSource {
 }
 
 #[napi(object)]
-/// Parameters for creating a new mnemonic-backed wallet.
-pub struct CreateWalletInput {
-  /// Password used to encrypt the generated keystore.
-  pub password: String,
-  /// Optional wallet name stored in metadata.
-  pub name: Option<String>,
-  /// Optional password hint stored in metadata.
-  #[napi(js_name = "passwordHint")]
-  pub password_hint: Option<String>,
-  /// Wallet network. Defaults to `MAINNET`.
-  pub network: Option<WalletNetwork>,
-  /// Optional hex entropy used to deterministically generate the mnemonic.
-  pub entropy: Option<String>,
-  /// Accounts to derive. Defaults to Ethereum and Tron accounts for the wallet network.
-  pub derivations: Option<Vec<DerivationInput>>,
-}
-
-#[napi(object)]
-/// Parameters for importing a mnemonic-backed wallet.
-pub struct ImportWalletMnemonicInput {
-  /// BIP-39 mnemonic phrase to import.
-  pub mnemonic: String,
-  /// Password used to encrypt the imported keystore.
-  pub password: String,
-  /// Optional wallet name stored in metadata.
-  pub name: Option<String>,
-  /// Optional password hint stored in metadata.
-  #[napi(js_name = "passwordHint")]
-  pub password_hint: Option<String>,
-  /// Wallet network. Defaults to `MAINNET`.
-  pub network: Option<WalletNetwork>,
-  /// Accounts to derive. Defaults to Ethereum and Tron accounts for the wallet network.
-  pub derivations: Option<Vec<DerivationInput>>,
-}
-
-#[napi(object)]
-/// Parameters for importing a private-key-backed wallet.
-pub struct ImportWalletPrivateKeyInput {
-  /// Hex-encoded private key.
-  #[napi(js_name = "privateKey")]
-  pub private_key: String,
-  /// Password used to encrypt the imported keystore.
-  pub password: String,
-  /// Optional wallet name stored in metadata.
-  pub name: Option<String>,
-  /// Optional password hint stored in metadata.
-  #[napi(js_name = "passwordHint")]
-  pub password_hint: Option<String>,
-  /// Wallet network stored in metadata. Defaults to `MAINNET`.
-  pub network: Option<WalletNetwork>,
-  /// Accounts to derive. Defaults to Ethereum and Tron accounts for the wallet network.
-  pub derivations: Option<Vec<DerivationInput>>,
-}
-
-#[napi(object)]
 /// Parameters for loading an existing keystore JSON.
 pub struct LoadWalletInput {
   /// Serialized keystore JSON previously returned by this module.
@@ -261,30 +206,21 @@ struct DerivationRequest {
 /// If `entropy` is omitted, random 16-byte entropy is generated.
 /// If `derivations` is omitted, default Ethereum and Tron accounts are derived
 /// for the selected wallet network.
-pub fn create_wallet(input: CreateWalletInput) -> Result<WalletResult> {
-  let CreateWalletInput {
-    password,
-    name,
-    password_hint,
-    network,
-    entropy,
-    derivations,
-  } = input;
+pub fn create_wallet(name: String, passphare: String) -> Result<WalletResult> {
+  require_non_empty(&passphare, "passphare")?;
 
-  require_non_empty(&password, "password")?;
-
-  let mnemonic = create_mnemonic(entropy)?;
-  let network = resolve_network(network);
+  let mnemonic = create_mnemonic(None)?;
   let metadata = build_metadata(
-    name,
-    password_hint,
-    network,
+    Some(name),
+    None,
+    resolve_network(None),
     Source::NewMnemonic,
     "New Wallet",
   );
-  let keystore = TcxKeystore::from_mnemonic(&mnemonic, &password, metadata).map_err(to_napi_err)?;
+  let keystore =
+    TcxKeystore::from_mnemonic(&mnemonic, &passphare, metadata).map_err(to_napi_err)?;
 
-  finalize_wallet(keystore, &password, Some(mnemonic), derivations)
+  finalize_wallet(keystore, &passphare, Some(mnemonic), None)
 }
 
 #[napi(js_name = "importWalletMnemonic")]
@@ -292,33 +228,27 @@ pub fn create_wallet(input: CreateWalletInput) -> Result<WalletResult> {
 ///
 /// If `derivations` is omitted, default Ethereum and Tron accounts are derived
 /// for the selected wallet network.
-pub fn import_wallet_mnemonic(input: ImportWalletMnemonicInput) -> Result<WalletResult> {
-  let ImportWalletMnemonicInput {
-    mnemonic,
-    password,
-    name,
-    password_hint,
-    network,
-    derivations,
-  } = input;
-
-  require_non_empty(&password, "password")?;
+pub fn import_wallet_mnemonic(
+  name: String,
+  mnemonic: String,
+  passphare: String,
+) -> Result<WalletResult> {
+  require_non_empty(&passphare, "passphare")?;
 
   let normalized_mnemonic = normalize_mnemonic(&mnemonic);
   require_non_empty(&normalized_mnemonic, "mnemonic")?;
 
-  let network = resolve_network(network);
   let metadata = build_metadata(
-    name,
-    password_hint,
-    network,
+    Some(name),
+    None,
+    resolve_network(None),
     Source::Mnemonic,
     "Imported Mnemonic Wallet",
   );
   let keystore =
-    TcxKeystore::from_mnemonic(&normalized_mnemonic, &password, metadata).map_err(to_napi_err)?;
+    TcxKeystore::from_mnemonic(&normalized_mnemonic, &passphare, metadata).map_err(to_napi_err)?;
 
-  finalize_wallet(keystore, &password, Some(normalized_mnemonic), derivations)
+  finalize_wallet(keystore, &passphare, Some(normalized_mnemonic), None)
 }
 
 #[napi(js_name = "importWalletPrivateKey")]
@@ -326,37 +256,31 @@ pub fn import_wallet_mnemonic(input: ImportWalletMnemonicInput) -> Result<Wallet
 ///
 /// If `derivations` is omitted, default Ethereum and Tron accounts are
 /// returned. Derivation paths are ignored for non-derivable wallets.
-pub fn import_wallet_private_key(input: ImportWalletPrivateKeyInput) -> Result<WalletResult> {
-  let ImportWalletPrivateKeyInput {
-    private_key,
-    password,
-    name,
-    password_hint,
-    network,
-    derivations,
-  } = input;
-
-  require_non_empty(&password, "password")?;
+pub fn import_wallet_private_key(
+  name: String,
+  private_key: String,
+  passphare: String,
+) -> Result<WalletResult> {
+  require_non_empty(&passphare, "passphare")?;
 
   let normalized_private_key = require_trimmed(private_key, "privateKey")?;
-  let network = resolve_network(network);
   let metadata = build_metadata(
-    name,
-    password_hint,
-    network,
+    Some(name),
+    None,
+    resolve_network(None),
     Source::Private,
     "Imported Private Key",
   );
   let keystore = TcxKeystore::from_private_key(
     &normalized_private_key,
-    &password,
+    &passphare,
     CurveType::SECP256k1,
     metadata,
     None,
   )
   .map_err(to_napi_err)?;
 
-  finalize_wallet(keystore, &password, None, derivations)
+  finalize_wallet(keystore, &passphare, None, None)
 }
 
 #[napi(js_name = "loadWallet")]
@@ -728,21 +652,14 @@ mod tests {
 
   #[test]
   fn create_wallet_returns_mnemonic_and_default_accounts() {
-    let wallet = create_wallet(CreateWalletInput {
-      password: TEST_PASSWORD.to_string(),
-      name: Some("Created".to_string()),
-      password_hint: Some("hint".to_string()),
-      network: Some(WalletNetwork::Testnet),
-      entropy: Some("000102030405060708090a0b0c0d0e0f".to_string()),
-      derivations: None,
-    })
-    .expect("create wallet should succeed");
+    let wallet = create_wallet("Created".to_string(), TEST_PASSWORD.to_string())
+      .expect("create wallet should succeed");
 
     assert_eq!(wallet.meta.source, WalletSource::NewMnemonic);
-    assert_eq!(wallet.meta.network, WalletNetwork::Testnet);
+    assert_eq!(wallet.meta.network, WalletNetwork::Mainnet);
     assert_eq!(wallet.accounts.len(), 2);
-    assert_eq!(wallet.accounts[0].chain_id, DEFAULT_ETH_TESTNET_CHAIN_ID);
-    assert_eq!(wallet.accounts[1].chain_id, DEFAULT_TRON_TESTNET_CHAIN_ID);
+    assert_eq!(wallet.accounts[0].chain_id, DEFAULT_ETH_MAINNET_CHAIN_ID);
+    assert_eq!(wallet.accounts[1].chain_id, DEFAULT_TRON_MAINNET_CHAIN_ID);
     assert_eq!(wallet.meta.version, 12000);
     assert!(wallet.meta.derivable);
     assert!(wallet.keystore_json.contains("\"version\":12000"));
@@ -753,59 +670,36 @@ mod tests {
   }
 
   #[test]
-  fn import_wallet_mnemonic_supports_custom_derivations() {
-    let wallet = import_wallet_mnemonic(ImportWalletMnemonicInput {
-      mnemonic: TEST_MNEMONIC.to_string(),
-      password: TEST_PASSWORD.to_string(),
-      name: Some("Imported mnemonic".to_string()),
-      password_hint: None,
-      network: None,
-      derivations: Some(vec![
-        DerivationInput {
-          chain_id: DEFAULT_TRON_MAINNET_CHAIN_ID.to_string(),
-          derivation_path: None,
-          network: None,
-        },
-        DerivationInput {
-          chain_id: DEFAULT_ETH_MAINNET_CHAIN_ID.to_string(),
-          derivation_path: Some("m/44'/60'/0'/0/1".to_string()),
-          network: None,
-        },
-      ]),
-    })
+  fn import_wallet_mnemonic_returns_default_accounts() {
+    let wallet = import_wallet_mnemonic(
+      "Imported mnemonic".to_string(),
+      TEST_MNEMONIC.to_string(),
+      TEST_PASSWORD.to_string(),
+    )
     .expect("mnemonic import should succeed");
 
     assert_eq!(wallet.meta.source, WalletSource::Mnemonic);
     assert_eq!(wallet.meta.network, WalletNetwork::Mainnet);
     assert_eq!(wallet.accounts.len(), 2);
-    assert_eq!(wallet.accounts[0].chain_id, DEFAULT_TRON_MAINNET_CHAIN_ID);
-    assert_eq!(
-      wallet.accounts[1].derivation_path.as_deref(),
-      Some("m/44'/60'/0'/0/1")
-    );
+    assert_eq!(wallet.accounts[0].chain_id, DEFAULT_ETH_MAINNET_CHAIN_ID);
+    assert_eq!(wallet.accounts[1].chain_id, DEFAULT_TRON_MAINNET_CHAIN_ID);
     assert_eq!(wallet.mnemonic.as_deref(), Some(TEST_MNEMONIC));
   }
 
   #[test]
   fn import_wallet_private_key_returns_non_derivable_accounts() {
-    let wallet = import_wallet_private_key(ImportWalletPrivateKeyInput {
-      private_key: TEST_PRIVATE_KEY.to_string(),
-      password: TEST_PASSWORD.to_string(),
-      name: Some("Imported private key".to_string()),
-      password_hint: None,
-      network: None,
-      derivations: Some(vec![DerivationInput {
-        chain_id: DEFAULT_TRON_TESTNET_CHAIN_ID.to_string(),
-        derivation_path: Some("m/44'/195'/0'/0/99".to_string()),
-        network: Some(WalletNetwork::Testnet),
-      }]),
-    })
+    let wallet = import_wallet_private_key(
+      "Imported private key".to_string(),
+      TEST_PRIVATE_KEY.to_string(),
+      TEST_PASSWORD.to_string(),
+    )
     .expect("private key import should succeed");
 
     assert_eq!(wallet.meta.source, WalletSource::Private);
     assert_eq!(wallet.meta.network, WalletNetwork::Mainnet);
-    assert_eq!(wallet.accounts.len(), 1);
-    assert_eq!(wallet.accounts[0].chain_id, DEFAULT_TRON_TESTNET_CHAIN_ID);
+    assert_eq!(wallet.accounts.len(), 2);
+    assert_eq!(wallet.accounts[0].chain_id, DEFAULT_ETH_MAINNET_CHAIN_ID);
+    assert_eq!(wallet.accounts[1].chain_id, DEFAULT_TRON_MAINNET_CHAIN_ID);
     assert!(wallet.accounts[0].derivation_path.is_none());
     assert!(wallet.accounts[0].ext_pub_key.is_none());
     assert_eq!(wallet.meta.version, 12001);
@@ -816,14 +710,11 @@ mod tests {
 
   #[test]
   fn load_wallet_restores_wallet_from_keystore_json() {
-    let source_wallet = import_wallet_mnemonic(ImportWalletMnemonicInput {
-      mnemonic: TEST_MNEMONIC.to_string(),
-      password: TEST_PASSWORD.to_string(),
-      name: Some("Imported mnemonic".to_string()),
-      password_hint: None,
-      network: None,
-      derivations: None,
-    })
+    let source_wallet = import_wallet_mnemonic(
+      "Imported mnemonic".to_string(),
+      TEST_MNEMONIC.to_string(),
+      TEST_PASSWORD.to_string(),
+    )
     .expect("mnemonic import should succeed");
 
     let wallet = load_wallet(LoadWalletInput {
@@ -849,14 +740,11 @@ mod tests {
 
   #[test]
   fn derive_accounts_returns_requested_accounts() {
-    let source_wallet = import_wallet_mnemonic(ImportWalletMnemonicInput {
-      mnemonic: TEST_MNEMONIC.to_string(),
-      password: TEST_PASSWORD.to_string(),
-      name: Some("Imported mnemonic".to_string()),
-      password_hint: None,
-      network: None,
-      derivations: None,
-    })
+    let source_wallet = import_wallet_mnemonic(
+      "Imported mnemonic".to_string(),
+      TEST_MNEMONIC.to_string(),
+      TEST_PASSWORD.to_string(),
+    )
     .expect("mnemonic import should succeed");
 
     let accounts = derive_accounts(DeriveAccountsInput {
@@ -893,14 +781,11 @@ mod tests {
 
   #[test]
   fn derive_accounts_rejects_unsupported_chain_id_namespace() {
-    let source_wallet = import_wallet_mnemonic(ImportWalletMnemonicInput {
-      mnemonic: TEST_MNEMONIC.to_string(),
-      password: TEST_PASSWORD.to_string(),
-      name: Some("Imported mnemonic".to_string()),
-      password_hint: None,
-      network: None,
-      derivations: None,
-    })
+    let source_wallet = import_wallet_mnemonic(
+      "Imported mnemonic".to_string(),
+      TEST_MNEMONIC.to_string(),
+      TEST_PASSWORD.to_string(),
+    )
     .expect("mnemonic import should succeed");
 
     let err = derive_accounts(DeriveAccountsInput {
