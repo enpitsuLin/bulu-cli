@@ -53,16 +53,12 @@ test('importWalletPrivateKey returns a non-derivable wallet', () => {
 test('loadWallet restores keystore json and derives requested accounts', () => {
   const sourceWallet = importWalletMnemonic('Imported Mnemonic', MNEMONIC, PASSWORD)
 
-  const wallet = loadWallet({
-    keystoreJson: sourceWallet.keystoreJson,
-    password: PASSWORD,
-    derivations: [
-      {
-        chainId: ETH_MAINNET_CHAIN_ID,
-        derivationPath: "m/44'/60'/0'/0/1",
-      },
-    ],
-  })
+  const wallet = loadWallet(sourceWallet.keystoreJson, PASSWORD, [
+    {
+      chainId: ETH_MAINNET_CHAIN_ID,
+      derivationPath: "m/44'/60'/0'/0/1",
+    },
+  ])
 
   expect(wallet.meta.source).toBe(WalletSource.Mnemonic)
   expect(wallet.accounts).toHaveLength(1)
@@ -73,23 +69,19 @@ test('loadWallet restores keystore json and derives requested accounts', () => {
 test('deriveAccounts batches arbitrary derivations through a single unlock flow', () => {
   const sourceWallet = importWalletMnemonic('Imported Mnemonic', MNEMONIC, PASSWORD)
 
-  const accounts = deriveAccounts({
-    keystoreJson: sourceWallet.keystoreJson,
-    password: PASSWORD,
-    derivations: [
-      {
-        chainId: ETH_MAINNET_CHAIN_ID,
-        derivationPath: "m/44'/60'/0'/0/0",
-      },
-      {
-        chainId: ETH_MAINNET_CHAIN_ID,
-        derivationPath: "m/44'/60'/0'/0/1",
-      },
-      {
-        chainId: TRON_MAINNET_CHAIN_ID,
-      },
-    ],
-  })
+  const accounts = deriveAccounts(sourceWallet.keystoreJson, PASSWORD, [
+    {
+      chainId: ETH_MAINNET_CHAIN_ID,
+      derivationPath: "m/44'/60'/0'/0/0",
+    },
+    {
+      chainId: ETH_MAINNET_CHAIN_ID,
+      derivationPath: "m/44'/60'/0'/0/1",
+    },
+    {
+      chainId: TRON_MAINNET_CHAIN_ID,
+    },
+  ])
 
   expect(accounts).toHaveLength(3)
   expect(accounts[0]?.derivationPath).toBe("m/44'/60'/0'/0/0")

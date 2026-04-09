@@ -25,17 +25,11 @@ export interface DerivationInput {
  * If `derivations` is omitted, default Ethereum and Tron accounts are derived
  * for the wallet network stored in the keystore.
  */
-export declare function deriveAccounts(input: DeriveAccountsInput): Array<WalletAccount>
-
-/** Parameters for deriving accounts from an existing keystore JSON. */
-export interface DeriveAccountsInput {
-  /** Serialized keystore JSON previously returned by this module. */
-  keystoreJson: string
-  /** Password used to unlock the keystore. */
-  password: string
-  /** Accounts to derive. Defaults to Ethereum and Tron accounts for the wallet network. */
-  derivations?: Array<DerivationInput>
-}
+export declare function deriveAccounts(
+  keystoreJson: string,
+  password: string,
+  derivations?: Array<DerivationInput> | undefined | null,
+): Array<WalletAccount>
 
 /**
  * Imports an existing mnemonic-backed wallet.
@@ -59,17 +53,11 @@ export declare function importWalletPrivateKey(name: string, privateKey: string,
  * If `derivations` is omitted, default Ethereum and Tron accounts are derived
  * for the wallet network stored in the keystore.
  */
-export declare function loadWallet(input: LoadWalletInput): WalletResult
-
-/** Parameters for loading an existing keystore JSON. */
-export interface LoadWalletInput {
-  /** Serialized keystore JSON previously returned by this module. */
-  keystoreJson: string
-  /** Password used to unlock the keystore. */
-  password: string
-  /** Accounts to derive. Defaults to Ethereum and Tron accounts for the wallet network. */
-  derivations?: Array<DerivationInput>
-}
+export declare function loadWallet(
+  keystoreJson: string,
+  password: string,
+  derivations?: Array<DerivationInput> | undefined | null,
+): WalletResult
 
 /** A derived account returned to JavaScript. */
 export interface WalletAccount {

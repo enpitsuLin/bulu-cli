@@ -89,30 +89,6 @@ impl From<Source> for WalletSource {
 }
 
 #[napi(object)]
-/// Parameters for loading an existing keystore JSON.
-pub struct LoadWalletInput {
-  /// Serialized keystore JSON previously returned by this module.
-  #[napi(js_name = "keystoreJson")]
-  pub keystore_json: String,
-  /// Password used to unlock the keystore.
-  pub password: String,
-  /// Accounts to derive. Defaults to Ethereum and Tron accounts for the wallet network.
-  pub derivations: Option<Vec<DerivationInput>>,
-}
-
-#[napi(object)]
-/// Parameters for deriving accounts from an existing keystore JSON.
-pub struct DeriveAccountsInput {
-  /// Serialized keystore JSON previously returned by this module.
-  #[napi(js_name = "keystoreJson")]
-  pub keystore_json: String,
-  /// Password used to unlock the keystore.
-  pub password: String,
-  /// Accounts to derive. Defaults to Ethereum and Tron accounts for the wallet network.
-  pub derivations: Option<Vec<DerivationInput>>,
-}
-
-#[napi(object)]
 /// A requested account derivation.
 pub struct DerivationInput {
   /// CAIP-2 chain id, for example `eip155:1` or `tron:0x2b6653dc`.
@@ -288,13 +264,11 @@ pub fn import_wallet_private_key(
 ///
 /// If `derivations` is omitted, default Ethereum and Tron accounts are derived
 /// for the wallet network stored in the keystore.
-pub fn load_wallet(input: LoadWalletInput) -> Result<WalletResult> {
-  let LoadWalletInput {
-    keystore_json,
-    password,
-    derivations,
-  } = input;
-
+pub fn load_wallet(
+  keystore_json: String,
+  password: String,
+  derivations: Option<Vec<DerivationInput>>,
+) -> Result<WalletResult> {
   require_non_empty(&password, "password")?;
 
   let normalized_keystore_json = require_trimmed(keystore_json, "keystoreJson")?;
@@ -308,13 +282,11 @@ pub fn load_wallet(input: LoadWalletInput) -> Result<WalletResult> {
 ///
 /// If `derivations` is omitted, default Ethereum and Tron accounts are derived
 /// for the wallet network stored in the keystore.
-pub fn derive_accounts(input: DeriveAccountsInput) -> Result<Vec<WalletAccount>> {
-  let DeriveAccountsInput {
-    keystore_json,
-    password,
-    derivations,
-  } = input;
-
+pub fn derive_accounts(
+  keystore_json: String,
+  password: String,
+  derivations: Option<Vec<DerivationInput>>,
+) -> Result<Vec<WalletAccount>> {
   require_non_empty(&password, "password")?;
 
   let normalized_keystore_json = require_trimmed(keystore_json, "keystoreJson")?;
@@ -717,15 +689,15 @@ mod tests {
     )
     .expect("mnemonic import should succeed");
 
-    let wallet = load_wallet(LoadWalletInput {
-      keystore_json: source_wallet.keystore_json.clone(),
-      password: TEST_PASSWORD.to_string(),
-      derivations: Some(vec![DerivationInput {
+    let wallet = load_wallet(
+      source_wallet.keystore_json.clone(),
+      TEST_PASSWORD.to_string(),
+      Some(vec![DerivationInput {
         chain_id: DEFAULT_ETH_MAINNET_CHAIN_ID.to_string(),
         derivation_path: Some("m/44'/60'/0'/0/1".to_string()),
         network: None,
       }]),
-    })
+    )
     .expect("load wallet should succeed");
 
     assert_eq!(wallet.meta.source, WalletSource::Mnemonic);
@@ -747,10 +719,10 @@ mod tests {
     )
     .expect("mnemonic import should succeed");
 
-    let accounts = derive_accounts(DeriveAccountsInput {
-      keystore_json: source_wallet.keystore_json,
-      password: TEST_PASSWORD.to_string(),
-      derivations: Some(vec![
+    let accounts = derive_accounts(
+      source_wallet.keystore_json,
+      TEST_PASSWORD.to_string(),
+      Some(vec![
         DerivationInput {
           chain_id: DEFAULT_ETH_MAINNET_CHAIN_ID.to_string(),
           derivation_path: Some(DEFAULT_ETH_DERIVATION_PATH.to_string()),
@@ -762,7 +734,7 @@ mod tests {
           network: None,
         },
       ]),
-    })
+    )
     .expect("derive accounts should succeed");
 
     assert_eq!(accounts.len(), 2);
@@ -788,15 +760,15 @@ mod tests {
     )
     .expect("mnemonic import should succeed");
 
-    let err = derive_accounts(DeriveAccountsInput {
-      keystore_json: source_wallet.keystore_json,
-      password: TEST_PASSWORD.to_string(),
-      derivations: Some(vec![DerivationInput {
+    let err = derive_accounts(
+      source_wallet.keystore_json,
+      TEST_PASSWORD.to_string(),
+      Some(vec![DerivationInput {
         chain_id: "bip122:000000000019d6689c085ae165831e93".to_string(),
         derivation_path: None,
         network: None,
       }]),
-    })
+    )
     .err()
     .expect("unsupported namespaces should fail");
 
