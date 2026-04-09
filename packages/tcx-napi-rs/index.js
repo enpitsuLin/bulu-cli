@@ -578,8 +578,11 @@ if (!nativeBinding) {
 module.exports = nativeBinding
 module.exports.createWallet = nativeBinding.createWallet
 module.exports.deriveAccounts = nativeBinding.deriveAccounts
+module.exports.EthMessageSignatureType = nativeBinding.EthMessageSignatureType
 module.exports.importWalletMnemonic = nativeBinding.importWalletMnemonic
 module.exports.importWalletPrivateKey = nativeBinding.importWalletPrivateKey
 module.exports.loadWallet = nativeBinding.loadWallet
+module.exports.signMessage = nativeBinding.signMessage
+module.exports.signTransaction = nativeBinding.signTransaction
 module.exports.WalletNetwork = nativeBinding.WalletNetwork
 module.exports.WalletSource = nativeBinding.WalletSource

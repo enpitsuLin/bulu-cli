@@ -31,6 +31,53 @@ export declare function deriveAccounts(
   derivations?: Array<DerivationInput> | undefined | null,
 ): Array<WalletAccount>
 
+/** Ethereum access list item used for EIP-2930/EIP-1559 transactions. */
+export interface EthAccessListItem {
+  /** Accessed contract address. */
+  address: string
+  /** Accessed storage keys. */
+  storageKeys: Array<string>
+}
+
+/** Ethereum message signing payload. */
+export interface EthMessageInput {
+  /** UTF-8 text or a hex string prefixed with `0x`. */
+  message: string
+  /** Signing mode. Defaults to `PERSONAL_SIGN`. */
+  signatureType?: EthMessageSignatureType
+}
+
+/** Ethereum message signing mode. */
+export declare const enum EthMessageSignatureType {
+  /** Prefix with the `Ethereum Signed Message` header before hashing. */
+  PersonalSign = 'PERSONAL_SIGN',
+  /** Hash the raw payload bytes with keccak256 before signing. */
+  EcSign = 'EC_SIGN',
+}
+
+/** Ethereum signed transaction result. */
+export interface EthSignedTransaction {
+  /** Serialized signed transaction payload. */
+  signature: string
+  /** Transaction hash. */
+  txHash: string
+}
+
+/** Ethereum transaction signing payload. */
+export interface EthTransactionInput {
+  nonce: string
+  gasPrice: string
+  gasLimit: string
+  to: string
+  value: string
+  data: string
+  chainId: string
+  txType: string
+  maxFeePerGas: string
+  maxPriorityFeePerGas: string
+  accessList: Array<EthAccessListItem>
+}
+
 /**
  * Imports an existing mnemonic-backed wallet.
  *
@@ -58,6 +105,57 @@ export declare function loadWallet(
   password: string,
   derivations?: Array<DerivationInput> | undefined | null,
 ): WalletResult
+
+/** Message signature returned to JavaScript. */
+export interface SignedMessage {
+  /** Hex-encoded recoverable signature. */
+  signature: string
+}
+
+/**
+ * Signs a plain chain-specific message using the default chain conventions.
+ *
+ * `chain_id` selects the signer implementation. Ethereum uses personal-sign
+ * semantics, while Tron uses the default TRON message header and version.
+ */
+export declare function signMessage(
+  keystoreJson: string,
+  chainId: string,
+  message: string,
+  password: string,
+): SignedMessage
+
+/**
+ * Signs an unsigned chain-specific transaction hex using the default chain
+ * conventions.
+ *
+ * `chain_id` selects the signer implementation. Ethereum expects an unsigned
+ * RLP-encoded transaction hex, while Tron expects raw transaction bytes hex.
+ */
+export declare function signTransaction(
+  keystoreJson: string,
+  chainId: string,
+  txHex: string,
+  password: string,
+): EthSignedTransaction | TronSignedTransaction
+
+/** Tron message signing payload. */
+export interface TronMessageInput {
+  /** UTF-8 text or a hex string prefixed with `0x`. */
+  value: string
+}
+
+/** Tron signed transaction result. */
+export interface TronSignedTransaction {
+  /** Array of hex-encoded signatures. */
+  signatures: Array<string>
+}
+
+/** Tron transaction signing payload. */
+export interface TronTransactionInput {
+  /** Hex-encoded raw transaction bytes. */
+  rawData: string
+}
 
 /** A derived account returned to JavaScript. */
 export interface WalletAccount {

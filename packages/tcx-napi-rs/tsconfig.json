@@ -3,6 +3,7 @@
     "target": "ESNext",
     "strict": true,
     "moduleResolution": "bundler",
+    "types": ["node"],
     "module": "CommonJS",
     "noUnusedLocals": true,
     "noUnusedParameters": true,
@@ -10,5 +11,5 @@
     "allowSyntheticDefaultImports": true
   },
   "include": ["."],
-  "exclude": ["node_modules", "bench", "__test__"]
+  "exclude": ["node_modules", "__test__"]
 }
