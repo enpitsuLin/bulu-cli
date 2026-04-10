@@ -128,6 +128,5 @@ target/
 !.yarn/versions
 npm/
 
-# personal auto load zsh local profile
-.zprofile
+# local test dir
 .bulu
