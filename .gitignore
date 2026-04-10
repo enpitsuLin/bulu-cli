@@ -130,3 +130,6 @@ npm/
 
 # local test dir
 .bulu
+
+# local ignore file
+*.local
