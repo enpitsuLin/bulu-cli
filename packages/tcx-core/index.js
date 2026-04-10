@@ -581,6 +581,7 @@ module.exports.deriveAccounts = nativeBinding.deriveAccounts
 module.exports.EthMessageSignatureType = nativeBinding.EthMessageSignatureType
 module.exports.importWalletMnemonic = nativeBinding.importWalletMnemonic
 module.exports.importWalletPrivateKey = nativeBinding.importWalletPrivateKey
+module.exports.listWallet = nativeBinding.listWallet
 module.exports.loadWallet = nativeBinding.loadWallet
 module.exports.signMessage = nativeBinding.signMessage
 module.exports.signTransaction = nativeBinding.signTransaction

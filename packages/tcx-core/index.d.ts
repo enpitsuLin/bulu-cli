@@ -92,6 +92,8 @@ export declare function importWalletMnemonic(name: string, mnemonic: string, pas
  */
 export declare function importWalletPrivateKey(name: string, privateKey: string, passphrase: string, vaultPath?: string | undefined | null, index?: number | undefined | null): WalletInfo
 
+export declare function listWallet(vaultPathOpt?: string | undefined | null): Array<WalletInfo>
+
 /**
  * Loads a serialized keystore JSON and derives accounts from it.
  *

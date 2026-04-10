@@ -15,6 +15,176 @@ use crate::types::{
   DerivationInput, WalletAccount, WalletInfo, WalletMeta, WalletNetwork, WalletSource,
 };
 
+#[napi(js_name = "listWallet")]
+pub fn list_wallet(vault_path_opt: Option<String>) -> Result<Vec<WalletInfo>> {
+  let Some(vault_path) = vault_path_opt else {
+    return Ok(Vec::new());
+  };
+
+  let vault_path = require_trimmed(vault_path, "vaultPath")?;
+  let wallets_dir = Path::new(&vault_path).join("wallets");
+
+  if !wallets_dir.exists() {
+    return Ok(Vec::new());
+  }
+
+  let mut wallet_infos = Vec::new();
+
+  let entries = fs::read_dir(&wallets_dir).map_err(|err| {
+    napi::Error::from_reason(format!(
+      "failed to read vault directory `{}`: {err}",
+      wallets_dir.display()
+    ))
+  })?;
+
+  for entry in entries {
+    let entry = entry.map_err(|err| {
+      napi::Error::from_reason(format!(
+        "failed to read entry in vault directory `{}`: {err}",
+        wallets_dir.display()
+      ))
+    })?;
+
+    let path = entry.path();
+    if path.extension().and_then(|ext| ext.to_str()) != Some("json") {
+      continue;
+    }
+
+    let content = match fs::read_to_string(&path) {
+      Ok(content) => content,
+      Err(_) => continue,
+    };
+
+    let wallet_info = match parse_wallet_info(&content) {
+      Ok(info) => info,
+      Err(_) => continue,
+    };
+
+    wallet_infos.push(wallet_info);
+  }
+
+  Ok(wallet_infos)
+}
+
+fn parse_wallet_info(content: &str) -> Result<WalletInfo> {
+  let value: Value = serde_json::from_str(content).map_err(to_napi_err)?;
+
+  let keystore_json = value
+    .get("keystoreJson")
+    .and_then(|v| v.as_str())
+    .ok_or_else(|| napi::Error::from_reason("missing keystoreJson field"))?
+    .to_string();
+
+  let meta_obj = value
+    .get("meta")
+    .ok_or_else(|| napi::Error::from_reason("missing meta field"))?;
+
+  let meta = WalletMeta {
+    id: meta_obj
+      .get("id")
+      .and_then(|v| v.as_str())
+      .ok_or_else(|| napi::Error::from_reason("missing meta.id field"))?
+      .to_string(),
+    version: meta_obj
+      .get("version")
+      .and_then(|v| v.as_i64())
+      .ok_or_else(|| napi::Error::from_reason("missing meta.version field"))?,
+    source_fingerprint: meta_obj
+      .get("sourceFingerprint")
+      .and_then(|v| v.as_str())
+      .unwrap_or("")
+      .to_string(),
+    source: parse_wallet_source(meta_obj.get("source"))?,
+    network: parse_wallet_network(meta_obj.get("network"))?,
+    name: meta_obj
+      .get("name")
+      .and_then(|v| v.as_str())
+      .unwrap_or("")
+      .to_string(),
+    password_hint: meta_obj.get("passwordHint").and_then(|v| v.as_str()).map(String::from),
+    timestamp: meta_obj
+      .get("timestamp")
+      .and_then(|v| v.as_i64())
+      .unwrap_or(0),
+    derivable: meta_obj
+      .get("derivable")
+      .and_then(|v| v.as_bool())
+      .unwrap_or(false),
+    curve: meta_obj.get("curve").and_then(|v| v.as_str()).map(String::from),
+    identified_chain_types: meta_obj
+      .get("identifiedChainTypes")
+      .and_then(|v| v.as_array())
+      .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect()),
+  };
+
+  let accounts: Vec<WalletAccount> = value
+    .get("accounts")
+    .and_then(|v| v.as_array())
+    .map(|arr| {
+      arr
+        .iter()
+        .filter_map(|v| parse_wallet_account(v).ok())
+        .collect()
+    })
+    .unwrap_or_default();
+
+  Ok(WalletInfo {
+    keystore_json,
+    meta,
+    accounts,
+  })
+}
+
+fn parse_wallet_source(value: Option<&Value>) -> Result<WalletSource> {
+  let source_str = value
+    .and_then(|v| v.as_str())
+    .ok_or_else(|| napi::Error::from_reason("missing or invalid source field"))?;
+
+  match source_str {
+    "WIF" => Ok(WalletSource::Wif),
+    "PRIVATE" => Ok(WalletSource::Private),
+    "KEYSTORE_V3" => Ok(WalletSource::KeystoreV3),
+    "SUBSTRATE_KEYSTORE" => Ok(WalletSource::SubstrateKeystore),
+    "MNEMONIC" => Ok(WalletSource::Mnemonic),
+    "NEW_MNEMONIC" => Ok(WalletSource::NewMnemonic),
+    _ => Err(napi::Error::from_reason(format!("unknown source: {source_str}"))),
+  }
+}
+
+fn parse_wallet_network(value: Option<&Value>) -> Result<WalletNetwork> {
+  let network_str = value
+    .and_then(|v| v.as_str())
+    .ok_or_else(|| napi::Error::from_reason("missing or invalid network field"))?;
+
+  match network_str {
+    "MAINNET" => Ok(WalletNetwork::Mainnet),
+    "TESTNET" => Ok(WalletNetwork::Testnet),
+    _ => Err(napi::Error::from_reason(format!("unknown network: {network_str}"))),
+  }
+}
+
+fn parse_wallet_account(value: &Value) -> Result<WalletAccount> {
+  Ok(WalletAccount {
+    chain_id: value
+      .get("chainId")
+      .and_then(|v| v.as_str())
+      .ok_or_else(|| napi::Error::from_reason("missing chainId field"))?
+      .to_string(),
+    address: value
+      .get("address")
+      .and_then(|v| v.as_str())
+      .ok_or_else(|| napi::Error::from_reason("missing address field"))?
+      .to_string(),
+    public_key: value
+      .get("publicKey")
+      .and_then(|v| v.as_str())
+      .ok_or_else(|| napi::Error::from_reason("missing publicKey field"))?
+      .to_string(),
+    derivation_path: value.get("derivationPath").and_then(|v| v.as_str()).map(String::from),
+    ext_pub_key: value.get("extPubKey").and_then(|v| v.as_str()).map(String::from),
+  })
+}
+
 #[napi(js_name = "createWallet")]
 /// Creates a new mnemonic-backed wallet.
 ///

@@ -11,6 +11,7 @@ import {
   deriveAccounts,
   importWalletMnemonic,
   importWalletPrivateKey,
+  listWallet,
   loadWallet,
   signMessage,
   signTransaction,
@@ -294,6 +295,34 @@ test('signTransaction signs Ethereum transactions', () => {
   expect(signed.signature).toBe(
     'f868088504a817c8088302e248943535353535353535353535353535353535353535820200808194a003479f1d6be72af58b1d60750e155c435e435726b5b690f4d3e59f34bd55e578a0314d2b03d29dc3f87ff95c3427658952add3cf718d3b6b8604068fc3105e4442',
   )
+})
+
+test('listWallet returns empty array when vaultPath is not provided', () => {
+  const wallets = listWallet()
+  expect(wallets).toEqual([])
+})
+
+test('listWallet returns empty array when vaultPath does not exist', () => {
+  const wallets = listWallet('/nonexistent/path')
+  expect(wallets).toEqual([])
+})
+
+test('listWallet returns persisted wallets from vault directory', () => {
+  const tempDir = mkdtempSync(join(tmpdir(), 'tcx-core-wallet-'))
+  try {
+    const wallet1 = createWallet('Wallet 1', PASSWORD, tempDir)
+    const wallet2 = importWalletMnemonic('Wallet 2', MNEMONIC, PASSWORD, tempDir)
+
+    const wallets = listWallet(tempDir)
+
+    expect(wallets).toHaveLength(2)
+    expect(wallets.map((w) => w.meta.id).sort()).toEqual([wallet1.meta.id, wallet2.meta.id].sort())
+    expect(wallets[0]?.meta.name).toBeDefined()
+    expect(wallets[0]?.keystoreJson).toBeDefined()
+    expect(wallets[0]?.accounts).toBeDefined()
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true })
+  }
 })
 
 test('signTransaction signs Tron transactions', () => {
