@@ -37,6 +37,9 @@ importers:
       citty:
         specifier: ^0.2.2
         version: 0.2.2
+      console-table-printer:
+        specifier: ^2.15.0
+        version: 2.15.0
     devDependencies:
       '@types/node':
         specifier: ^25.5.0
@@ -1387,6 +1390,10 @@ packages:
       { integrity: sha512-H+y0Jo/T1RZ9qPP4Eh1pkcQcLRglraJaSLoyOtHxu6AapkjWVCy2Sit1QQ4x3Dng8qDlSsZEet7g5Pq06MvTgw== }
     engines: { node: '>=20' }
 
+  console-table-printer@2.15.0:
+    resolution:
+      { integrity: sha512-SrhBq4hYVjLCkBVOWaTzceJalvn5K1Zq5aQA6wXC/cYjI3frKWNPEMK3sZsJfNNQApvCQmgBcc13ZKmFj8qExw== }
+
   convert-source-map@2.0.0:
     resolution:
       { integrity: sha512-Kvp459HrV2FEJ1CAsi1Ku+MY3kasH19TFykTz2xWmMeq6bk2NU3XXvfJ+Q61m0xktWwt+1HSYf3JZsTms3aRJg== }
@@ -1806,6 +1813,10 @@ packages:
     resolution:
       { integrity: sha512-WszCLXwT4h2k1ufIXAgsbiTOazqqevFCIncOuUBZJ91DdvWcC5+OFkluWRQPrcuSYd8fjq+o2y1QfWqYMoAToQ== }
     hasBin: true
+
+  simple-wcswidth@1.1.2:
+    resolution:
+      { integrity: sha512-j7piyCjAeTDSjzTSQ7DokZtMNwNlEAyxqSZeCS+CXH7fJ4jx3FuJ/mTW3mE+6JLs4VJBbcll0Kjn+KXI5t21Iw== }
 
   sisteransi@1.0.5:
     resolution:
@@ -2919,6 +2930,10 @@ snapshots:
 
   commander@14.0.3: {}
 
+  console-table-printer@2.15.0:
+    dependencies:
+      simple-wcswidth: 1.1.2
+
   convert-source-map@2.0.0: {}
 
   debug@4.4.3:
@@ -3225,6 +3240,8 @@ snapshots:
   signal-exit@4.1.0: {}
 
   simple-git-hooks@2.13.1: {}
+
+  simple-wcswidth@1.1.2: {}
 
   sisteransi@1.0.5: {}
 

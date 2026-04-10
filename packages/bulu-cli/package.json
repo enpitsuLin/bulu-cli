@@ -34,8 +34,9 @@
     "vitest": "^4.1.2"
   },
   "dependencies": {
+    "@bulu-cli/tcx-core": "workspace:*",
     "@clack/prompts": "^1.2.0",
     "citty": "^0.2.2",
-    "@bulu-cli/tcx-core": "workspace:*"
+    "console-table-printer": "^2.15.0"
   }
 }
