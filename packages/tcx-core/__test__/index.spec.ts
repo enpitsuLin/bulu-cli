@@ -211,7 +211,7 @@ test('importWalletMnemonic derives the requested default account index and persi
       TRON_ACCOUNT_1_DERIVATION_PATH,
     ])
     expect(indexedWallet.accounts[0]?.address).not.toBe(defaultWallet.accounts[0]?.address)
-    expect(persisted.keystoreJson).toBe(indexedWallet.keystoreJson)
+    expect(persisted.keystore).toBe(indexedWallet.keystore)
     expect(persisted.accounts.map((account) => account.derivationPath)).toEqual([
       ETH_ACCOUNT_1_DERIVATION_PATH,
       TRON_ACCOUNT_1_DERIVATION_PATH,
@@ -294,49 +294,64 @@ test('deriveAccounts batches arbitrary derivations through a single unlock flow'
 })
 
 test('signMessage signs Ethereum personal messages', () => {
-  const wallet = importWalletMnemonic('Imported Mnemonic', MNEMONIC, PASSWORD)
+  const tempDir = mkdtempSync(join(tmpdir(), 'tcx-core-wallet-'))
+  try {
+    importWalletMnemonic('Imported Mnemonic', MNEMONIC, PASSWORD, tempDir)
 
-  const signed = signMessage(keystoreToJson(wallet.keystore), ETH_MAINNET_CHAIN_ID, 'hello world', PASSWORD)
+    const signed = signMessage('Imported Mnemonic', ETH_MAINNET_CHAIN_ID, 'hello world', PASSWORD, tempDir)
 
-  expect(signed.signature).toBe(
-    '0x521d0e4b5808b7fbeb53bf1b17c7c6d60432f5b13b7aa3aaed963a894c3bd99e23a3755ec06fa7a61b031192fb5fab6256e180e086c2671e0a574779bb8593df1b',
-  )
+    expect(signed.signature).toBe(
+      '0x521d0e4b5808b7fbeb53bf1b17c7c6d60432f5b13b7aa3aaed963a894c3bd99e23a3755ec06fa7a61b031192fb5fab6256e180e086c2671e0a574779bb8593df1b',
+    )
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true })
+  }
 })
 
 test('signMessage signs Tron messages with default options', () => {
-  const wallet = importWalletMnemonic('Imported Mnemonic', MNEMONIC, PASSWORD)
+  const tempDir = mkdtempSync(join(tmpdir(), 'tcx-core-wallet-'))
+  try {
+    importWalletMnemonic('Imported Mnemonic', MNEMONIC, PASSWORD, tempDir)
 
-  const signed = signMessage(keystoreToJson(wallet.keystore), TRON_MAINNET_CHAIN_ID, 'hello world', PASSWORD)
+    const signed = signMessage('Imported Mnemonic', TRON_MAINNET_CHAIN_ID, 'hello world', PASSWORD, tempDir)
 
-  expect(signed.signature).toBe(
-    '0x8686cc3cf49e772d96d3a8147a59eb3df2659c172775f3611648bfbe7e3c48c11859b873d9d2185567a4f64a14fa38ce78dc385a7364af55109c5b6426e4c0f61b',
-  )
+    expect(signed.signature).toBe(
+      '0x8686cc3cf49e772d96d3a8147a59eb3df2659c172775f3611648bfbe7e3c48c11859b873d9d2185567a4f64a14fa38ce78dc385a7364af55109c5b6426e4c0f61b',
+    )
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true })
+  }
 })
 
 test('signTransaction signs Ethereum transactions', () => {
-  const wallet = importWalletPrivateKey('Imported Private Key', PRIVATE_KEY, PASSWORD)
+  const tempDir = mkdtempSync(join(tmpdir(), 'tcx-core-wallet-'))
+  try {
+    importWalletPrivateKey('Imported Private Key', PRIVATE_KEY, PASSWORD, tempDir)
 
-  const txHex = buildUnsignedLegacyEthTxHex({
-    nonce: '8',
-    gasPrice: '20000000008',
-    gasLimit: '189000',
-    to: '0x3535353535353535353535353535353535353535',
-    value: '512',
-    data: '',
-    chainId: '0x38',
-  })
+    const txHex = buildUnsignedLegacyEthTxHex({
+      nonce: '8',
+      gasPrice: '20000000008',
+      gasLimit: '189000',
+      to: '0x3535353535353535353535353535353535353535',
+      value: '512',
+      data: '',
+      chainId: '0x38',
+    })
 
-  const signed = signTransaction(keystoreToJson(wallet.keystore), 'eip155:56', txHex, PASSWORD)
+    const signed = signTransaction('Imported Private Key', 'eip155:56', txHex, PASSWORD, tempDir)
 
-  expect('txHash' in signed).toBe(true)
-  if (!('txHash' in signed)) {
-    throw new Error('Expected an Ethereum signed transaction result')
+    expect('txHash' in signed).toBe(true)
+    if (!('txHash' in signed)) {
+      throw new Error('Expected an Ethereum signed transaction result')
+    }
+
+    expect(signed.txHash).toBe('0x1a3c3947ea626e00d6ff1493bcf929b9320d15ff088046990ef88a45f7d37623')
+    expect(signed.signature).toBe(
+      'f868088504a817c8088302e248943535353535353535353535353535353535353535820200808194a003479f1d6be72af58b1d60750e155c435e435726b5b690f4d3e59f34bd55e578a0314d2b03d29dc3f87ff95c3427658952add3cf718d3b6b8604068fc3105e4442',
+    )
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true })
   }
-
-  expect(signed.txHash).toBe('0x1a3c3947ea626e00d6ff1493bcf929b9320d15ff088046990ef88a45f7d37623')
-  expect(signed.signature).toBe(
-    'f868088504a817c8088302e248943535353535353535353535353535353535353535820200808194a003479f1d6be72af58b1d60750e155c435e435726b5b690f4d3e59f34bd55e578a0314d2b03d29dc3f87ff95c3427658952add3cf718d3b6b8604068fc3105e4442',
-  )
 })
 
 test('listWallet returns empty array when vaultPath is not provided', () => {
@@ -368,21 +383,27 @@ test('listWallet returns persisted wallets from vault directory', () => {
 })
 
 test('signTransaction signs Tron transactions', () => {
-  const wallet = importWalletMnemonic('Imported Mnemonic', MNEMONIC, PASSWORD)
+  const tempDir = mkdtempSync(join(tmpdir(), 'tcx-core-wallet-'))
+  try {
+    importWalletMnemonic('Imported Mnemonic', MNEMONIC, PASSWORD, tempDir)
 
-  const signed = signTransaction(
-    keystoreToJson(wallet.keystore),
-    TRON_MAINNET_CHAIN_ID,
-    '0a0208312208b02efdc02638b61e40f083c3a7c92d5a65080112610a2d747970652e676f6f676c65617069732e636f6d2f70726f746f636f6c2e5472616e73666572436f6e747261637412300a1541a1e81654258bf14f63feb2e8d1380075d45b0dac1215410b3e84ec677b3e63c99affcadb91a6b4e086798f186470a0bfbfa7c92d',
-    PASSWORD,
-  )
+    const signed = signTransaction(
+      'Imported Mnemonic',
+      TRON_MAINNET_CHAIN_ID,
+      '0a0208312208b02efdc02638b61e40f083c3a7c92d5a65080112610a2d747970652e676f6f676c65617069732e636f6d2f70726f746f636f6c2e5472616e73666572436f6e747261637412300a1541a1e81654258bf14f63feb2e8d1380075d45b0dac1215410b3e84ec677b3e63c99affcadb91a6b4e086798f186470a0bfbfa7c92d',
+      PASSWORD,
+      tempDir,
+    )
 
-  expect('signatures' in signed).toBe(true)
-  if (!('signatures' in signed)) {
-    throw new Error('Expected a Tron signed transaction result')
+    expect('signatures' in signed).toBe(true)
+    if (!('signatures' in signed)) {
+      throw new Error('Expected a Tron signed transaction result')
+    }
+
+    expect(signed.signatures).toEqual([
+      'c65b4bde808f7fcfab7b0ef9c1e3946c83311f8ac0a5e95be2d8b6d2400cfe8b5e24dc8f0883132513e422f2aaad8a4ecc14438eae84b2683eefa626e3adffc601',
+    ])
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true })
   }
-
-  expect(signed.signatures).toEqual([
-    'c65b4bde808f7fcfab7b0ef9c1e3946c83311f8ac0a5e95be2d8b6d2400cfe8b5e24dc8f0883132513e422f2aaad8a4ecc14438eae84b2683eefa626e3adffc601',
-  ])
 })

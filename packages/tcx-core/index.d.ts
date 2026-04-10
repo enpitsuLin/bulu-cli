@@ -225,8 +225,10 @@ export interface SignedMessage {
  *
  * `chain_id` selects the signer implementation. Ethereum uses personal-sign
  * semantics, while Tron uses the default TRON message header and version.
+ *
+ * `name` is used to find the wallet file in the vault directory.
  */
-export declare function signMessage(keystoreJson: string, chainId: string, message: string, password: string): SignedMessage
+export declare function signMessage(name: string, chainId: string, message: string, password: string, vaultPath: string): SignedMessage
 
 /**
  * Signs an unsigned chain-specific transaction hex using the default chain
@@ -234,8 +236,10 @@ export declare function signMessage(keystoreJson: string, chainId: string, messa
  *
  * `chain_id` selects the signer implementation. Ethereum expects an unsigned
  * RLP-encoded transaction hex, while Tron expects raw transaction bytes hex.
+ *
+ * `name` is used to find the wallet file in the vault directory.
  */
-export declare function signTransaction(keystoreJson: string, chainId: string, txHex: string, password: string): EthSignedTransaction | TronSignedTransaction
+export declare function signTransaction(name: string, chainId: string, txHex: string, password: string, vaultPath: string): EthSignedTransaction | TronSignedTransaction
 
 /** Tron message signing payload. */
 export interface TronMessageInput {
