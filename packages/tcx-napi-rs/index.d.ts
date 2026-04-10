@@ -213,8 +213,6 @@ export interface WalletResult {
   meta: WalletMeta
   /** Derived accounts requested for the operation. */
   accounts: Array<WalletAccount>
-  /** Mnemonic phrase when creating or importing from mnemonic. */
-  mnemonic?: string
 }
 
 /** Source used to create or import the wallet. */

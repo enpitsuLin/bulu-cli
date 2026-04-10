@@ -109,30 +109,31 @@ function buildUnsignedLegacyEthTxHex(input: {
   ).toString('hex')
 }
 
-test('createWallet returns mnemonic, keystore json, and default accounts', () => {
+test('createWallet returns keystore json and default accounts', () => {
   const wallet = createWallet('Created', PASSWORD)
 
+  expect(wallet).not.toHaveProperty('mnemonic')
   expect(wallet.meta.source).toBe(WalletSource.NewMnemonic)
   expect(wallet.meta.network).toBe(WalletNetwork.Mainnet)
   expect(wallet.meta.derivable).toBe(true)
   expect(wallet.accounts).toHaveLength(2)
   expect(wallet.accounts.map((account) => account.chainId)).toEqual([ETH_MAINNET_CHAIN_ID, TRON_MAINNET_CHAIN_ID])
   expect(wallet.keystoreJson).toContain('"version":12000')
-  expect(wallet.mnemonic?.split(/\s+/)).toHaveLength(12)
 })
 
-test('importWalletMnemonic returns default accounts and preserves mnemonic', () => {
+test('importWalletMnemonic returns default accounts', () => {
   const wallet = importWalletMnemonic('Imported Mnemonic', MNEMONIC, PASSWORD)
 
+  expect(wallet).not.toHaveProperty('mnemonic')
   expect(wallet.meta.source).toBe(WalletSource.Mnemonic)
   expect(wallet.accounts).toHaveLength(2)
   expect(wallet.accounts.map((account) => account.chainId)).toEqual([ETH_MAINNET_CHAIN_ID, TRON_MAINNET_CHAIN_ID])
-  expect(wallet.mnemonic).toBe(MNEMONIC)
 })
 
 test('importWalletPrivateKey returns a non-derivable wallet', () => {
   const wallet = importWalletPrivateKey('Imported Private Key', PRIVATE_KEY, PASSWORD)
 
+  expect(wallet).not.toHaveProperty('mnemonic')
   expect(wallet.meta.source).toBe(WalletSource.Private)
   expect(wallet.meta.derivable).toBe(false)
   expect(wallet.accounts).toHaveLength(2)
@@ -140,7 +141,6 @@ test('importWalletPrivateKey returns a non-derivable wallet', () => {
   expect(wallet.accounts[0]?.derivationPath).toBeUndefined()
   expect(wallet.accounts[0]?.extPubKey).toBeUndefined()
   expect(wallet.meta.curve).toBe('secp256k1')
-  expect(wallet.mnemonic).toBeUndefined()
 })
 
 test('loadWallet restores keystore json and derives requested accounts', () => {
@@ -153,10 +153,10 @@ test('loadWallet restores keystore json and derives requested accounts', () => {
     },
   ])
 
+  expect(wallet).not.toHaveProperty('mnemonic')
   expect(wallet.meta.source).toBe(WalletSource.Mnemonic)
   expect(wallet.accounts).toHaveLength(1)
   expect(wallet.accounts[0]?.derivationPath).toBe("m/44'/60'/0'/0/1")
-  expect(wallet.mnemonic).toBeUndefined()
 })
 
 test('deriveAccounts batches arbitrary derivations through a single unlock flow', () => {

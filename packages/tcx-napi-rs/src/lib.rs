@@ -177,8 +177,6 @@ pub struct WalletResult {
   pub meta: WalletMeta,
   /// Derived accounts requested for the operation.
   pub accounts: Vec<WalletAccount>,
-  /// Mnemonic phrase when creating or importing from mnemonic.
-  pub mnemonic: Option<String>,
 }
 
 #[napi(string_enum = "UPPERCASE")]
@@ -313,7 +311,7 @@ pub fn create_wallet(name: String, passphrase: String) -> Result<WalletResult> {
   let keystore =
     TcxKeystore::from_mnemonic(&mnemonic, &passphrase, metadata).map_err(to_napi_err)?;
 
-  finalize_wallet(keystore, &passphrase, Some(mnemonic), None)
+  finalize_wallet(keystore, &passphrase, None)
 }
 
 #[napi(js_name = "importWalletMnemonic")]
@@ -341,7 +339,7 @@ pub fn import_wallet_mnemonic(
   let keystore =
     TcxKeystore::from_mnemonic(&normalized_mnemonic, &passphrase, metadata).map_err(to_napi_err)?;
 
-  finalize_wallet(keystore, &passphrase, Some(normalized_mnemonic), None)
+  finalize_wallet(keystore, &passphrase, None)
 }
 
 #[napi(js_name = "importWalletPrivateKey")]
@@ -373,7 +371,7 @@ pub fn import_wallet_private_key(
   )
   .map_err(to_napi_err)?;
 
-  finalize_wallet(keystore, &passphrase, None, None)
+  finalize_wallet(keystore, &passphrase, None)
 }
 
 #[napi(js_name = "loadWallet")]
@@ -391,7 +389,7 @@ pub fn load_wallet(
   let normalized_keystore_json = require_trimmed(keystore_json, "keystoreJson")?;
   let keystore = TcxKeystore::from_json(&normalized_keystore_json).map_err(to_napi_err)?;
 
-  finalize_wallet(keystore, &password, None, derivations)
+  finalize_wallet(keystore, &password, derivations)
 }
 
 #[napi(js_name = "deriveAccounts")]
@@ -539,14 +537,13 @@ pub fn sign_transaction(
 fn finalize_wallet(
   mut keystore: TcxKeystore,
   password: &str,
-  mnemonic: Option<String>,
   derivations: Option<Vec<DerivationInput>>,
 ) -> Result<WalletResult> {
   let network = keystore.store().meta.network;
 
   with_unlocked_keystore(&mut keystore, password, move |wallet| {
     let accounts = derive_accounts_for_wallet(wallet, network, derivations)?;
-    Ok(build_wallet_result(wallet, accounts, mnemonic))
+    Ok(build_wallet_result(wallet, accounts))
   })
 }
 
@@ -864,16 +861,11 @@ fn build_metadata(
   }
 }
 
-fn build_wallet_result(
-  keystore: &TcxKeystore,
-  accounts: Vec<WalletAccount>,
-  mnemonic: Option<String>,
-) -> WalletResult {
+fn build_wallet_result(keystore: &TcxKeystore, accounts: Vec<WalletAccount>) -> WalletResult {
   WalletResult {
     keystore_json: keystore.to_json(),
     meta: build_wallet_meta(keystore),
     accounts,
-    mnemonic,
   }
 }
 
@@ -1172,7 +1164,7 @@ mod tests {
   }
 
   #[test]
-  fn create_wallet_returns_mnemonic_and_default_accounts() {
+  fn create_wallet_returns_keystore_json_and_default_accounts() {
     let wallet = create_wallet("Created".to_string(), TEST_PASSWORD.to_string())
       .expect("create wallet should succeed");
 
@@ -1184,10 +1176,6 @@ mod tests {
     assert_eq!(wallet.meta.version, 12000);
     assert!(wallet.meta.derivable);
     assert!(wallet.keystore_json.contains("\"version\":12000"));
-    assert!(wallet
-      .mnemonic
-      .as_deref()
-      .is_some_and(|mnemonic| mnemonic.split_whitespace().count() == 12));
   }
 
   #[test]
@@ -1204,7 +1192,6 @@ mod tests {
     assert_eq!(wallet.accounts.len(), 2);
     assert_eq!(wallet.accounts[0].chain_id, DEFAULT_ETH_MAINNET_CHAIN_ID);
     assert_eq!(wallet.accounts[1].chain_id, DEFAULT_TRON_MAINNET_CHAIN_ID);
-    assert_eq!(wallet.mnemonic.as_deref(), Some(TEST_MNEMONIC));
   }
 
   #[test]
@@ -1226,7 +1213,6 @@ mod tests {
     assert_eq!(wallet.meta.version, 12001);
     assert_eq!(wallet.meta.curve.as_deref(), Some("secp256k1"));
     assert!(!wallet.meta.derivable);
-    assert!(wallet.mnemonic.is_none());
   }
 
   #[test]
@@ -1256,7 +1242,6 @@ mod tests {
       wallet.accounts[0].derivation_path.as_deref(),
       Some("m/44'/60'/0'/0/1")
     );
-    assert!(wallet.mnemonic.is_none());
   }
 
   #[test]

@@ -16,7 +16,6 @@ export default defineCommand({
     const wallet = createWallet(args.name, passphrase)
 
     console.log({
-      mnemonic: wallet.mnemonic,
       meta: wallet.meta,
       accounts: wallet.accounts,
     })
