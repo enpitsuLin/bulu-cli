@@ -12,6 +12,7 @@ use super::*;
 use crate::constants::{
   DEFAULT_ETH_DERIVATION_PATH, DEFAULT_ETH_MAINNET_CHAIN_ID, DEFAULT_TRON_MAINNET_CHAIN_ID,
 };
+use crate::wallet::keystore_to_json;
 
 const TEST_PASSWORD: &str = "imToken";
 const TEST_MNEMONIC: &str =
@@ -55,7 +56,7 @@ fn create_wallet_returns_keystore_json_and_default_accounts() {
   assert_eq!(wallet.accounts[1].chain_id, DEFAULT_TRON_MAINNET_CHAIN_ID);
   assert_eq!(wallet.meta.version, 12000);
   assert!(wallet.meta.derivable);
-  assert!(wallet.keystore_json.contains("\"version\":12000"));
+  assert_eq!(wallet.keystore.version, 12000);
 }
 
 #[test]
@@ -72,7 +73,7 @@ fn create_wallet_persists_wallet_info_when_vault_path_is_provided() {
   let persisted = read_vault_json(&wallet_path);
 
   assert!(wallet_path.exists());
-  assert_eq!(persisted["keystoreJson"], wallet.keystore_json);
+  assert_eq!(persisted["keystore"], keystore_to_json(&wallet.keystore));
   assert_eq!(persisted["meta"]["id"], wallet.meta.id);
   assert_eq!(persisted["meta"]["source"], "NEW_MNEMONIC");
   assert_eq!(
@@ -139,7 +140,7 @@ fn import_wallet_mnemonic_uses_index_for_default_derivations_and_persists_wallet
     indexed_wallet.accounts[0].address,
     default_wallet.accounts[0].address
   );
-  assert_eq!(persisted["keystoreJson"], indexed_wallet.keystore_json);
+  assert_eq!(persisted["keystore"], keystore_to_json(&indexed_wallet.keystore));
   assert_eq!(
     persisted["accounts"][0]["derivationPath"],
     ETH_ACCOUNT_1_DERIVATION_PATH
@@ -192,7 +193,7 @@ fn import_wallet_private_key_persists_wallet_info_and_ignores_index() {
   assert!(!wallet.meta.derivable);
   assert!(wallet.accounts[0].derivation_path.is_none());
   assert!(wallet.accounts[0].ext_pub_key.is_none());
-  assert_eq!(persisted["keystoreJson"], wallet.keystore_json);
+  assert_eq!(persisted["keystore"], keystore_to_json(&wallet.keystore));
   assert!(persisted["accounts"][0].get("derivationPath").is_none());
   assert!(persisted["accounts"][0].get("extPubKey").is_none());
 
@@ -211,7 +212,7 @@ fn load_wallet_restores_wallet_from_keystore_json() {
   .expect("mnemonic import should succeed");
 
   let wallet = load_wallet(
-    source_wallet.keystore_json.clone(),
+    keystore_to_json(&source_wallet.keystore),
     TEST_PASSWORD.to_string(),
     Some(vec![DerivationInput {
       chain_id: DEFAULT_ETH_MAINNET_CHAIN_ID.to_string(),
@@ -242,7 +243,7 @@ fn derive_accounts_returns_requested_accounts() {
   .expect("mnemonic import should succeed");
 
   let accounts = derive_accounts(
-    source_wallet.keystore_json,
+    keystore_to_json(&source_wallet.keystore),
     TEST_PASSWORD.to_string(),
     Some(vec![
       DerivationInput {
@@ -285,7 +286,7 @@ fn derive_accounts_rejects_unsupported_chain_id_namespace() {
   .expect("mnemonic import should succeed");
 
   let err = derive_accounts(
-    source_wallet.keystore_json,
+    keystore_to_json(&source_wallet.keystore),
     TEST_PASSWORD.to_string(),
     Some(vec![DerivationInput {
       chain_id: "bip122:000000000019d6689c085ae165831e93".to_string(),
@@ -311,7 +312,7 @@ fn sign_message_signs_ethereum_personal_messages() {
   .expect("mnemonic import should succeed");
 
   let signed = sign_message(
-    wallet.keystore_json,
+    keystore_to_json(&wallet.keystore),
     DEFAULT_ETH_MAINNET_CHAIN_ID.to_string(),
     "hello world".to_string(),
     TEST_PASSWORD.to_string(),
@@ -336,7 +337,7 @@ fn sign_message_signs_tron_messages() {
   .expect("mnemonic import should succeed");
 
   let signed = sign_message(
-    wallet.keystore_json,
+    keystore_to_json(&wallet.keystore),
     DEFAULT_TRON_MAINNET_CHAIN_ID.to_string(),
     "hello world".to_string(),
     TEST_PASSWORD.to_string(),
@@ -375,7 +376,7 @@ fn sign_transaction_signs_ethereum_transactions() {
   });
 
   let signed = sign_transaction(
-    wallet.keystore_json,
+    keystore_to_json(&wallet.keystore),
     "eip155:56".to_string(),
     tx_hex,
     TEST_PASSWORD.to_string(),
@@ -422,7 +423,7 @@ fn sign_transaction_signs_ethereum_eip1559_transaction_hex() {
   });
 
   let signed = sign_transaction(
-    wallet.keystore_json,
+    keystore_to_json(&wallet.keystore),
     DEFAULT_ETH_MAINNET_CHAIN_ID.to_string(),
     tx_hex,
     TEST_PASSWORD.to_string(),
@@ -455,7 +456,7 @@ fn sign_transaction_signs_tron_transactions() {
   .expect("mnemonic import should succeed");
 
   let signed = sign_transaction(
-    wallet.keystore_json,
+    keystore_to_json(&wallet.keystore),
     DEFAULT_TRON_MAINNET_CHAIN_ID.to_string(),
     "0a0208312208b02efdc02638b61e40f083c3a7c92d5a65080112610a2d747970652e676f6f676c65617069732e636f6d2f70726f746f636f6c2e5472616e73666572436f6e747261637412300a1541a1e81654258bf14f63feb2e8d1380075d45b0dac1215410b3e84ec677b3e63c99affcadb91a6b4e086798f186470a0bfbfa7c92d".to_string(),
     TEST_PASSWORD.to_string(),

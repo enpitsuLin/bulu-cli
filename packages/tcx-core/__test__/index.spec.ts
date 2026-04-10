@@ -5,6 +5,7 @@ import { join } from 'node:path'
 
 import {
   type WalletInfo,
+  type KeystoreData,
   WalletNetwork,
   WalletSource,
   createWallet,
@@ -17,6 +18,45 @@ import {
   signTransaction,
 } from '../index'
 import { Buffer } from 'node:buffer'
+
+/** Helper to convert KeystoreData object to JSON string for functions that need it */
+function keystoreToJson(keystore: KeystoreData): string {
+  return JSON.stringify({
+    id: keystore.id,
+    version: keystore.version,
+    sourceFingerprint: keystore.sourceFingerprint,
+    crypto: {
+      cipher: keystore.crypto.cipher,
+      cipherparams: { iv: keystore.crypto.cipherparams.iv },
+      ciphertext: keystore.crypto.ciphertext,
+      mac: keystore.crypto.mac,
+      kdf: keystore.crypto.kdfType.kdf,
+      kdfparams: keystore.crypto.kdfType.kdfparams ?? keystore.crypto.kdfType.scryptParams,
+    },
+    identity: {
+      encAuthKey: {
+        encStr: keystore.identity.encAuthKey.encStr,
+        nonce: keystore.identity.encAuthKey.nonce,
+      },
+      encKey: keystore.identity.encKey,
+      identifier: keystore.identity.identifier,
+      ipfsId: keystore.identity.ipfsId,
+    },
+    encOriginal: {
+      encStr: keystore.encOriginal.encStr,
+      nonce: keystore.encOriginal.nonce,
+    },
+    imTokenMeta: {
+      name: keystore.imTokenMeta.name,
+      passwordHint: keystore.imTokenMeta.passwordHint,
+      timestamp: keystore.imTokenMeta.timestamp,
+      source: keystore.imTokenMeta.source,
+      network: keystore.imTokenMeta.network,
+      identifiedChainTypes: keystore.imTokenMeta.identifiedChainTypes,
+    },
+    curve: keystore.curve,
+  })
+}
 
 const PASSWORD = 'imToken'
 const MNEMONIC = 'inject kidney empty canal shadow pact comfort wife crush horse wife sketch'
@@ -125,7 +165,7 @@ test('createWallet returns keystore json and default accounts', () => {
   expect(wallet.meta.derivable).toBe(true)
   expect(wallet.accounts).toHaveLength(2)
   expect(wallet.accounts.map((account) => account.chainId)).toEqual([ETH_MAINNET_CHAIN_ID, TRON_MAINNET_CHAIN_ID])
-  expect(wallet.keystoreJson).toContain('"version":12000')
+  expect(wallet.keystore.version).toBe(12000)
 })
 
 test('createWallet persists WalletInfo when vaultPath is provided', () => {
@@ -137,7 +177,8 @@ test('createWallet persists WalletInfo when vaultPath is provided', () => {
 
     expect(existsSync(walletPath)).toBe(true)
     expect(persisted).not.toHaveProperty('mnemonic')
-    expect(persisted.keystoreJson).toBe(wallet.keystoreJson)
+    expect(persisted.keystore.id).toBe(wallet.keystore.id)
+    expect(persisted.keystore.version).toBe(wallet.keystore.version)
     expect(persisted.meta.id).toBe(wallet.meta.id)
     expect(persisted.meta.source).toBe(wallet.meta.source)
     expect(persisted.accounts.map((account) => account.chainId)).toEqual(
@@ -197,13 +238,14 @@ test('importWalletPrivateKey persists WalletInfo and ignores index for non-deriv
   const tempDir = mkdtempSync(join(tmpdir(), 'tcx-core-wallet-'))
   try {
     const wallet = importWalletPrivateKey('Imported Private Key', PRIVATE_KEY, PASSWORD, tempDir, 9)
-    const walletPath = join(tempDir, `${wallet.meta.id}.json`)
+    const walletPath = join(tempDir, 'wallets', `${wallet.meta.id}.json`)
     const persisted = JSON.parse(readFileSync(walletPath, 'utf-8')) as WalletInfo
 
     expect(wallet.meta.derivable).toBe(false)
     expect(wallet.accounts[0]?.derivationPath).toBeUndefined()
     expect(wallet.accounts[0]?.extPubKey).toBeUndefined()
-    expect(persisted.keystoreJson).toBe(wallet.keystoreJson)
+    expect(persisted.keystore.id).toBe(wallet.keystore.id)
+    expect(persisted.keystore.version).toBe(wallet.keystore.version)
     expect(persisted.accounts[0]?.derivationPath).toBeUndefined()
     expect(persisted.accounts[0]?.extPubKey).toBeUndefined()
   } finally {
@@ -214,7 +256,7 @@ test('importWalletPrivateKey persists WalletInfo and ignores index for non-deriv
 test('loadWallet restores keystore json and derives requested accounts', () => {
   const sourceWallet = importWalletMnemonic('Imported Mnemonic', MNEMONIC, PASSWORD)
 
-  const wallet = loadWallet(sourceWallet.keystoreJson, PASSWORD, [
+  const wallet = loadWallet(keystoreToJson(sourceWallet.keystore), PASSWORD, [
     {
       chainId: ETH_MAINNET_CHAIN_ID,
       derivationPath: "m/44'/60'/0'/0/1",
@@ -230,7 +272,7 @@ test('loadWallet restores keystore json and derives requested accounts', () => {
 test('deriveAccounts batches arbitrary derivations through a single unlock flow', () => {
   const sourceWallet = importWalletMnemonic('Imported Mnemonic', MNEMONIC, PASSWORD)
 
-  const accounts = deriveAccounts(sourceWallet.keystoreJson, PASSWORD, [
+  const accounts = deriveAccounts(keystoreToJson(sourceWallet.keystore), PASSWORD, [
     {
       chainId: ETH_MAINNET_CHAIN_ID,
       derivationPath: "m/44'/60'/0'/0/0",
@@ -254,7 +296,7 @@ test('deriveAccounts batches arbitrary derivations through a single unlock flow'
 test('signMessage signs Ethereum personal messages', () => {
   const wallet = importWalletMnemonic('Imported Mnemonic', MNEMONIC, PASSWORD)
 
-  const signed = signMessage(wallet.keystoreJson, ETH_MAINNET_CHAIN_ID, 'hello world', PASSWORD)
+  const signed = signMessage(keystoreToJson(wallet.keystore), ETH_MAINNET_CHAIN_ID, 'hello world', PASSWORD)
 
   expect(signed.signature).toBe(
     '0x521d0e4b5808b7fbeb53bf1b17c7c6d60432f5b13b7aa3aaed963a894c3bd99e23a3755ec06fa7a61b031192fb5fab6256e180e086c2671e0a574779bb8593df1b',
@@ -264,7 +306,7 @@ test('signMessage signs Ethereum personal messages', () => {
 test('signMessage signs Tron messages with default options', () => {
   const wallet = importWalletMnemonic('Imported Mnemonic', MNEMONIC, PASSWORD)
 
-  const signed = signMessage(wallet.keystoreJson, TRON_MAINNET_CHAIN_ID, 'hello world', PASSWORD)
+  const signed = signMessage(keystoreToJson(wallet.keystore), TRON_MAINNET_CHAIN_ID, 'hello world', PASSWORD)
 
   expect(signed.signature).toBe(
     '0x8686cc3cf49e772d96d3a8147a59eb3df2659c172775f3611648bfbe7e3c48c11859b873d9d2185567a4f64a14fa38ce78dc385a7364af55109c5b6426e4c0f61b',
@@ -284,7 +326,7 @@ test('signTransaction signs Ethereum transactions', () => {
     chainId: '0x38',
   })
 
-  const signed = signTransaction(wallet.keystoreJson, 'eip155:56', txHex, PASSWORD)
+  const signed = signTransaction(keystoreToJson(wallet.keystore), 'eip155:56', txHex, PASSWORD)
 
   expect('txHash' in signed).toBe(true)
   if (!('txHash' in signed)) {
@@ -318,7 +360,7 @@ test('listWallet returns persisted wallets from vault directory', () => {
     expect(wallets).toHaveLength(2)
     expect(wallets.map((w) => w.meta.id).sort()).toEqual([wallet1.meta.id, wallet2.meta.id].sort())
     expect(wallets[0]?.meta.name).toBeDefined()
-    expect(wallets[0]?.keystoreJson).toBeDefined()
+    expect(wallets[0]?.keystore).toBeDefined()
     expect(wallets[0]?.accounts).toBeDefined()
   } finally {
     rmSync(tempDir, { recursive: true, force: true })
@@ -329,7 +371,7 @@ test('signTransaction signs Tron transactions', () => {
   const wallet = importWalletMnemonic('Imported Mnemonic', MNEMONIC, PASSWORD)
 
   const signed = signTransaction(
-    wallet.keystoreJson,
+    keystoreToJson(wallet.keystore),
     TRON_MAINNET_CHAIN_ID,
     '0a0208312208b02efdc02638b61e40f083c3a7c92d5a65080112610a2d747970652e676f6f676c65617069732e636f6d2f70726f746f636f6c2e5472616e73666572436f6e747261637412300a1541a1e81654258bf14f63feb2e8d1380075d45b0dac1215410b3e84ec677b3e63c99affcadb91a6b4e086798f186470a0bfbfa7c92d',
     PASSWORD,

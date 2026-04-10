@@ -137,11 +137,148 @@ pub struct WalletMeta {
 }
 
 #[napi(object)]
+/// Encrypted key pair containing encrypted string and nonce.
+pub struct EncPairData {
+  /// Encrypted string (hex-encoded).
+  #[napi(js_name = "encStr")]
+  pub enc_str: String,
+  /// Nonce (hex-encoded).
+  pub nonce: String,
+}
+
+#[napi(object)]
+/// Cipher parameters for encryption.
+pub struct CipherParams {
+  /// Initialization vector (hex-encoded).
+  pub iv: String,
+}
+
+#[napi(object)]
+/// PBKDF2 key derivation function parameters.
+pub struct Pbkdf2Params {
+  /// Iteration count.
+  pub c: u32,
+  /// Pseudorandom function.
+  pub prf: String,
+  /// Derived key length.
+  #[napi(js_name = "dklen")]
+  pub dklen: u32,
+  /// Salt (hex-encoded).
+  pub salt: String,
+}
+
+#[napi(object)]
+/// SCrypt key derivation function parameters.
+pub struct SCryptParams {
+  /// CPU/memory cost parameter.
+  pub n: u32,
+  /// Parallelization parameter.
+  pub p: u32,
+  /// Block size parameter.
+  pub r: u32,
+  /// Derived key length.
+  #[napi(js_name = "dklen")]
+  pub dklen: u32,
+  /// Salt (hex-encoded).
+  pub salt: String,
+}
+
+#[napi(object)]
+/// Key derivation function type and parameters.
+pub struct KdfType {
+  /// KDF type name ("pbkdf2" or "scrypt").
+  #[napi(js_name = "kdf")]
+  pub kdf: String,
+  /// PBKDF2 parameters (if kdf is "pbkdf2").
+  #[napi(js_name = "kdfparams")]
+  pub kdf_params: Option<Pbkdf2Params>,
+  /// SCrypt parameters (if kdf is "scrypt").
+  #[napi(js_name = "scryptParams")]
+  pub scrypt_params: Option<SCryptParams>,
+}
+
+#[napi(object)]
+/// Crypto section of the keystore containing encrypted private key.
+pub struct CryptoData {
+  /// Cipher algorithm name.
+  pub cipher: String,
+  /// Cipher parameters.
+  #[napi(js_name = "cipherparams")]
+  pub cipher_params: CipherParams,
+  /// Encrypted ciphertext (hex-encoded).
+  pub ciphertext: String,
+  /// Key derivation function type and parameters.
+  #[napi(js_name = "kdfType")]
+  pub kdf_type: KdfType,
+  /// Message authentication code (hex-encoded).
+  pub mac: String,
+}
+
+#[napi(object)]
+/// Identity information for the keystore.
+pub struct IdentityData {
+  /// Encrypted authentication key.
+  #[napi(js_name = "encAuthKey")]
+  pub enc_auth_key: EncPairData,
+  /// Encryption key (hex-encoded).
+  #[napi(js_name = "encKey")]
+  pub enc_key: String,
+  /// Identifier string.
+  pub identifier: String,
+  /// IPFS identifier.
+  #[napi(js_name = "ipfsId")]
+  pub ipfs_id: String,
+}
+
+#[napi(object)]
+/// Metadata stored in the keystore (imTokenMeta section).
+pub struct KeystoreMetadata {
+  /// Wallet name.
+  pub name: String,
+  /// Optional password hint.
+  #[napi(js_name = "passwordHint")]
+  pub password_hint: Option<String>,
+  /// Timestamp of keystore creation.
+  pub timestamp: i64,
+  /// Source of the wallet (e.g., "MNEMONIC", "PRIVATE").
+  pub source: String,
+  /// Network type ("MAINNET" or "TESTNET").
+  pub network: String,
+  /// Optional identified chain types.
+  #[napi(js_name = "identifiedChainTypes")]
+  pub identified_chain_types: Option<Vec<String>>,
+}
+
+#[napi(object)]
+/// Keystore data structure matching tcx-keystore Store.
+pub struct KeystoreData {
+  /// Keystore identifier (UUID).
+  pub id: String,
+  /// Keystore version number.
+  pub version: i64,
+  /// Fingerprint of the wallet source.
+  #[napi(js_name = "sourceFingerprint")]
+  pub source_fingerprint: String,
+  /// Crypto section containing encrypted private key.
+  pub crypto: CryptoData,
+  /// Identity information.
+  pub identity: IdentityData,
+  /// Optional curve type.
+  pub curve: Option<String>,
+  /// Encrypted original data (mnemonic or private key).
+  #[napi(js_name = "encOriginal")]
+  pub enc_original: EncPairData,
+  /// Metadata.
+  #[napi(js_name = "imTokenMeta")]
+  pub meta: KeystoreMetadata,
+}
+
+#[napi(object)]
 /// Wallet payload returned by create, import, and load operations.
 pub struct WalletInfo {
-  /// Serialized keystore JSON.
-  #[napi(js_name = "keystoreJson")]
-  pub keystore_json: String,
+  /// Keystore data object.
+  #[napi(js_name = "keystore")]
+  pub keystore: KeystoreData,
   /// Wallet metadata.
   pub meta: WalletMeta,
   /// Derived accounts requested for the operation.
