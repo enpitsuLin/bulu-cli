@@ -2,7 +2,7 @@ use napi::Either;
 use serde_json::Value;
 use std::env;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tcx_common::ToHex;
 use tcx_eth::transaction::EthTxInput as TcxEthTxInput;
@@ -38,7 +38,7 @@ fn read_vault_json(path: &PathBuf) -> Value {
   serde_json::from_str(&persisted).expect("vault JSON should parse")
 }
 
-fn wallet_vault_path(vault_dir: &PathBuf, wallet_id: &str) -> PathBuf {
+fn wallet_vault_path(vault_dir: &Path, wallet_id: &str) -> PathBuf {
   vault_dir.join("wallets").join(format!("{wallet_id}.json"))
 }
 

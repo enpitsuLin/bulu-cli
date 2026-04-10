@@ -612,6 +612,7 @@ pub(crate) fn wallet_info_to_json(wallet_info: &WalletInfo) -> Value {
   })
 }
 
+#[cfg(test)]
 pub(crate) fn keystore_to_json(data: &KeystoreData) -> String {
   serde_json::to_string(&keystore_data_to_json(data)).unwrap_or_default()
 }
