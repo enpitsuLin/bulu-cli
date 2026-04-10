@@ -3,11 +3,10 @@
 /**
  * Creates a new mnemonic-backed wallet.
  *
- * If `entropy` is omitted, random 16-byte entropy is generated.
- * If `derivations` is omitted, default Ethereum and Tron accounts are derived
- * for the selected wallet network.
+ * If `vaultPath` is provided, the returned WalletInfo is also persisted there
+ * as JSON. `index` selects the default derived account index.
  */
-export declare function createWallet(name: string, passphrase: string): WalletInfo
+export declare function createWallet(name: string, passphrase: string, vaultPath?: string | undefined | null, index?: number | undefined | null): WalletInfo
 
 /** A requested account derivation. */
 export interface DerivationInput {
@@ -77,18 +76,19 @@ export interface EthTransactionInput {
 /**
  * Imports an existing mnemonic-backed wallet.
  *
- * If `derivations` is omitted, default Ethereum and Tron accounts are derived
- * for the selected wallet network.
+ * If `vaultPath` is provided, the returned WalletInfo is also persisted there
+ * as JSON. `index` selects the default derived account index.
  */
-export declare function importWalletMnemonic(name: string, mnemonic: string, passphrase: string): WalletInfo
+export declare function importWalletMnemonic(name: string, mnemonic: string, passphrase: string, vaultPath?: string | undefined | null, index?: number | undefined | null): WalletInfo
 
 /**
  * Imports a private key as a non-derivable wallet.
  *
- * If `derivations` is omitted, default Ethereum and Tron accounts are
- * returned. Derivation paths are ignored for non-derivable wallets.
+ * If `vaultPath` is provided, the returned WalletInfo is also persisted there
+ * as JSON. `index` is accepted for API parity but ignored because private-key
+ * wallets are non-derivable.
  */
-export declare function importWalletPrivateKey(name: string, privateKey: string, passphrase: string): WalletInfo
+export declare function importWalletPrivateKey(name: string, privateKey: string, passphrase: string, vaultPath?: string | undefined | null, index?: number | undefined | null): WalletInfo
 
 /**
  * Loads a serialized keystore JSON and derives accounts from it.

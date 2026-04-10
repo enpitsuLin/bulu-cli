@@ -47,8 +47,9 @@ pub(crate) fn derive_accounts_for_wallet(
   keystore: &mut TcxKeystore,
   network: IdentityNetwork,
   derivations: Option<Vec<DerivationInput>>,
+  index: Option<u32>,
 ) -> Result<Vec<WalletAccount>> {
-  let requests = resolve_derivations(derivations, network, keystore.derivable())?;
+  let requests = resolve_derivations(derivations, network, keystore.derivable(), index)?;
   let mut accounts = Vec::with_capacity(requests.len());
 
   for request in requests {
@@ -62,13 +63,14 @@ fn resolve_derivations(
   derivations: Option<Vec<DerivationInput>>,
   network: IdentityNetwork,
   derivable: bool,
+  index: Option<u32>,
 ) -> Result<Vec<DerivationRequest>> {
   match derivations.filter(|items| !items.is_empty()) {
     Some(items) => items
       .into_iter()
       .map(|item| resolve_derivation(item, network, derivable))
       .collect(),
-    None => Ok(default_derivations(network, derivable)),
+    None => Ok(default_derivations(network, derivable, index.unwrap_or(0))),
   }
 }
 
@@ -96,7 +98,11 @@ pub(crate) fn resolve_derivation(
   })
 }
 
-fn default_derivations(network: IdentityNetwork, derivable: bool) -> Vec<DerivationRequest> {
+fn default_derivations(
+  network: IdentityNetwork,
+  derivable: bool,
+  index: u32,
+) -> Vec<DerivationRequest> {
   [ChainKind::Ethereum, ChainKind::Tron]
     .into_iter()
     .map(|chain_kind| {
@@ -106,7 +112,7 @@ fn default_derivations(network: IdentityNetwork, derivable: bool) -> Vec<Derivat
         chain_id: default_chain_id(chain_kind, network).to_string(),
       };
       let derivation_path = if derivable {
-        default_derivation_path(chain_kind).to_string()
+        default_derivation_path_at_index(chain_kind, index)
       } else {
         String::new()
       };
@@ -175,6 +181,17 @@ fn default_derivation_path(chain_kind: ChainKind) -> &'static str {
   match chain_kind {
     ChainKind::Ethereum => DEFAULT_ETH_DERIVATION_PATH,
     ChainKind::Tron => DEFAULT_TRON_DERIVATION_PATH,
+  }
+}
+
+fn default_derivation_path_at_index(chain_kind: ChainKind, index: u32) -> String {
+  if index == 0 {
+    return default_derivation_path(chain_kind).to_string();
+  }
+
+  match chain_kind {
+    ChainKind::Ethereum => format!("m/44'/60'/0'/0/{index}"),
+    ChainKind::Tron => format!("m/44'/195'/0'/0/{index}"),
   }
 }
 

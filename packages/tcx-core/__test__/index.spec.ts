@@ -1,6 +1,10 @@
 import { expect, test } from 'vitest'
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
 import {
+  type WalletInfo,
   WalletNetwork,
   WalletSource,
   createWallet,
@@ -18,6 +22,8 @@ const MNEMONIC = 'inject kidney empty canal shadow pact comfort wife crush horse
 const PRIVATE_KEY = 'a392604efc2fad9c0b3da43b5f698a2e3f270f170d859912be0d54742275c5f6'
 const ETH_MAINNET_CHAIN_ID = 'eip155:1'
 const TRON_MAINNET_CHAIN_ID = 'tron:0x2b6653dc'
+const ETH_ACCOUNT_1_DERIVATION_PATH = "m/44'/60'/0'/0/1"
+const TRON_ACCOUNT_1_DERIVATION_PATH = "m/44'/195'/0'/0/1"
 
 function stripHexPrefix(value: string): string {
   return value.startsWith('0x') || value.startsWith('0X') ? value.slice(2) : value
@@ -121,6 +127,26 @@ test('createWallet returns keystore json and default accounts', () => {
   expect(wallet.keystoreJson).toContain('"version":12000')
 })
 
+test('createWallet persists WalletInfo when vaultPath is provided', () => {
+  const tempDir = mkdtempSync(join(tmpdir(), 'tcx-core-wallet-'))
+  try {
+    const vaultPath = join(tempDir, 'wallet.json')
+    const wallet = createWallet('Created', PASSWORD, vaultPath)
+    const persisted = JSON.parse(readFileSync(vaultPath, 'utf-8')) as WalletInfo
+
+    expect(existsSync(vaultPath)).toBe(true)
+    expect(persisted).not.toHaveProperty('mnemonic')
+    expect(persisted.keystoreJson).toBe(wallet.keystoreJson)
+    expect(persisted.meta.id).toBe(wallet.meta.id)
+    expect(persisted.meta.source).toBe(wallet.meta.source)
+    expect(persisted.accounts.map((account) => account.chainId)).toEqual(
+      wallet.accounts.map((account) => account.chainId),
+    )
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true })
+  }
+})
+
 test('importWalletMnemonic returns default accounts', () => {
   const wallet = importWalletMnemonic('Imported Mnemonic', MNEMONIC, PASSWORD)
 
@@ -128,6 +154,29 @@ test('importWalletMnemonic returns default accounts', () => {
   expect(wallet.meta.source).toBe(WalletSource.Mnemonic)
   expect(wallet.accounts).toHaveLength(2)
   expect(wallet.accounts.map((account) => account.chainId)).toEqual([ETH_MAINNET_CHAIN_ID, TRON_MAINNET_CHAIN_ID])
+})
+
+test('importWalletMnemonic derives the requested default account index and persists WalletInfo', () => {
+  const tempDir = mkdtempSync(join(tmpdir(), 'tcx-core-wallet-'))
+  try {
+    const defaultWallet = importWalletMnemonic('Default Mnemonic', MNEMONIC, PASSWORD)
+    const vaultPath = join(tempDir, 'wallet.json')
+    const indexedWallet = importWalletMnemonic('Indexed Mnemonic', MNEMONIC, PASSWORD, vaultPath, 1)
+    const persisted = JSON.parse(readFileSync(vaultPath, 'utf-8')) as WalletInfo
+
+    expect(indexedWallet.accounts.map((account) => account.derivationPath)).toEqual([
+      ETH_ACCOUNT_1_DERIVATION_PATH,
+      TRON_ACCOUNT_1_DERIVATION_PATH,
+    ])
+    expect(indexedWallet.accounts[0]?.address).not.toBe(defaultWallet.accounts[0]?.address)
+    expect(persisted.keystoreJson).toBe(indexedWallet.keystoreJson)
+    expect(persisted.accounts.map((account) => account.derivationPath)).toEqual([
+      ETH_ACCOUNT_1_DERIVATION_PATH,
+      TRON_ACCOUNT_1_DERIVATION_PATH,
+    ])
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true })
+  }
 })
 
 test('importWalletPrivateKey returns a non-derivable wallet', () => {
@@ -141,6 +190,24 @@ test('importWalletPrivateKey returns a non-derivable wallet', () => {
   expect(wallet.accounts[0]?.derivationPath).toBeUndefined()
   expect(wallet.accounts[0]?.extPubKey).toBeUndefined()
   expect(wallet.meta.curve).toBe('secp256k1')
+})
+
+test('importWalletPrivateKey persists WalletInfo and ignores index for non-derivable wallets', () => {
+  const tempDir = mkdtempSync(join(tmpdir(), 'tcx-core-wallet-'))
+  try {
+    const vaultPath = join(tempDir, 'wallet.json')
+    const wallet = importWalletPrivateKey('Imported Private Key', PRIVATE_KEY, PASSWORD, vaultPath, 9)
+    const persisted = JSON.parse(readFileSync(vaultPath, 'utf-8')) as WalletInfo
+
+    expect(wallet.meta.derivable).toBe(false)
+    expect(wallet.accounts[0]?.derivationPath).toBeUndefined()
+    expect(wallet.accounts[0]?.extPubKey).toBeUndefined()
+    expect(persisted.keystoreJson).toBe(wallet.keystoreJson)
+    expect(persisted.accounts[0]?.derivationPath).toBeUndefined()
+    expect(persisted.accounts[0]?.extPubKey).toBeUndefined()
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true })
+  }
 })
 
 test('loadWallet restores keystore json and derives requested accounts', () => {
