@@ -18,8 +18,9 @@ use crate::types::{
 #[napi(js_name = "createWallet")]
 /// Creates a new mnemonic-backed wallet.
 ///
-/// If `vaultPath` is provided, the returned WalletInfo is also persisted there
-/// as JSON. `index` selects the default derived account index.
+/// If `vaultPath` is provided, the returned WalletInfo is also persisted under
+/// that directory as `<wallet id>.json`. `index` selects the default derived
+/// account index.
 pub fn create_wallet(
   name: String,
   passphrase: String,
@@ -45,8 +46,9 @@ pub fn create_wallet(
 #[napi(js_name = "importWalletMnemonic")]
 /// Imports an existing mnemonic-backed wallet.
 ///
-/// If `vaultPath` is provided, the returned WalletInfo is also persisted there
-/// as JSON. `index` selects the default derived account index.
+/// If `vaultPath` is provided, the returned WalletInfo is also persisted under
+/// that directory as `<wallet id>.json`. `index` selects the default derived
+/// account index.
 pub fn import_wallet_mnemonic(
   name: String,
   mnemonic: String,
@@ -75,9 +77,9 @@ pub fn import_wallet_mnemonic(
 #[napi(js_name = "importWalletPrivateKey")]
 /// Imports a private key as a non-derivable wallet.
 ///
-/// If `vaultPath` is provided, the returned WalletInfo is also persisted there
-/// as JSON. `index` is accepted for API parity but ignored because private-key
-/// wallets are non-derivable.
+/// If `vaultPath` is provided, the returned WalletInfo is also persisted under
+/// that directory as `<wallet id>.json`. `index` is accepted for API parity but
+/// ignored because private-key wallets are non-derivable.
 pub fn import_wallet_private_key(
   name: String,
   private_key: String,
@@ -222,23 +224,19 @@ fn persist_wallet_info(wallet_info: &WalletInfo, vault_path: Option<String>) -> 
     return Ok(());
   };
   let vault_path = require_trimmed(vault_path, "vaultPath")?;
-  let path = Path::new(&vault_path);
+  let vault_dir = Path::new(&vault_path);
 
-  if let Some(parent) = path
-    .parent()
-    .filter(|parent| !parent.as_os_str().is_empty())
-  {
-    fs::create_dir_all(parent).map_err(|err| {
-      napi::Error::from_reason(format!(
-        "failed to create vault directory `{}`: {err}",
-        parent.display()
-      ))
-    })?;
-  }
+  fs::create_dir_all(vault_dir).map_err(|err| {
+    napi::Error::from_reason(format!(
+      "failed to create vault directory `{}`: {err}",
+      vault_dir.display()
+    ))
+  })?;
 
+  let path = vault_dir.join(format!("{}.json", wallet_info.meta.id));
   let payload =
     serde_json::to_string_pretty(&wallet_info_to_json(wallet_info)).map_err(to_napi_err)?;
-  fs::write(path, payload).map_err(|err| {
+  fs::write(&path, payload).map_err(|err| {
     napi::Error::from_reason(format!(
       "failed to write wallet vault `{}`: {err}",
       path.display()

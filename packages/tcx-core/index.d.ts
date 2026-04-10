@@ -3,8 +3,9 @@
 /**
  * Creates a new mnemonic-backed wallet.
  *
- * If `vaultPath` is provided, the returned WalletInfo is also persisted there
- * as JSON. `index` selects the default derived account index.
+ * If `vaultPath` is provided, the returned WalletInfo is also persisted under
+ * that directory as `<wallet id>.json`. `index` selects the default derived
+ * account index.
  */
 export declare function createWallet(name: string, passphrase: string, vaultPath?: string | undefined | null, index?: number | undefined | null): WalletInfo
 
@@ -76,17 +77,18 @@ export interface EthTransactionInput {
 /**
  * Imports an existing mnemonic-backed wallet.
  *
- * If `vaultPath` is provided, the returned WalletInfo is also persisted there
- * as JSON. `index` selects the default derived account index.
+ * If `vaultPath` is provided, the returned WalletInfo is also persisted under
+ * that directory as `<wallet id>.json`. `index` selects the default derived
+ * account index.
  */
 export declare function importWalletMnemonic(name: string, mnemonic: string, passphrase: string, vaultPath?: string | undefined | null, index?: number | undefined | null): WalletInfo
 
 /**
  * Imports a private key as a non-derivable wallet.
  *
- * If `vaultPath` is provided, the returned WalletInfo is also persisted there
- * as JSON. `index` is accepted for API parity but ignored because private-key
- * wallets are non-derivable.
+ * If `vaultPath` is provided, the returned WalletInfo is also persisted under
+ * that directory as `<wallet id>.json`. `index` is accepted for API parity but
+ * ignored because private-key wallets are non-derivable.
  */
 export declare function importWalletPrivateKey(name: string, privateKey: string, passphrase: string, vaultPath?: string | undefined | null, index?: number | undefined | null): WalletInfo
 

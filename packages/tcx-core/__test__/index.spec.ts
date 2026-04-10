@@ -130,11 +130,11 @@ test('createWallet returns keystore json and default accounts', () => {
 test('createWallet persists WalletInfo when vaultPath is provided', () => {
   const tempDir = mkdtempSync(join(tmpdir(), 'tcx-core-wallet-'))
   try {
-    const vaultPath = join(tempDir, 'wallet.json')
-    const wallet = createWallet('Created', PASSWORD, vaultPath)
-    const persisted = JSON.parse(readFileSync(vaultPath, 'utf-8')) as WalletInfo
+    const wallet = createWallet('Created', PASSWORD, tempDir)
+    const walletPath = join(tempDir, `${wallet.meta.id}.json`)
+    const persisted = JSON.parse(readFileSync(walletPath, 'utf-8')) as WalletInfo
 
-    expect(existsSync(vaultPath)).toBe(true)
+    expect(existsSync(walletPath)).toBe(true)
     expect(persisted).not.toHaveProperty('mnemonic')
     expect(persisted.keystoreJson).toBe(wallet.keystoreJson)
     expect(persisted.meta.id).toBe(wallet.meta.id)
@@ -160,9 +160,9 @@ test('importWalletMnemonic derives the requested default account index and persi
   const tempDir = mkdtempSync(join(tmpdir(), 'tcx-core-wallet-'))
   try {
     const defaultWallet = importWalletMnemonic('Default Mnemonic', MNEMONIC, PASSWORD)
-    const vaultPath = join(tempDir, 'wallet.json')
-    const indexedWallet = importWalletMnemonic('Indexed Mnemonic', MNEMONIC, PASSWORD, vaultPath, 1)
-    const persisted = JSON.parse(readFileSync(vaultPath, 'utf-8')) as WalletInfo
+    const indexedWallet = importWalletMnemonic('Indexed Mnemonic', MNEMONIC, PASSWORD, tempDir, 1)
+    const walletPath = join(tempDir, `${indexedWallet.meta.id}.json`)
+    const persisted = JSON.parse(readFileSync(walletPath, 'utf-8')) as WalletInfo
 
     expect(indexedWallet.accounts.map((account) => account.derivationPath)).toEqual([
       ETH_ACCOUNT_1_DERIVATION_PATH,
@@ -195,9 +195,9 @@ test('importWalletPrivateKey returns a non-derivable wallet', () => {
 test('importWalletPrivateKey persists WalletInfo and ignores index for non-derivable wallets', () => {
   const tempDir = mkdtempSync(join(tmpdir(), 'tcx-core-wallet-'))
   try {
-    const vaultPath = join(tempDir, 'wallet.json')
-    const wallet = importWalletPrivateKey('Imported Private Key', PRIVATE_KEY, PASSWORD, vaultPath, 9)
-    const persisted = JSON.parse(readFileSync(vaultPath, 'utf-8')) as WalletInfo
+    const wallet = importWalletPrivateKey('Imported Private Key', PRIVATE_KEY, PASSWORD, tempDir, 9)
+    const walletPath = join(tempDir, `${wallet.meta.id}.json`)
+    const persisted = JSON.parse(readFileSync(walletPath, 'utf-8')) as WalletInfo
 
     expect(wallet.meta.derivable).toBe(false)
     expect(wallet.accounts[0]?.derivationPath).toBeUndefined()

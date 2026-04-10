@@ -20,14 +20,14 @@ const TEST_PRIVATE_KEY: &str = "a392604efc2fad9c0b3da43b5f698a2e3f270f170d859912
 const ETH_ACCOUNT_1_DERIVATION_PATH: &str = "m/44'/60'/0'/0/1";
 const TRON_ACCOUNT_1_DERIVATION_PATH: &str = "m/44'/195'/0'/0/1";
 
-fn temp_vault_path(test_name: &str) -> PathBuf {
+fn temp_vault_dir(test_name: &str) -> PathBuf {
   let timestamp = SystemTime::now()
     .duration_since(UNIX_EPOCH)
     .expect("system clock should be after Unix epoch")
     .as_nanos();
 
   env::temp_dir().join(format!(
-    "tcx-core-{test_name}-{}-{timestamp}.json",
+    "tcx-core-{test_name}-{}-{timestamp}",
     std::process::id()
   ))
 }
@@ -60,17 +60,18 @@ fn create_wallet_returns_keystore_json_and_default_accounts() {
 
 #[test]
 fn create_wallet_persists_wallet_info_when_vault_path_is_provided() {
-  let vault_path = temp_vault_path("create-wallet");
+  let vault_dir = temp_vault_dir("create-wallet");
   let wallet = create_wallet(
     "Created".to_string(),
     TEST_PASSWORD.to_string(),
-    Some(vault_path.to_string_lossy().into_owned()),
+    Some(vault_dir.to_string_lossy().into_owned()),
     None,
   )
   .expect("create wallet should succeed");
-  let persisted = read_vault_json(&vault_path);
+  let wallet_path = vault_dir.join(format!("{}.json", wallet.meta.id));
+  let persisted = read_vault_json(&wallet_path);
 
-  assert!(vault_path.exists());
+  assert!(wallet_path.exists());
   assert_eq!(persisted["keystoreJson"], wallet.keystore_json);
   assert_eq!(persisted["meta"]["id"], wallet.meta.id);
   assert_eq!(persisted["meta"]["source"], "NEW_MNEMONIC");
@@ -83,7 +84,7 @@ fn create_wallet_persists_wallet_info_when_vault_path_is_provided() {
     DEFAULT_TRON_MAINNET_CHAIN_ID
   );
 
-  let _ = fs::remove_file(vault_path);
+  let _ = fs::remove_dir_all(vault_dir);
 }
 
 #[test]
@@ -114,16 +115,17 @@ fn import_wallet_mnemonic_uses_index_for_default_derivations_and_persists_wallet
     None,
   )
   .expect("mnemonic import should succeed");
-  let vault_path = temp_vault_path("import-mnemonic");
+  let vault_dir = temp_vault_dir("import-mnemonic");
   let indexed_wallet = import_wallet_mnemonic(
     "Indexed mnemonic".to_string(),
     TEST_MNEMONIC.to_string(),
     TEST_PASSWORD.to_string(),
-    Some(vault_path.to_string_lossy().into_owned()),
+    Some(vault_dir.to_string_lossy().into_owned()),
     Some(1),
   )
   .expect("indexed mnemonic import should succeed");
-  let persisted = read_vault_json(&vault_path);
+  let wallet_path = vault_dir.join(format!("{}.json", indexed_wallet.meta.id));
+  let persisted = read_vault_json(&wallet_path);
 
   assert_eq!(
     indexed_wallet.accounts[0].derivation_path.as_deref(),
@@ -147,7 +149,7 @@ fn import_wallet_mnemonic_uses_index_for_default_derivations_and_persists_wallet
     TRON_ACCOUNT_1_DERIVATION_PATH
   );
 
-  let _ = fs::remove_file(vault_path);
+  let _ = fs::remove_dir_all(vault_dir);
 }
 
 #[test]
@@ -175,16 +177,17 @@ fn import_wallet_private_key_returns_non_derivable_accounts() {
 
 #[test]
 fn import_wallet_private_key_persists_wallet_info_and_ignores_index() {
-  let vault_path = temp_vault_path("import-private-key");
+  let vault_dir = temp_vault_dir("import-private-key");
   let wallet = import_wallet_private_key(
     "Imported private key".to_string(),
     TEST_PRIVATE_KEY.to_string(),
     TEST_PASSWORD.to_string(),
-    Some(vault_path.to_string_lossy().into_owned()),
+    Some(vault_dir.to_string_lossy().into_owned()),
     Some(9),
   )
   .expect("private key import should succeed");
-  let persisted = read_vault_json(&vault_path);
+  let wallet_path = vault_dir.join(format!("{}.json", wallet.meta.id));
+  let persisted = read_vault_json(&wallet_path);
 
   assert!(!wallet.meta.derivable);
   assert!(wallet.accounts[0].derivation_path.is_none());
@@ -193,7 +196,7 @@ fn import_wallet_private_key_persists_wallet_info_and_ignores_index() {
   assert!(persisted["accounts"][0].get("derivationPath").is_none());
   assert!(persisted["accounts"][0].get("extPubKey").is_none());
 
-  let _ = fs::remove_file(vault_path);
+  let _ = fs::remove_dir_all(vault_dir);
 }
 
 #[test]
