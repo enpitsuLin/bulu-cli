@@ -4,5 +4,6 @@ export default defineCommand({
   meta: { name: 'wallet', description: 'Wallet management' },
   subCommands: {
     create: () => import('./create').then((m) => m.default),
+    list: () => import('./list').then((m) => m.default),
   },
 })
