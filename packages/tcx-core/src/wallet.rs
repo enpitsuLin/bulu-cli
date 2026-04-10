@@ -101,7 +101,10 @@ fn parse_wallet_info(content: &str) -> Result<WalletInfo> {
       .and_then(|v| v.as_str())
       .unwrap_or("")
       .to_string(),
-    password_hint: meta_obj.get("passwordHint").and_then(|v| v.as_str()).map(String::from),
+    password_hint: meta_obj
+      .get("passwordHint")
+      .and_then(|v| v.as_str())
+      .map(String::from),
     timestamp: meta_obj
       .get("timestamp")
       .and_then(|v| v.as_i64())
@@ -110,11 +113,19 @@ fn parse_wallet_info(content: &str) -> Result<WalletInfo> {
       .get("derivable")
       .and_then(|v| v.as_bool())
       .unwrap_or(false),
-    curve: meta_obj.get("curve").and_then(|v| v.as_str()).map(String::from),
+    curve: meta_obj
+      .get("curve")
+      .and_then(|v| v.as_str())
+      .map(String::from),
     identified_chain_types: meta_obj
       .get("identifiedChainTypes")
       .and_then(|v| v.as_array())
-      .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect()),
+      .map(|arr| {
+        arr
+          .iter()
+          .filter_map(|v| v.as_str().map(String::from))
+          .collect()
+      }),
   };
 
   let accounts: Vec<WalletAccount> = value
@@ -147,7 +158,9 @@ fn parse_wallet_source(value: Option<&Value>) -> Result<WalletSource> {
     "SUBSTRATE_KEYSTORE" => Ok(WalletSource::SubstrateKeystore),
     "MNEMONIC" => Ok(WalletSource::Mnemonic),
     "NEW_MNEMONIC" => Ok(WalletSource::NewMnemonic),
-    _ => Err(napi::Error::from_reason(format!("unknown source: {source_str}"))),
+    _ => Err(napi::Error::from_reason(format!(
+      "unknown source: {source_str}"
+    ))),
   }
 }
 
@@ -159,7 +172,9 @@ fn parse_wallet_network(value: Option<&Value>) -> Result<WalletNetwork> {
   match network_str {
     "MAINNET" => Ok(WalletNetwork::Mainnet),
     "TESTNET" => Ok(WalletNetwork::Testnet),
-    _ => Err(napi::Error::from_reason(format!("unknown network: {network_str}"))),
+    _ => Err(napi::Error::from_reason(format!(
+      "unknown network: {network_str}"
+    ))),
   }
 }
 
@@ -180,8 +195,14 @@ fn parse_wallet_account(value: &Value) -> Result<WalletAccount> {
       .and_then(|v| v.as_str())
       .ok_or_else(|| napi::Error::from_reason("missing publicKey field"))?
       .to_string(),
-    derivation_path: value.get("derivationPath").and_then(|v| v.as_str()).map(String::from),
-    ext_pub_key: value.get("extPubKey").and_then(|v| v.as_str()).map(String::from),
+    derivation_path: value
+      .get("derivationPath")
+      .and_then(|v| v.as_str())
+      .map(String::from),
+    ext_pub_key: value
+      .get("extPubKey")
+      .and_then(|v| v.as_str())
+      .map(String::from),
   })
 }
 
