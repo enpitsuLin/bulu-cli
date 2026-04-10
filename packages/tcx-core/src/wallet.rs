@@ -224,9 +224,9 @@ fn persist_wallet_info(wallet_info: &WalletInfo, vault_path: Option<String>) -> 
     return Ok(());
   };
   let vault_path = require_trimmed(vault_path, "vaultPath")?;
-  let vault_dir = Path::new(&vault_path);
+  let vault_dir = Path::new(&vault_path).join("wallets");
 
-  fs::create_dir_all(vault_dir).map_err(|err| {
+  fs::create_dir_all(&vault_dir).map_err(|err| {
     napi::Error::from_reason(format!(
       "failed to create vault directory `{}`: {err}",
       vault_dir.display()

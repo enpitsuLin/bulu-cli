@@ -131,7 +131,7 @@ test('createWallet persists WalletInfo when vaultPath is provided', () => {
   const tempDir = mkdtempSync(join(tmpdir(), 'tcx-core-wallet-'))
   try {
     const wallet = createWallet('Created', PASSWORD, tempDir)
-    const walletPath = join(tempDir, `${wallet.meta.id}.json`)
+    const walletPath = join(tempDir, 'wallets', `${wallet.meta.id}.json`)
     const persisted = JSON.parse(readFileSync(walletPath, 'utf-8')) as WalletInfo
 
     expect(existsSync(walletPath)).toBe(true)
@@ -161,7 +161,7 @@ test('importWalletMnemonic derives the requested default account index and persi
   try {
     const defaultWallet = importWalletMnemonic('Default Mnemonic', MNEMONIC, PASSWORD)
     const indexedWallet = importWalletMnemonic('Indexed Mnemonic', MNEMONIC, PASSWORD, tempDir, 1)
-    const walletPath = join(tempDir, `${indexedWallet.meta.id}.json`)
+    const walletPath = join(tempDir, 'wallets', `${indexedWallet.meta.id}.json`)
     const persisted = JSON.parse(readFileSync(walletPath, 'utf-8')) as WalletInfo
 
     expect(indexedWallet.accounts.map((account) => account.derivationPath)).toEqual([
