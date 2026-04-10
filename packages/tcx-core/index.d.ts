@@ -10,7 +10,7 @@ export interface CipherParams {
  * Creates a new mnemonic-backed wallet.
  *
  * If `vaultPath` is provided, the returned WalletInfo is also persisted under
- * that directory as `<wallet id>.json`. `index` selects the default derived
+ * `<vaultPath>/wallets/<wallet id>.json`. `index` selects the default derived
  * account index.
  */
 export declare function createWallet(name: string, passphrase: string, vaultPath?: string | undefined | null, index?: number | undefined | null): WalletInfo
@@ -34,7 +34,7 @@ export interface CryptoData {
    * KDF parameters - use `KdfParams::pbkdf2()` or `KdfParams::scrypt()` to create.
    * Serialized as "kdfparams" field to match tcx-keystore format.
    */
-  kdfparams?: KdfParams
+  kdfparams: KdfParams
   /** Message authentication code (hex-encoded). */
   mac: string
 }
@@ -128,7 +128,7 @@ export interface IdentityData {
  * Imports an existing mnemonic-backed wallet.
  *
  * If `vaultPath` is provided, the returned WalletInfo is also persisted under
- * that directory as `<wallet id>.json`. `index` selects the default derived
+ * `<vaultPath>/wallets/<wallet id>.json`. `index` selects the default derived
  * account index.
  */
 export declare function importWalletMnemonic(name: string, mnemonic: string, passphrase: string, vaultPath?: string | undefined | null, index?: number | undefined | null): WalletInfo
@@ -137,8 +137,8 @@ export declare function importWalletMnemonic(name: string, mnemonic: string, pas
  * Imports a private key as a non-derivable wallet.
  *
  * If `vaultPath` is provided, the returned WalletInfo is also persisted under
- * that directory as `<wallet id>.json`. `index` is accepted for API parity but
- * ignored because private-key wallets are non-derivable.
+ * `<vaultPath>/wallets/<wallet id>.json`. `index` is accepted for API parity
+ * but ignored because private-key wallets are non-derivable.
  */
 export declare function importWalletPrivateKey(name: string, privateKey: string, passphrase: string, vaultPath?: string | undefined | null, index?: number | undefined | null): WalletInfo
 

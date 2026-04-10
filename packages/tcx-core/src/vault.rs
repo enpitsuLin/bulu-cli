@@ -40,7 +40,10 @@ fn set_dir_permissions(path: &Path) {
   use std::os::unix::fs::PermissionsExt;
   let permissions = fs::Permissions::from_mode(DIR_PERMISSIONS);
   if let Err(err) = fs::set_permissions(path, permissions) {
-    eprintln!("Warning: failed to set directory permissions for `{}`: {err}", path.display());
+    eprintln!(
+      "Warning: failed to set directory permissions for `{}`: {err}",
+      path.display()
+    );
   }
 }
 
@@ -50,7 +53,10 @@ fn set_file_permissions(path: &Path) {
   use std::os::unix::fs::PermissionsExt;
   let permissions = fs::Permissions::from_mode(FILE_PERMISSIONS);
   if let Err(err) = fs::set_permissions(path, permissions) {
-    eprintln!("Warning: failed to set file permissions for `{}`: {err}", path.display());
+    eprintln!(
+      "Warning: failed to set file permissions for `{}`: {err}",
+      path.display()
+    );
   }
 }
 
@@ -58,12 +64,12 @@ fn set_file_permissions(path: &Path) {
 #[cfg(unix)]
 pub fn check_vault_permissions(path: &Path) {
   use std::os::unix::fs::PermissionsExt;
-  
+
   let metadata = match fs::metadata(path) {
     Ok(m) => m,
     Err(_) => return,
   };
-  
+
   let mode = metadata.permissions().mode();
   // Check if permissions are more open than 0o700 (owner-only)
   // We check the group and other bits (lower 6 bits)
@@ -113,8 +119,8 @@ pub fn save_wallet(wallet_info: &WalletInfo, vault_path: String) -> Result<()> {
   ensure_vault_dir(&vault_path)?;
 
   let path = wallet_file_path(&vault_path, &wallet_info.meta.id);
-  let payload =
-    serde_json::to_string_pretty(&crate::wallet::wallet_info_to_json(wallet_info)).map_err(to_napi_err)?;
+  let payload = serde_json::to_string_pretty(&crate::wallet::wallet_info_to_json(wallet_info))
+    .map_err(to_napi_err)?;
 
   fs::write(&path, payload).map_err(|err| {
     napi::Error::from_reason(format!(
@@ -250,5 +256,3 @@ pub fn find_wallet_keystore_by_name(name: &str, vault_path: String) -> Result<St
     wallets_dir.display()
   )))
 }
-
-

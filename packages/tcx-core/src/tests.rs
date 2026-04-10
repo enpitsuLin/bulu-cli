@@ -38,6 +38,14 @@ fn read_vault_json(path: &PathBuf) -> Value {
   serde_json::from_str(&persisted).expect("vault JSON should parse")
 }
 
+fn wallet_vault_path(vault_dir: &PathBuf, wallet_id: &str) -> PathBuf {
+  vault_dir.join("wallets").join(format!("{wallet_id}.json"))
+}
+
+fn keystore_json_value(wallet: &WalletInfo) -> Value {
+  serde_json::from_str(&keystore_to_json(&wallet.keystore)).expect("keystore JSON should parse")
+}
+
 fn encode_unsigned_eth_transaction(input: EthTransactionInput) -> String {
   let tx = TcxEthTransaction::try_from(&TcxEthTxInput::from(input))
     .expect("transaction input should encode");
@@ -69,11 +77,11 @@ fn create_wallet_persists_wallet_info_when_vault_path_is_provided() {
     None,
   )
   .expect("create wallet should succeed");
-  let wallet_path = vault_dir.join(format!("{}.json", wallet.meta.id));
+  let wallet_path = wallet_vault_path(&vault_dir, &wallet.meta.id);
   let persisted = read_vault_json(&wallet_path);
 
   assert!(wallet_path.exists());
-  assert_eq!(persisted["keystore"], keystore_to_json(&wallet.keystore));
+  assert_eq!(persisted["keystore"], keystore_json_value(&wallet));
   assert_eq!(persisted["meta"]["id"], wallet.meta.id);
   assert_eq!(persisted["meta"]["source"], "NEW_MNEMONIC");
   assert_eq!(
@@ -125,7 +133,7 @@ fn import_wallet_mnemonic_uses_index_for_default_derivations_and_persists_wallet
     Some(1),
   )
   .expect("indexed mnemonic import should succeed");
-  let wallet_path = vault_dir.join(format!("{}.json", indexed_wallet.meta.id));
+  let wallet_path = wallet_vault_path(&vault_dir, &indexed_wallet.meta.id);
   let persisted = read_vault_json(&wallet_path);
 
   assert_eq!(
@@ -140,7 +148,7 @@ fn import_wallet_mnemonic_uses_index_for_default_derivations_and_persists_wallet
     indexed_wallet.accounts[0].address,
     default_wallet.accounts[0].address
   );
-  assert_eq!(persisted["keystore"], keystore_to_json(&indexed_wallet.keystore));
+  assert_eq!(persisted["keystore"], keystore_json_value(&indexed_wallet));
   assert_eq!(
     persisted["accounts"][0]["derivationPath"],
     ETH_ACCOUNT_1_DERIVATION_PATH
@@ -187,13 +195,13 @@ fn import_wallet_private_key_persists_wallet_info_and_ignores_index() {
     Some(9),
   )
   .expect("private key import should succeed");
-  let wallet_path = vault_dir.join(format!("{}.json", wallet.meta.id));
+  let wallet_path = wallet_vault_path(&vault_dir, &wallet.meta.id);
   let persisted = read_vault_json(&wallet_path);
 
   assert!(!wallet.meta.derivable);
   assert!(wallet.accounts[0].derivation_path.is_none());
   assert!(wallet.accounts[0].ext_pub_key.is_none());
-  assert_eq!(persisted["keystore"], keystore_to_json(&wallet.keystore));
+  assert_eq!(persisted["keystore"], keystore_json_value(&wallet));
   assert!(persisted["accounts"][0].get("derivationPath").is_none());
   assert!(persisted["accounts"][0].get("extPubKey").is_none());
 
@@ -302,21 +310,23 @@ fn derive_accounts_rejects_unsupported_chain_id_namespace() {
 
 #[test]
 fn sign_message_signs_ethereum_personal_messages() {
+  let vault_dir = temp_vault_dir("sign-eth-message");
+  let vault_path = vault_dir.to_string_lossy().into_owned();
   let wallet = import_wallet_mnemonic(
     "Imported mnemonic".to_string(),
     TEST_MNEMONIC.to_string(),
     TEST_PASSWORD.to_string(),
-    None,
+    Some(vault_path.clone()),
     None,
   )
   .expect("mnemonic import should succeed");
 
   let signed = sign_message(
-    keystore_to_json(&wallet.keystore),
+    wallet.meta.name,
     DEFAULT_ETH_MAINNET_CHAIN_ID.to_string(),
     "hello world".to_string(),
     TEST_PASSWORD.to_string(),
-    String::new(),
+    vault_path,
   )
   .expect("ethereum message signing should succeed");
 
@@ -324,25 +334,29 @@ fn sign_message_signs_ethereum_personal_messages() {
     signed.signature,
     "0x521d0e4b5808b7fbeb53bf1b17c7c6d60432f5b13b7aa3aaed963a894c3bd99e23a3755ec06fa7a61b031192fb5fab6256e180e086c2671e0a574779bb8593df1b"
   );
+
+  let _ = fs::remove_dir_all(vault_dir);
 }
 
 #[test]
 fn sign_message_signs_tron_messages() {
+  let vault_dir = temp_vault_dir("sign-tron-message");
+  let vault_path = vault_dir.to_string_lossy().into_owned();
   let wallet = import_wallet_mnemonic(
     "Imported mnemonic".to_string(),
     TEST_MNEMONIC.to_string(),
     TEST_PASSWORD.to_string(),
-    None,
+    Some(vault_path.clone()),
     None,
   )
   .expect("mnemonic import should succeed");
 
   let signed = sign_message(
-    keystore_to_json(&wallet.keystore),
+    wallet.meta.name,
     DEFAULT_TRON_MAINNET_CHAIN_ID.to_string(),
     "hello world".to_string(),
     TEST_PASSWORD.to_string(),
-    String::new(),
+    vault_path,
   )
   .expect("tron message signing should succeed");
 
@@ -350,15 +364,19 @@ fn sign_message_signs_tron_messages() {
     signed.signature,
     "0x8686cc3cf49e772d96d3a8147a59eb3df2659c172775f3611648bfbe7e3c48c11859b873d9d2185567a4f64a14fa38ce78dc385a7364af55109c5b6426e4c0f61b"
   );
+
+  let _ = fs::remove_dir_all(vault_dir);
 }
 
 #[test]
 fn sign_transaction_signs_ethereum_transactions() {
+  let vault_dir = temp_vault_dir("sign-eth-transaction");
+  let vault_path = vault_dir.to_string_lossy().into_owned();
   let wallet = import_wallet_private_key(
     "Imported private key".to_string(),
     TEST_PRIVATE_KEY.to_string(),
     TEST_PASSWORD.to_string(),
-    None,
+    Some(vault_path.clone()),
     None,
   )
   .expect("private key import should succeed");
@@ -378,11 +396,11 @@ fn sign_transaction_signs_ethereum_transactions() {
   });
 
   let signed = sign_transaction(
-    keystore_to_json(&wallet.keystore),
+    wallet.meta.name,
     "eip155:56".to_string(),
     tx_hex,
     TEST_PASSWORD.to_string(),
-    String::new(),
+    vault_path,
   )
   .expect("ethereum transaction signing should succeed");
 
@@ -398,15 +416,19 @@ fn sign_transaction_signs_ethereum_transactions() {
     signed.signature,
     "f868088504a817c8088302e248943535353535353535353535353535353535353535820200808194a003479f1d6be72af58b1d60750e155c435e435726b5b690f4d3e59f34bd55e578a0314d2b03d29dc3f87ff95c3427658952add3cf718d3b6b8604068fc3105e4442"
   );
+
+  let _ = fs::remove_dir_all(vault_dir);
 }
 
 #[test]
 fn sign_transaction_signs_ethereum_eip1559_transaction_hex() {
+  let vault_dir = temp_vault_dir("sign-eth-eip1559-transaction");
+  let vault_path = vault_dir.to_string_lossy().into_owned();
   let wallet = import_wallet_mnemonic(
     "Imported mnemonic".to_string(),
     TEST_MNEMONIC.to_string(),
     TEST_PASSWORD.to_string(),
-    None,
+    Some(vault_path.clone()),
     None,
   )
   .expect("mnemonic import should succeed");
@@ -426,11 +448,11 @@ fn sign_transaction_signs_ethereum_eip1559_transaction_hex() {
   });
 
   let signed = sign_transaction(
-    keystore_to_json(&wallet.keystore),
+    wallet.meta.name,
     DEFAULT_ETH_MAINNET_CHAIN_ID.to_string(),
     tx_hex,
     TEST_PASSWORD.to_string(),
-    String::new(),
+    vault_path,
   )
   .expect("eip1559 transaction signing should succeed");
 
@@ -446,25 +468,29 @@ fn sign_transaction_signs_ethereum_eip1559_transaction_hex() {
     signed.signature,
     "02f875010881e285faac6c45d88210be943535353535353535353535353535353535353535833542398a200184c0486d5f082a27c001a0602501c9cfedf145810f9b54558de6cf866a89b7a65890ccde19dd6cec1fe32ca02769f3382ee526a372241238922da39f6283a9613215fd98c8ce37a0d03fa3bb"
   );
+
+  let _ = fs::remove_dir_all(vault_dir);
 }
 
 #[test]
 fn sign_transaction_signs_tron_transactions() {
+  let vault_dir = temp_vault_dir("sign-tron-transaction");
+  let vault_path = vault_dir.to_string_lossy().into_owned();
   let wallet = import_wallet_mnemonic(
     "Imported mnemonic".to_string(),
     TEST_MNEMONIC.to_string(),
     TEST_PASSWORD.to_string(),
-    None,
+    Some(vault_path.clone()),
     None,
   )
   .expect("mnemonic import should succeed");
 
   let signed = sign_transaction(
-    keystore_to_json(&wallet.keystore),
+    wallet.meta.name,
     DEFAULT_TRON_MAINNET_CHAIN_ID.to_string(),
     "0a0208312208b02efdc02638b61e40f083c3a7c92d5a65080112610a2d747970652e676f6f676c65617069732e636f6d2f70726f746f636f6c2e5472616e73666572436f6e747261637412300a1541a1e81654258bf14f63feb2e8d1380075d45b0dac1215410b3e84ec677b3e63c99affcadb91a6b4e086798f186470a0bfbfa7c92d".to_string(),
     TEST_PASSWORD.to_string(),
-    String::new(),
+    vault_path,
   )
   .expect("tron transaction signing should succeed");
 
@@ -479,4 +505,6 @@ fn sign_transaction_signs_tron_transactions() {
         .to_string()
     ]
   );
+
+  let _ = fs::remove_dir_all(vault_dir);
 }

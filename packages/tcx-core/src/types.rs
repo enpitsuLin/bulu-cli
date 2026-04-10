@@ -159,7 +159,7 @@ pub struct CipherParams {
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 /// KDF parameters union type - can be either PBKDF2 or SCrypt.
-/// 
+///
 /// The fields present depend on the kdf type:
 /// - PBKDF2: c, prf, dklen, salt
 /// - SCrypt: n, p, r, dklen, salt
@@ -213,7 +213,7 @@ impl KdfParams {
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 /// Crypto section of the keystore containing encrypted private key.
-/// 
+///
 /// Note: This struct uses custom serialization to match tcx-keystore format
 /// where kdf and kdfparams are flattened into the main crypto object.
 pub struct CryptoData {

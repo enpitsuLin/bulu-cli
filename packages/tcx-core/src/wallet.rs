@@ -9,11 +9,11 @@ use tcx_primitive::mnemonic_from_entropy;
 use crate::derivation::derive_accounts_for_wallet;
 use crate::error::{require_non_empty, require_trimmed, to_napi_err};
 use crate::strings::sanitize_optional_text;
-use crate::vault;
 use crate::types::{
   CipherParams, CryptoData, DerivationInput, EncPairData, IdentityData, KdfParams, KeystoreData,
   KeystoreMetadata, WalletAccount, WalletInfo, WalletMeta, WalletNetwork, WalletSource,
 };
+use crate::vault;
 
 #[napi(js_name = "listWallet")]
 pub fn list_wallet(vault_path_opt: Option<String>) -> Result<Vec<WalletInfo>> {
@@ -100,7 +100,9 @@ pub(crate) fn parse_wallet_info(content: &str) -> Result<WalletInfo> {
 }
 
 fn parse_keystore_data(value: &Value) -> Result<KeystoreData> {
-  let keystore_obj = value.as_object().ok_or_else(|| napi::Error::from_reason("keystore must be an object"))?;
+  let keystore_obj = value
+    .as_object()
+    .ok_or_else(|| napi::Error::from_reason("keystore must be an object"))?;
 
   let crypto = keystore_obj
     .get("crypto")
@@ -149,7 +151,9 @@ fn parse_keystore_data(value: &Value) -> Result<KeystoreData> {
 }
 
 fn parse_crypto_data(value: &Value) -> Result<CryptoData> {
-  let obj = value.as_object().ok_or_else(|| napi::Error::from_reason("crypto must be an object"))?;
+  let obj = value
+    .as_object()
+    .ok_or_else(|| napi::Error::from_reason("crypto must be an object"))?;
 
   let cipher = obj
     .get("cipher")
@@ -181,7 +185,8 @@ fn parse_crypto_data(value: &Value) -> Result<CryptoData> {
     .unwrap_or("pbkdf2")
     .to_string();
 
-  let kdfparams = obj.get("kdfparams")
+  let kdfparams = obj
+    .get("kdfparams")
     .and_then(|v| parse_kdf_params(v, &kdf))
     .unwrap_or_else(|| KdfParams::pbkdf2(10240, "hmac-sha256".to_string(), 32, String::new()));
 
@@ -196,7 +201,9 @@ fn parse_crypto_data(value: &Value) -> Result<CryptoData> {
 }
 
 fn parse_cipher_params(value: &Value) -> Result<CipherParams> {
-  let obj = value.as_object().ok_or_else(|| napi::Error::from_reason("cipherparams must be an object"))?;
+  let obj = value
+    .as_object()
+    .ok_or_else(|| napi::Error::from_reason("cipherparams must be an object"))?;
   Ok(CipherParams {
     iv: obj
       .get("iv")
@@ -244,7 +251,9 @@ fn parse_kdf_params(value: &Value, kdf_type: &str) -> Option<KdfParams> {
 }
 
 fn parse_identity_data(value: &Value) -> Result<IdentityData> {
-  let obj = value.as_object().ok_or_else(|| napi::Error::from_reason("identity must be an object"))?;
+  let obj = value
+    .as_object()
+    .ok_or_else(|| napi::Error::from_reason("identity must be an object"))?;
   Ok(IdentityData {
     enc_auth_key: obj
       .get("encAuthKey")
@@ -269,7 +278,9 @@ fn parse_identity_data(value: &Value) -> Result<IdentityData> {
 }
 
 fn parse_enc_pair_data(value: &Value) -> Result<EncPairData> {
-  let obj = value.as_object().ok_or_else(|| napi::Error::from_reason("enc pair must be an object"))?;
+  let obj = value
+    .as_object()
+    .ok_or_else(|| napi::Error::from_reason("enc pair must be an object"))?;
   Ok(EncPairData {
     enc_str: obj
       .get("encStr")
@@ -285,18 +296,20 @@ fn parse_enc_pair_data(value: &Value) -> Result<EncPairData> {
 }
 
 fn parse_keystore_metadata(value: &Value) -> Result<KeystoreMetadata> {
-  let obj = value.as_object().ok_or_else(|| napi::Error::from_reason("imTokenMeta must be an object"))?;
+  let obj = value
+    .as_object()
+    .ok_or_else(|| napi::Error::from_reason("imTokenMeta must be an object"))?;
   Ok(KeystoreMetadata {
     name: obj
       .get("name")
       .and_then(|v| v.as_str())
       .unwrap_or("Unknown")
       .to_string(),
-    password_hint: obj.get("passwordHint").and_then(|v| v.as_str()).map(String::from),
-    timestamp: obj
-      .get("timestamp")
-      .and_then(|v| v.as_i64())
-      .unwrap_or(0),
+    password_hint: obj
+      .get("passwordHint")
+      .and_then(|v| v.as_str())
+      .map(String::from),
+    timestamp: obj.get("timestamp").and_then(|v| v.as_i64()).unwrap_or(0),
     source: obj
       .get("source")
       .and_then(|v| v.as_str())
@@ -307,12 +320,15 @@ fn parse_keystore_metadata(value: &Value) -> Result<KeystoreMetadata> {
       .and_then(|v| v.as_str())
       .unwrap_or("MAINNET")
       .to_string(),
-    identified_chain_types: obj.get("identifiedChainTypes").and_then(|v| v.as_array()).map(|arr| {
-      arr
-        .iter()
-        .filter_map(|v| v.as_str().map(String::from))
-        .collect()
-    }),
+    identified_chain_types: obj
+      .get("identifiedChainTypes")
+      .and_then(|v| v.as_array())
+      .map(|arr| {
+        arr
+          .iter()
+          .filter_map(|v| v.as_str().map(String::from))
+          .collect()
+      }),
   })
 }
 
@@ -380,7 +396,7 @@ fn parse_wallet_account(value: &Value) -> Result<WalletAccount> {
 /// Creates a new mnemonic-backed wallet.
 ///
 /// If `vaultPath` is provided, the returned WalletInfo is also persisted under
-/// that directory as `<wallet id>.json`. `index` selects the default derived
+/// `<vaultPath>/wallets/<wallet id>.json`. `index` selects the default derived
 /// account index.
 pub fn create_wallet(
   name: String,
@@ -408,7 +424,7 @@ pub fn create_wallet(
 /// Imports an existing mnemonic-backed wallet.
 ///
 /// If `vaultPath` is provided, the returned WalletInfo is also persisted under
-/// that directory as `<wallet id>.json`. `index` selects the default derived
+/// `<vaultPath>/wallets/<wallet id>.json`. `index` selects the default derived
 /// account index.
 pub fn import_wallet_mnemonic(
   name: String,
@@ -439,8 +455,8 @@ pub fn import_wallet_mnemonic(
 /// Imports a private key as a non-derivable wallet.
 ///
 /// If `vaultPath` is provided, the returned WalletInfo is also persisted under
-/// that directory as `<wallet id>.json`. `index` is accepted for API parity but
-/// ignored because private-key wallets are non-derivable.
+/// `<vaultPath>/wallets/<wallet id>.json`. `index` is accepted for API parity
+/// but ignored because private-key wallets are non-derivable.
 pub fn import_wallet_private_key(
   name: String,
   private_key: String,
@@ -604,40 +620,61 @@ pub(crate) fn keystore_data_to_json(data: &KeystoreData) -> Value {
   let mut value = Map::new();
   value.insert("id".to_string(), json!(data.id));
   value.insert("version".to_string(), json!(data.version));
-  value.insert("sourceFingerprint".to_string(), json!(data.source_fingerprint));
+  value.insert(
+    "sourceFingerprint".to_string(),
+    json!(data.source_fingerprint),
+  );
   value.insert("crypto".to_string(), crypto_data_to_json(&data.crypto));
-  value.insert("identity".to_string(), identity_data_to_json(&data.identity));
+  value.insert(
+    "identity".to_string(),
+    identity_data_to_json(&data.identity),
+  );
   if let Some(curve) = &data.curve {
     value.insert("curve".to_string(), json!(curve));
   }
-  value.insert("encOriginal".to_string(), enc_pair_data_to_json(&data.enc_original));
-  value.insert("imTokenMeta".to_string(), keystore_metadata_to_json(&data.meta));
+  value.insert(
+    "encOriginal".to_string(),
+    enc_pair_data_to_json(&data.enc_original),
+  );
+  value.insert(
+    "imTokenMeta".to_string(),
+    keystore_metadata_to_json(&data.meta),
+  );
   Value::Object(value)
 }
 
 pub(crate) fn crypto_data_to_json(data: &CryptoData) -> Value {
   let mut value = Map::new();
   value.insert("cipher".to_string(), json!(data.cipher));
-  value.insert("cipherparams".to_string(), cipher_params_to_json(&data.cipher_params));
+  value.insert(
+    "cipherparams".to_string(),
+    cipher_params_to_json(&data.cipher_params),
+  );
   value.insert("ciphertext".to_string(), json!(data.ciphertext));
   value.insert("mac".to_string(), json!(data.mac));
   // Add KDF fields (flat format: kdf + kdfparams) - matches tcx-keystore format
   value.insert("kdf".to_string(), json!(data.kdf.clone()));
   if data.kdf == "scrypt" {
-    value.insert("kdfparams".to_string(), json!({
-      "n": data.kdfparams.n,
-      "p": data.kdfparams.p,
-      "r": data.kdfparams.r,
-      "dklen": data.kdfparams.dklen,
-      "salt": data.kdfparams.salt,
-    }));
+    value.insert(
+      "kdfparams".to_string(),
+      json!({
+        "n": data.kdfparams.n,
+        "p": data.kdfparams.p,
+        "r": data.kdfparams.r,
+        "dklen": data.kdfparams.dklen,
+        "salt": data.kdfparams.salt,
+      }),
+    );
   } else {
-    value.insert("kdfparams".to_string(), json!({
-      "c": data.kdfparams.c,
-      "prf": data.kdfparams.prf,
-      "dklen": data.kdfparams.dklen,
-      "salt": data.kdfparams.salt,
-    }));
+    value.insert(
+      "kdfparams".to_string(),
+      json!({
+        "c": data.kdfparams.c,
+        "prf": data.kdfparams.prf,
+        "dklen": data.kdfparams.dklen,
+        "salt": data.kdfparams.salt,
+      }),
+    );
   }
   Value::Object(value)
 }
@@ -672,7 +709,10 @@ pub(crate) fn keystore_metadata_to_json(meta: &KeystoreMetadata) -> Value {
   value.insert("source".to_string(), json!(meta.source));
   value.insert("network".to_string(), json!(meta.network));
   if let Some(identified_chain_types) = &meta.identified_chain_types {
-    value.insert("identifiedChainTypes".to_string(), json!(identified_chain_types));
+    value.insert(
+      "identifiedChainTypes".to_string(),
+      json!(identified_chain_types),
+    );
   }
   Value::Object(value)
 }
@@ -776,13 +816,14 @@ fn build_keystore_data(keystore: &TcxKeystore) -> KeystoreData {
   // Parse the crypto JSON to extract KDF parameters
   // We need to serialize and deserialize since tcx-keystore doesn't expose internal fields directly
   let crypto_json = serde_json::to_value(crypto).unwrap_or_default();
-  
+
   // Extract KDF type and params from serialized crypto
   let kdf_type_str = crypto_json
     .get("kdf")
     .and_then(|v| v.as_str())
     .unwrap_or("pbkdf2");
-  let kdf_params = crypto_json.get("kdfparams")
+  let kdf_params = crypto_json
+    .get("kdfparams")
     .and_then(|v| parse_kdf_params(v, kdf_type_str))
     .unwrap_or_else(|| KdfParams::pbkdf2(10240, "hmac-sha256".to_string(), 32, String::new()));
 
@@ -841,5 +882,3 @@ fn build_keystore_data(keystore: &TcxKeystore) -> KeystoreData {
     },
   }
 }
-
-

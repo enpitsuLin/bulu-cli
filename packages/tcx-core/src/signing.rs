@@ -21,8 +21,6 @@ use crate::types::{
 use crate::vault;
 use crate::wallet::with_unlocked_keystore;
 
-
-
 #[napi(js_name = "signMessage")]
 /// Signs a plain chain-specific message using the default chain conventions.
 ///
