@@ -8,7 +8,9 @@
     "format:prettier": "prettier . -w",
     "format:toml": "taplo format",
     "format:rs": "cargo fmt",
-    "lint": "oxlint .",
+    "lint": "pnpm run \"/^lint:.*/\"",
+    "lint:oxlint": "oxlint .",
+    "lint:rs": "cargo clippy -p tcx_core",
     "test": "pnpm --filter \"./packages/*\" run test",
     "prepare": "simple-git-hooks"
   },
