@@ -1,4 +1,9 @@
 use napi::Either;
+use serde_json::Value;
+use std::env;
+use std::fs;
+use std::path::PathBuf;
+use std::time::{SystemTime, UNIX_EPOCH};
 use tcx_common::ToHex;
 use tcx_eth::transaction::EthTxInput as TcxEthTxInput;
 use tcx_eth::transaction_types::Transaction as TcxEthTransaction;
@@ -12,6 +17,25 @@ const TEST_PASSWORD: &str = "imToken";
 const TEST_MNEMONIC: &str =
   "inject kidney empty canal shadow pact comfort wife crush horse wife sketch";
 const TEST_PRIVATE_KEY: &str = "a392604efc2fad9c0b3da43b5f698a2e3f270f170d859912be0d54742275c5f6";
+const ETH_ACCOUNT_1_DERIVATION_PATH: &str = "m/44'/60'/0'/0/1";
+const TRON_ACCOUNT_1_DERIVATION_PATH: &str = "m/44'/195'/0'/0/1";
+
+fn temp_vault_path(test_name: &str) -> PathBuf {
+  let timestamp = SystemTime::now()
+    .duration_since(UNIX_EPOCH)
+    .expect("system clock should be after Unix epoch")
+    .as_nanos();
+
+  env::temp_dir().join(format!(
+    "tcx-core-{test_name}-{}-{timestamp}.json",
+    std::process::id()
+  ))
+}
+
+fn read_vault_json(path: &PathBuf) -> Value {
+  let persisted = fs::read_to_string(path).expect("vault JSON should be readable");
+  serde_json::from_str(&persisted).expect("vault JSON should parse")
+}
 
 fn encode_unsigned_eth_transaction(input: EthTransactionInput) -> String {
   let tx = TcxEthTransaction::try_from(&TcxEthTxInput::from(input))
@@ -21,7 +45,7 @@ fn encode_unsigned_eth_transaction(input: EthTransactionInput) -> String {
 
 #[test]
 fn create_wallet_returns_keystore_json_and_default_accounts() {
-  let wallet = create_wallet("Created".to_string(), TEST_PASSWORD.to_string())
+  let wallet = create_wallet("Created".to_string(), TEST_PASSWORD.to_string(), None, None)
     .expect("create wallet should succeed");
 
   assert_eq!(wallet.meta.source, WalletSource::NewMnemonic);
@@ -35,11 +59,41 @@ fn create_wallet_returns_keystore_json_and_default_accounts() {
 }
 
 #[test]
+fn create_wallet_persists_wallet_info_when_vault_path_is_provided() {
+  let vault_path = temp_vault_path("create-wallet");
+  let wallet = create_wallet(
+    "Created".to_string(),
+    TEST_PASSWORD.to_string(),
+    Some(vault_path.to_string_lossy().into_owned()),
+    None,
+  )
+  .expect("create wallet should succeed");
+  let persisted = read_vault_json(&vault_path);
+
+  assert!(vault_path.exists());
+  assert_eq!(persisted["keystoreJson"], wallet.keystore_json);
+  assert_eq!(persisted["meta"]["id"], wallet.meta.id);
+  assert_eq!(persisted["meta"]["source"], "NEW_MNEMONIC");
+  assert_eq!(
+    persisted["accounts"][0]["chainId"],
+    DEFAULT_ETH_MAINNET_CHAIN_ID
+  );
+  assert_eq!(
+    persisted["accounts"][1]["chainId"],
+    DEFAULT_TRON_MAINNET_CHAIN_ID
+  );
+
+  let _ = fs::remove_file(vault_path);
+}
+
+#[test]
 fn import_wallet_mnemonic_returns_default_accounts() {
   let wallet = import_wallet_mnemonic(
     "Imported mnemonic".to_string(),
     TEST_MNEMONIC.to_string(),
     TEST_PASSWORD.to_string(),
+    None,
+    None,
   )
   .expect("mnemonic import should succeed");
 
@@ -51,11 +105,59 @@ fn import_wallet_mnemonic_returns_default_accounts() {
 }
 
 #[test]
+fn import_wallet_mnemonic_uses_index_for_default_derivations_and_persists_wallet_info() {
+  let default_wallet = import_wallet_mnemonic(
+    "Default mnemonic".to_string(),
+    TEST_MNEMONIC.to_string(),
+    TEST_PASSWORD.to_string(),
+    None,
+    None,
+  )
+  .expect("mnemonic import should succeed");
+  let vault_path = temp_vault_path("import-mnemonic");
+  let indexed_wallet = import_wallet_mnemonic(
+    "Indexed mnemonic".to_string(),
+    TEST_MNEMONIC.to_string(),
+    TEST_PASSWORD.to_string(),
+    Some(vault_path.to_string_lossy().into_owned()),
+    Some(1),
+  )
+  .expect("indexed mnemonic import should succeed");
+  let persisted = read_vault_json(&vault_path);
+
+  assert_eq!(
+    indexed_wallet.accounts[0].derivation_path.as_deref(),
+    Some(ETH_ACCOUNT_1_DERIVATION_PATH)
+  );
+  assert_eq!(
+    indexed_wallet.accounts[1].derivation_path.as_deref(),
+    Some(TRON_ACCOUNT_1_DERIVATION_PATH)
+  );
+  assert_ne!(
+    indexed_wallet.accounts[0].address,
+    default_wallet.accounts[0].address
+  );
+  assert_eq!(persisted["keystoreJson"], indexed_wallet.keystore_json);
+  assert_eq!(
+    persisted["accounts"][0]["derivationPath"],
+    ETH_ACCOUNT_1_DERIVATION_PATH
+  );
+  assert_eq!(
+    persisted["accounts"][1]["derivationPath"],
+    TRON_ACCOUNT_1_DERIVATION_PATH
+  );
+
+  let _ = fs::remove_file(vault_path);
+}
+
+#[test]
 fn import_wallet_private_key_returns_non_derivable_accounts() {
   let wallet = import_wallet_private_key(
     "Imported private key".to_string(),
     TEST_PRIVATE_KEY.to_string(),
     TEST_PASSWORD.to_string(),
+    None,
+    None,
   )
   .expect("private key import should succeed");
 
@@ -72,11 +174,36 @@ fn import_wallet_private_key_returns_non_derivable_accounts() {
 }
 
 #[test]
+fn import_wallet_private_key_persists_wallet_info_and_ignores_index() {
+  let vault_path = temp_vault_path("import-private-key");
+  let wallet = import_wallet_private_key(
+    "Imported private key".to_string(),
+    TEST_PRIVATE_KEY.to_string(),
+    TEST_PASSWORD.to_string(),
+    Some(vault_path.to_string_lossy().into_owned()),
+    Some(9),
+  )
+  .expect("private key import should succeed");
+  let persisted = read_vault_json(&vault_path);
+
+  assert!(!wallet.meta.derivable);
+  assert!(wallet.accounts[0].derivation_path.is_none());
+  assert!(wallet.accounts[0].ext_pub_key.is_none());
+  assert_eq!(persisted["keystoreJson"], wallet.keystore_json);
+  assert!(persisted["accounts"][0].get("derivationPath").is_none());
+  assert!(persisted["accounts"][0].get("extPubKey").is_none());
+
+  let _ = fs::remove_file(vault_path);
+}
+
+#[test]
 fn load_wallet_restores_wallet_from_keystore_json() {
   let source_wallet = import_wallet_mnemonic(
     "Imported mnemonic".to_string(),
     TEST_MNEMONIC.to_string(),
     TEST_PASSWORD.to_string(),
+    None,
+    None,
   )
   .expect("mnemonic import should succeed");
 
@@ -106,6 +233,8 @@ fn derive_accounts_returns_requested_accounts() {
     "Imported mnemonic".to_string(),
     TEST_MNEMONIC.to_string(),
     TEST_PASSWORD.to_string(),
+    None,
+    None,
   )
   .expect("mnemonic import should succeed");
 
@@ -147,6 +276,8 @@ fn derive_accounts_rejects_unsupported_chain_id_namespace() {
     "Imported mnemonic".to_string(),
     TEST_MNEMONIC.to_string(),
     TEST_PASSWORD.to_string(),
+    None,
+    None,
   )
   .expect("mnemonic import should succeed");
 
@@ -171,6 +302,8 @@ fn sign_message_signs_ethereum_personal_messages() {
     "Imported mnemonic".to_string(),
     TEST_MNEMONIC.to_string(),
     TEST_PASSWORD.to_string(),
+    None,
+    None,
   )
   .expect("mnemonic import should succeed");
 
@@ -194,6 +327,8 @@ fn sign_message_signs_tron_messages() {
     "Imported mnemonic".to_string(),
     TEST_MNEMONIC.to_string(),
     TEST_PASSWORD.to_string(),
+    None,
+    None,
   )
   .expect("mnemonic import should succeed");
 
@@ -217,6 +352,8 @@ fn sign_transaction_signs_ethereum_transactions() {
     "Imported private key".to_string(),
     TEST_PRIVATE_KEY.to_string(),
     TEST_PASSWORD.to_string(),
+    None,
+    None,
   )
   .expect("private key import should succeed");
 
@@ -262,6 +399,8 @@ fn sign_transaction_signs_ethereum_eip1559_transaction_hex() {
     "Imported mnemonic".to_string(),
     TEST_MNEMONIC.to_string(),
     TEST_PASSWORD.to_string(),
+    None,
+    None,
   )
   .expect("mnemonic import should succeed");
 
@@ -307,6 +446,8 @@ fn sign_transaction_signs_tron_transactions() {
     "Imported mnemonic".to_string(),
     TEST_MNEMONIC.to_string(),
     TEST_PASSWORD.to_string(),
+    None,
+    None,
   )
   .expect("mnemonic import should succeed");
 
