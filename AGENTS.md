@@ -30,3 +30,4 @@ pnpm run format
 
 - **TypeScript**: Single quotes, no semicolons, 2-space indent, Prettier
 - **Rust**: 2-space indent, `cargo fmt` to format, `cargo clippy` to lint
+- **Comments**: Explain why, not what/how. Only when non-obvious.
