@@ -127,3 +127,6 @@ target/
 !.yarn/sdks
 !.yarn/versions
 npm/
+
+# personal auto load zsh local profile
+.zprofile
