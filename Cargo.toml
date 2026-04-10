@@ -1,5 +1,5 @@
 [workspace]
-members  = ["packages/tcx-napi-rs"]
+members  = ["packages/tcx-core"]
 resolver = "2"
 
 [profile.release]

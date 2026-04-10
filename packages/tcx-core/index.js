@@ -70,13 +70,13 @@ function requireNative() {
   } else if (process.platform === 'android') {
     if (process.arch === 'arm64') {
       try {
-        return require('./tcx-napi-rs.android-arm64.node')
+        return require('./tcx-core.android-arm64.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('@bulu-cli/tcx-napi-rs-android-arm64')
-        const bindingPackageVersion = require('@bulu-cli/tcx-napi-rs-android-arm64/package.json').version
+        const binding = require('@bulu-cli/tcx-core-android-arm64')
+        const bindingPackageVersion = require('@bulu-cli/tcx-core-android-arm64/package.json').version
         if (bindingPackageVersion !== '0.1.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 0.1.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -86,13 +86,13 @@ function requireNative() {
       }
     } else if (process.arch === 'arm') {
       try {
-        return require('./tcx-napi-rs.android-arm-eabi.node')
+        return require('./tcx-core.android-arm-eabi.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('@bulu-cli/tcx-napi-rs-android-arm-eabi')
-        const bindingPackageVersion = require('@bulu-cli/tcx-napi-rs-android-arm-eabi/package.json').version
+        const binding = require('@bulu-cli/tcx-core-android-arm-eabi')
+        const bindingPackageVersion = require('@bulu-cli/tcx-core-android-arm-eabi/package.json').version
         if (bindingPackageVersion !== '0.1.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 0.1.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -107,13 +107,13 @@ function requireNative() {
     if (process.arch === 'x64') {
       if (process.config?.variables?.shlib_suffix === 'dll.a' || process.config?.variables?.node_target_type === 'shared_library') {
         try {
-        return require('./tcx-napi-rs.win32-x64-gnu.node')
+        return require('./tcx-core.win32-x64-gnu.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('@bulu-cli/tcx-napi-rs-win32-x64-gnu')
-        const bindingPackageVersion = require('@bulu-cli/tcx-napi-rs-win32-x64-gnu/package.json').version
+        const binding = require('@bulu-cli/tcx-core-win32-x64-gnu')
+        const bindingPackageVersion = require('@bulu-cli/tcx-core-win32-x64-gnu/package.json').version
         if (bindingPackageVersion !== '0.1.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 0.1.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -123,13 +123,13 @@ function requireNative() {
       }
       } else {
         try {
-        return require('./tcx-napi-rs.win32-x64-msvc.node')
+        return require('./tcx-core.win32-x64-msvc.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('@bulu-cli/tcx-napi-rs-win32-x64-msvc')
-        const bindingPackageVersion = require('@bulu-cli/tcx-napi-rs-win32-x64-msvc/package.json').version
+        const binding = require('@bulu-cli/tcx-core-win32-x64-msvc')
+        const bindingPackageVersion = require('@bulu-cli/tcx-core-win32-x64-msvc/package.json').version
         if (bindingPackageVersion !== '0.1.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 0.1.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -140,13 +140,13 @@ function requireNative() {
       }
     } else if (process.arch === 'ia32') {
       try {
-        return require('./tcx-napi-rs.win32-ia32-msvc.node')
+        return require('./tcx-core.win32-ia32-msvc.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('@bulu-cli/tcx-napi-rs-win32-ia32-msvc')
-        const bindingPackageVersion = require('@bulu-cli/tcx-napi-rs-win32-ia32-msvc/package.json').version
+        const binding = require('@bulu-cli/tcx-core-win32-ia32-msvc')
+        const bindingPackageVersion = require('@bulu-cli/tcx-core-win32-ia32-msvc/package.json').version
         if (bindingPackageVersion !== '0.1.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 0.1.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -156,13 +156,13 @@ function requireNative() {
       }
     } else if (process.arch === 'arm64') {
       try {
-        return require('./tcx-napi-rs.win32-arm64-msvc.node')
+        return require('./tcx-core.win32-arm64-msvc.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('@bulu-cli/tcx-napi-rs-win32-arm64-msvc')
-        const bindingPackageVersion = require('@bulu-cli/tcx-napi-rs-win32-arm64-msvc/package.json').version
+        const binding = require('@bulu-cli/tcx-core-win32-arm64-msvc')
+        const bindingPackageVersion = require('@bulu-cli/tcx-core-win32-arm64-msvc/package.json').version
         if (bindingPackageVersion !== '0.1.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 0.1.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -175,13 +175,13 @@ function requireNative() {
     }
   } else if (process.platform === 'darwin') {
     try {
-      return require('./tcx-napi-rs.darwin-universal.node')
+      return require('./tcx-core.darwin-universal.node')
     } catch (e) {
       loadErrors.push(e)
     }
     try {
-      const binding = require('@bulu-cli/tcx-napi-rs-darwin-universal')
-      const bindingPackageVersion = require('@bulu-cli/tcx-napi-rs-darwin-universal/package.json').version
+      const binding = require('@bulu-cli/tcx-core-darwin-universal')
+      const bindingPackageVersion = require('@bulu-cli/tcx-core-darwin-universal/package.json').version
       if (bindingPackageVersion !== '0.1.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
         throw new Error(`Native binding package version mismatch, expected 0.1.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
       }
@@ -191,13 +191,13 @@ function requireNative() {
     }
     if (process.arch === 'x64') {
       try {
-        return require('./tcx-napi-rs.darwin-x64.node')
+        return require('./tcx-core.darwin-x64.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('@bulu-cli/tcx-napi-rs-darwin-x64')
-        const bindingPackageVersion = require('@bulu-cli/tcx-napi-rs-darwin-x64/package.json').version
+        const binding = require('@bulu-cli/tcx-core-darwin-x64')
+        const bindingPackageVersion = require('@bulu-cli/tcx-core-darwin-x64/package.json').version
         if (bindingPackageVersion !== '0.1.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 0.1.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -207,13 +207,13 @@ function requireNative() {
       }
     } else if (process.arch === 'arm64') {
       try {
-        return require('./tcx-napi-rs.darwin-arm64.node')
+        return require('./tcx-core.darwin-arm64.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('@bulu-cli/tcx-napi-rs-darwin-arm64')
-        const bindingPackageVersion = require('@bulu-cli/tcx-napi-rs-darwin-arm64/package.json').version
+        const binding = require('@bulu-cli/tcx-core-darwin-arm64')
+        const bindingPackageVersion = require('@bulu-cli/tcx-core-darwin-arm64/package.json').version
         if (bindingPackageVersion !== '0.1.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 0.1.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -227,13 +227,13 @@ function requireNative() {
   } else if (process.platform === 'freebsd') {
     if (process.arch === 'x64') {
       try {
-        return require('./tcx-napi-rs.freebsd-x64.node')
+        return require('./tcx-core.freebsd-x64.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('@bulu-cli/tcx-napi-rs-freebsd-x64')
-        const bindingPackageVersion = require('@bulu-cli/tcx-napi-rs-freebsd-x64/package.json').version
+        const binding = require('@bulu-cli/tcx-core-freebsd-x64')
+        const bindingPackageVersion = require('@bulu-cli/tcx-core-freebsd-x64/package.json').version
         if (bindingPackageVersion !== '0.1.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 0.1.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -243,13 +243,13 @@ function requireNative() {
       }
     } else if (process.arch === 'arm64') {
       try {
-        return require('./tcx-napi-rs.freebsd-arm64.node')
+        return require('./tcx-core.freebsd-arm64.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('@bulu-cli/tcx-napi-rs-freebsd-arm64')
-        const bindingPackageVersion = require('@bulu-cli/tcx-napi-rs-freebsd-arm64/package.json').version
+        const binding = require('@bulu-cli/tcx-core-freebsd-arm64')
+        const bindingPackageVersion = require('@bulu-cli/tcx-core-freebsd-arm64/package.json').version
         if (bindingPackageVersion !== '0.1.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 0.1.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -264,13 +264,13 @@ function requireNative() {
     if (process.arch === 'x64') {
       if (isMusl()) {
         try {
-          return require('./tcx-napi-rs.linux-x64-musl.node')
+          return require('./tcx-core.linux-x64-musl.node')
         } catch (e) {
           loadErrors.push(e)
         }
         try {
-          const binding = require('@bulu-cli/tcx-napi-rs-linux-x64-musl')
-          const bindingPackageVersion = require('@bulu-cli/tcx-napi-rs-linux-x64-musl/package.json').version
+          const binding = require('@bulu-cli/tcx-core-linux-x64-musl')
+          const bindingPackageVersion = require('@bulu-cli/tcx-core-linux-x64-musl/package.json').version
           if (bindingPackageVersion !== '0.1.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
             throw new Error(`Native binding package version mismatch, expected 0.1.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
@@ -280,13 +280,13 @@ function requireNative() {
         }
       } else {
         try {
-          return require('./tcx-napi-rs.linux-x64-gnu.node')
+          return require('./tcx-core.linux-x64-gnu.node')
         } catch (e) {
           loadErrors.push(e)
         }
         try {
-          const binding = require('@bulu-cli/tcx-napi-rs-linux-x64-gnu')
-          const bindingPackageVersion = require('@bulu-cli/tcx-napi-rs-linux-x64-gnu/package.json').version
+          const binding = require('@bulu-cli/tcx-core-linux-x64-gnu')
+          const bindingPackageVersion = require('@bulu-cli/tcx-core-linux-x64-gnu/package.json').version
           if (bindingPackageVersion !== '0.1.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
             throw new Error(`Native binding package version mismatch, expected 0.1.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
@@ -298,13 +298,13 @@ function requireNative() {
     } else if (process.arch === 'arm64') {
       if (isMusl()) {
         try {
-          return require('./tcx-napi-rs.linux-arm64-musl.node')
+          return require('./tcx-core.linux-arm64-musl.node')
         } catch (e) {
           loadErrors.push(e)
         }
         try {
-          const binding = require('@bulu-cli/tcx-napi-rs-linux-arm64-musl')
-          const bindingPackageVersion = require('@bulu-cli/tcx-napi-rs-linux-arm64-musl/package.json').version
+          const binding = require('@bulu-cli/tcx-core-linux-arm64-musl')
+          const bindingPackageVersion = require('@bulu-cli/tcx-core-linux-arm64-musl/package.json').version
           if (bindingPackageVersion !== '0.1.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
             throw new Error(`Native binding package version mismatch, expected 0.1.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
@@ -314,13 +314,13 @@ function requireNative() {
         }
       } else {
         try {
-          return require('./tcx-napi-rs.linux-arm64-gnu.node')
+          return require('./tcx-core.linux-arm64-gnu.node')
         } catch (e) {
           loadErrors.push(e)
         }
         try {
-          const binding = require('@bulu-cli/tcx-napi-rs-linux-arm64-gnu')
-          const bindingPackageVersion = require('@bulu-cli/tcx-napi-rs-linux-arm64-gnu/package.json').version
+          const binding = require('@bulu-cli/tcx-core-linux-arm64-gnu')
+          const bindingPackageVersion = require('@bulu-cli/tcx-core-linux-arm64-gnu/package.json').version
           if (bindingPackageVersion !== '0.1.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
             throw new Error(`Native binding package version mismatch, expected 0.1.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
@@ -332,13 +332,13 @@ function requireNative() {
     } else if (process.arch === 'arm') {
       if (isMusl()) {
         try {
-          return require('./tcx-napi-rs.linux-arm-musleabihf.node')
+          return require('./tcx-core.linux-arm-musleabihf.node')
         } catch (e) {
           loadErrors.push(e)
         }
         try {
-          const binding = require('@bulu-cli/tcx-napi-rs-linux-arm-musleabihf')
-          const bindingPackageVersion = require('@bulu-cli/tcx-napi-rs-linux-arm-musleabihf/package.json').version
+          const binding = require('@bulu-cli/tcx-core-linux-arm-musleabihf')
+          const bindingPackageVersion = require('@bulu-cli/tcx-core-linux-arm-musleabihf/package.json').version
           if (bindingPackageVersion !== '0.1.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
             throw new Error(`Native binding package version mismatch, expected 0.1.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
@@ -348,13 +348,13 @@ function requireNative() {
         }
       } else {
         try {
-          return require('./tcx-napi-rs.linux-arm-gnueabihf.node')
+          return require('./tcx-core.linux-arm-gnueabihf.node')
         } catch (e) {
           loadErrors.push(e)
         }
         try {
-          const binding = require('@bulu-cli/tcx-napi-rs-linux-arm-gnueabihf')
-          const bindingPackageVersion = require('@bulu-cli/tcx-napi-rs-linux-arm-gnueabihf/package.json').version
+          const binding = require('@bulu-cli/tcx-core-linux-arm-gnueabihf')
+          const bindingPackageVersion = require('@bulu-cli/tcx-core-linux-arm-gnueabihf/package.json').version
           if (bindingPackageVersion !== '0.1.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
             throw new Error(`Native binding package version mismatch, expected 0.1.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
@@ -366,13 +366,13 @@ function requireNative() {
     } else if (process.arch === 'loong64') {
       if (isMusl()) {
         try {
-          return require('./tcx-napi-rs.linux-loong64-musl.node')
+          return require('./tcx-core.linux-loong64-musl.node')
         } catch (e) {
           loadErrors.push(e)
         }
         try {
-          const binding = require('@bulu-cli/tcx-napi-rs-linux-loong64-musl')
-          const bindingPackageVersion = require('@bulu-cli/tcx-napi-rs-linux-loong64-musl/package.json').version
+          const binding = require('@bulu-cli/tcx-core-linux-loong64-musl')
+          const bindingPackageVersion = require('@bulu-cli/tcx-core-linux-loong64-musl/package.json').version
           if (bindingPackageVersion !== '0.1.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
             throw new Error(`Native binding package version mismatch, expected 0.1.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
@@ -382,13 +382,13 @@ function requireNative() {
         }
       } else {
         try {
-          return require('./tcx-napi-rs.linux-loong64-gnu.node')
+          return require('./tcx-core.linux-loong64-gnu.node')
         } catch (e) {
           loadErrors.push(e)
         }
         try {
-          const binding = require('@bulu-cli/tcx-napi-rs-linux-loong64-gnu')
-          const bindingPackageVersion = require('@bulu-cli/tcx-napi-rs-linux-loong64-gnu/package.json').version
+          const binding = require('@bulu-cli/tcx-core-linux-loong64-gnu')
+          const bindingPackageVersion = require('@bulu-cli/tcx-core-linux-loong64-gnu/package.json').version
           if (bindingPackageVersion !== '0.1.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
             throw new Error(`Native binding package version mismatch, expected 0.1.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
@@ -400,13 +400,13 @@ function requireNative() {
     } else if (process.arch === 'riscv64') {
       if (isMusl()) {
         try {
-          return require('./tcx-napi-rs.linux-riscv64-musl.node')
+          return require('./tcx-core.linux-riscv64-musl.node')
         } catch (e) {
           loadErrors.push(e)
         }
         try {
-          const binding = require('@bulu-cli/tcx-napi-rs-linux-riscv64-musl')
-          const bindingPackageVersion = require('@bulu-cli/tcx-napi-rs-linux-riscv64-musl/package.json').version
+          const binding = require('@bulu-cli/tcx-core-linux-riscv64-musl')
+          const bindingPackageVersion = require('@bulu-cli/tcx-core-linux-riscv64-musl/package.json').version
           if (bindingPackageVersion !== '0.1.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
             throw new Error(`Native binding package version mismatch, expected 0.1.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
@@ -416,13 +416,13 @@ function requireNative() {
         }
       } else {
         try {
-          return require('./tcx-napi-rs.linux-riscv64-gnu.node')
+          return require('./tcx-core.linux-riscv64-gnu.node')
         } catch (e) {
           loadErrors.push(e)
         }
         try {
-          const binding = require('@bulu-cli/tcx-napi-rs-linux-riscv64-gnu')
-          const bindingPackageVersion = require('@bulu-cli/tcx-napi-rs-linux-riscv64-gnu/package.json').version
+          const binding = require('@bulu-cli/tcx-core-linux-riscv64-gnu')
+          const bindingPackageVersion = require('@bulu-cli/tcx-core-linux-riscv64-gnu/package.json').version
           if (bindingPackageVersion !== '0.1.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
             throw new Error(`Native binding package version mismatch, expected 0.1.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
@@ -433,13 +433,13 @@ function requireNative() {
       }
     } else if (process.arch === 'ppc64') {
       try {
-        return require('./tcx-napi-rs.linux-ppc64-gnu.node')
+        return require('./tcx-core.linux-ppc64-gnu.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('@bulu-cli/tcx-napi-rs-linux-ppc64-gnu')
-        const bindingPackageVersion = require('@bulu-cli/tcx-napi-rs-linux-ppc64-gnu/package.json').version
+        const binding = require('@bulu-cli/tcx-core-linux-ppc64-gnu')
+        const bindingPackageVersion = require('@bulu-cli/tcx-core-linux-ppc64-gnu/package.json').version
         if (bindingPackageVersion !== '0.1.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 0.1.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -449,13 +449,13 @@ function requireNative() {
       }
     } else if (process.arch === 's390x') {
       try {
-        return require('./tcx-napi-rs.linux-s390x-gnu.node')
+        return require('./tcx-core.linux-s390x-gnu.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('@bulu-cli/tcx-napi-rs-linux-s390x-gnu')
-        const bindingPackageVersion = require('@bulu-cli/tcx-napi-rs-linux-s390x-gnu/package.json').version
+        const binding = require('@bulu-cli/tcx-core-linux-s390x-gnu')
+        const bindingPackageVersion = require('@bulu-cli/tcx-core-linux-s390x-gnu/package.json').version
         if (bindingPackageVersion !== '0.1.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 0.1.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -469,13 +469,13 @@ function requireNative() {
   } else if (process.platform === 'openharmony') {
     if (process.arch === 'arm64') {
       try {
-        return require('./tcx-napi-rs.openharmony-arm64.node')
+        return require('./tcx-core.openharmony-arm64.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('@bulu-cli/tcx-napi-rs-openharmony-arm64')
-        const bindingPackageVersion = require('@bulu-cli/tcx-napi-rs-openharmony-arm64/package.json').version
+        const binding = require('@bulu-cli/tcx-core-openharmony-arm64')
+        const bindingPackageVersion = require('@bulu-cli/tcx-core-openharmony-arm64/package.json').version
         if (bindingPackageVersion !== '0.1.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 0.1.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -485,13 +485,13 @@ function requireNative() {
       }
     } else if (process.arch === 'x64') {
       try {
-        return require('./tcx-napi-rs.openharmony-x64.node')
+        return require('./tcx-core.openharmony-x64.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('@bulu-cli/tcx-napi-rs-openharmony-x64')
-        const bindingPackageVersion = require('@bulu-cli/tcx-napi-rs-openharmony-x64/package.json').version
+        const binding = require('@bulu-cli/tcx-core-openharmony-x64')
+        const bindingPackageVersion = require('@bulu-cli/tcx-core-openharmony-x64/package.json').version
         if (bindingPackageVersion !== '0.1.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 0.1.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -501,13 +501,13 @@ function requireNative() {
       }
     } else if (process.arch === 'arm') {
       try {
-        return require('./tcx-napi-rs.openharmony-arm.node')
+        return require('./tcx-core.openharmony-arm.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('@bulu-cli/tcx-napi-rs-openharmony-arm')
-        const bindingPackageVersion = require('@bulu-cli/tcx-napi-rs-openharmony-arm/package.json').version
+        const binding = require('@bulu-cli/tcx-core-openharmony-arm')
+        const bindingPackageVersion = require('@bulu-cli/tcx-core-openharmony-arm/package.json').version
         if (bindingPackageVersion !== '0.1.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 0.1.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -529,7 +529,7 @@ if (!nativeBinding || process.env.NAPI_RS_FORCE_WASI) {
   let wasiBinding = null
   let wasiBindingError = null
   try {
-    wasiBinding = require('./tcx-napi-rs.wasi.cjs')
+    wasiBinding = require('./tcx-core.wasi.cjs')
     nativeBinding = wasiBinding
   } catch (err) {
     if (process.env.NAPI_RS_FORCE_WASI) {
@@ -538,7 +538,7 @@ if (!nativeBinding || process.env.NAPI_RS_FORCE_WASI) {
   }
   if (!nativeBinding || process.env.NAPI_RS_FORCE_WASI) {
     try {
-      wasiBinding = require('@bulu-cli/tcx-napi-rs-wasm32-wasi')
+      wasiBinding = require('@bulu-cli/tcx-core-wasm32-wasi')
       nativeBinding = wasiBinding
     } catch (err) {
       if (process.env.NAPI_RS_FORCE_WASI) {

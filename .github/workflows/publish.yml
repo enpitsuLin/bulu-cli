@@ -1,8 +1,8 @@
 name: Publish
 env:
   DEBUG: napi:*
-  APP_NAME: tcx-napi-rs
-  PACKAGE_DIR: packages/tcx-napi-rs
+  APP_NAME: tcx-core
+  PACKAGE_DIR: packages/tcx-core
   RUST_TOOLCHAIN: nightly-2026-04-06
   MACOSX_DEPLOYMENT_TARGET: '10.13'
   CARGO_INCREMENTAL: '1'
@@ -21,23 +21,23 @@ jobs:
         settings:
           - host: macos-latest
             target: x86_64-apple-darwin
-            build: pnpm --dir packages/tcx-napi-rs exec napi build --platform --release --target x86_64-apple-darwin
+            build: pnpm --dir packages/tcx-core exec napi build --platform --release --target x86_64-apple-darwin
           - host: windows-latest
             target: x86_64-pc-windows-msvc
-            build: pnpm --dir packages/tcx-napi-rs exec napi build --platform --release --target x86_64-pc-windows-msvc
+            build: pnpm --dir packages/tcx-core exec napi build --platform --release --target x86_64-pc-windows-msvc
           - host: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            build: pnpm --dir packages/tcx-napi-rs exec napi build --platform --release --target x86_64-unknown-linux-gnu --use-napi-cross
+            build: pnpm --dir packages/tcx-core exec napi build --platform --release --target x86_64-unknown-linux-gnu --use-napi-cross
           - host: macos-latest
             target: aarch64-apple-darwin
-            build: pnpm --dir packages/tcx-napi-rs exec napi build --platform --release --target aarch64-apple-darwin
+            build: pnpm --dir packages/tcx-core exec napi build --platform --release --target aarch64-apple-darwin
           - host: ubuntu-latest
             target: aarch64-unknown-linux-gnu
-            build: pnpm --dir packages/tcx-napi-rs exec napi build --platform --release --target aarch64-unknown-linux-gnu --use-napi-cross
+            build: pnpm --dir packages/tcx-core exec napi build --platform --release --target aarch64-unknown-linux-gnu --use-napi-cross
           - host: windows-latest
             target: aarch64-pc-windows-msvc
             setup: echo "CFLAGS_aarch64_pc_windows_msvc=-DSECP256K1_LITTLE_ENDIAN" >> $GITHUB_ENV
-            build: pnpm --dir packages/tcx-napi-rs exec napi build --platform --release --target aarch64-pc-windows-msvc
+            build: pnpm --dir packages/tcx-core exec napi build --platform --release --target aarch64-pc-windows-msvc
     name: release - ${{ matrix.settings.target }} - node@24
     runs-on: ${{ matrix.settings.host }}
     steps:

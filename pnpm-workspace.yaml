@@ -1,7 +1,7 @@
 packages:
   - packages/*
   # napi-rs generated
-  - packages/tcx-napi-rs/npm/*
+  - packages/tcx-core/npm/*
 
 allowBuilds:
   simple-git-hooks: true

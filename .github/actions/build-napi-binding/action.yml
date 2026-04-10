@@ -4,11 +4,11 @@ inputs:
   app-name:
     description: Native binding binary name.
     required: false
-    default: tcx-napi-rs
+    default: tcx-core
   package-dir:
     description: Package directory containing the napi project.
     required: false
-    default: packages/tcx-napi-rs
+    default: packages/tcx-core
   rust-toolchain:
     description: Rust toolchain to install.
     required: true

@@ -6,4 +6,4 @@ package-template.wasi.cjs
 wasi-worker-browser.mjs
 wasi-worker.mjs
 .yarnrc.yml
-packages/tcx-napi-rs/index.d.ts
+packages/tcx-core/index.d.ts

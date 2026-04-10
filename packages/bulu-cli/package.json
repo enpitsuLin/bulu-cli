@@ -36,6 +36,6 @@
   "dependencies": {
     "@clack/prompts": "^1.2.0",
     "citty": "^0.2.2",
-    "@bulu-cli/tcx-napi-rs": "workspace:*"
+    "@bulu-cli/tcx-core": "workspace:*"
   }
 }

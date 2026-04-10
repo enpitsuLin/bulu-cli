@@ -9,7 +9,7 @@ export default defineConfig({
   platform: 'node',
   minify: true,
   deps: {
-    neverBundle: ['@bulu-cli/tcx-napi-rs'],
+    neverBundle: ['@bulu-cli/tcx-core'],
     onlyBundle: false,
   },
 })

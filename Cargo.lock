@@ -1630,7 +1630,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "tcx_napi_rs"
+name = "tcx_core"
 version = "0.1.0"
 dependencies = [
  "napi",

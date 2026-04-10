@@ -1,12 +1,12 @@
 {
-  "name": "@bulu-cli/tcx-napi-rs",
+  "name": "@bulu-cli/tcx-core",
   "version": "0.1.0",
   "main": "index.js",
   "types": "index.d.ts",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/enpitsuLin/bulu-cli.git",
-    "directory": "packages/tcx-napi-rs"
+    "directory": "packages/tcx-core"
   },
   "keywords": [
     "napi-rs",
@@ -22,7 +22,7 @@
     "browser.js"
   ],
   "napi": {
-    "binaryName": "tcx-napi-rs",
+    "binaryName": "tcx-core",
     "targets": [
       "x86_64-pc-windows-msvc",
       "x86_64-apple-darwin",
