@@ -184,20 +184,6 @@ pub struct SCryptParams {
 }
 
 #[napi(object)]
-/// Key derivation function type and parameters.
-pub struct KdfType {
-  /// KDF type name ("pbkdf2" or "scrypt").
-  #[napi(js_name = "kdf")]
-  pub kdf: String,
-  /// PBKDF2 parameters (if kdf is "pbkdf2").
-  #[napi(js_name = "kdfparams")]
-  pub kdf_params: Option<Pbkdf2Params>,
-  /// SCrypt parameters (if kdf is "scrypt").
-  #[napi(js_name = "scryptParams")]
-  pub scrypt_params: Option<SCryptParams>,
-}
-
-#[napi(object)]
 /// Crypto section of the keystore containing encrypted private key.
 pub struct CryptoData {
   /// Cipher algorithm name.
@@ -207,9 +193,13 @@ pub struct CryptoData {
   pub cipher_params: CipherParams,
   /// Encrypted ciphertext (hex-encoded).
   pub ciphertext: String,
-  /// Key derivation function type and parameters.
-  #[napi(js_name = "kdfType")]
-  pub kdf_type: KdfType,
+  /// KDF type name ("pbkdf2" or "scrypt").
+  pub kdf: String,
+  /// PBKDF2 parameters (when kdf is "pbkdf2").
+  pub kdfparams: Option<Pbkdf2Params>,
+  /// SCrypt parameters (when kdf is "scrypt").
+  #[napi(js_name = "scryptParams")]
+  pub scrypt_params: Option<SCryptParams>,
   /// Message authentication code (hex-encoded).
   pub mac: String,
 }

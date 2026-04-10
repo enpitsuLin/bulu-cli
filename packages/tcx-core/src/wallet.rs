@@ -1,8 +1,6 @@
 use napi::Result;
 use napi_derive::napi;
 use serde_json::{json, Map, Value};
-use std::fs;
-use std::path::Path;
 use tcx_common::{random_u8_16, FromHex};
 use tcx_keystore::keystore::IdentityNetwork;
 use tcx_keystore::{Keystore as TcxKeystore, KeystoreGuard, Metadata, Source};
@@ -11,64 +9,19 @@ use tcx_primitive::mnemonic_from_entropy;
 use crate::derivation::derive_accounts_for_wallet;
 use crate::error::{require_non_empty, require_trimmed, to_napi_err};
 use crate::strings::sanitize_optional_text;
+use crate::vault;
 use crate::types::{
-  CipherParams, CryptoData, DerivationInput, EncPairData, IdentityData, KdfType, KeystoreData,
+  CipherParams, CryptoData, DerivationInput, EncPairData, IdentityData, KeystoreData,
   KeystoreMetadata, Pbkdf2Params, SCryptParams, WalletAccount, WalletInfo, WalletMeta,
   WalletNetwork, WalletSource,
 };
 
 #[napi(js_name = "listWallet")]
 pub fn list_wallet(vault_path_opt: Option<String>) -> Result<Vec<WalletInfo>> {
-  let Some(vault_path) = vault_path_opt else {
-    return Ok(Vec::new());
-  };
-
-  let vault_path = require_trimmed(vault_path, "vaultPath")?;
-  let wallets_dir = Path::new(&vault_path).join("wallets");
-
-  if !wallets_dir.exists() {
-    return Ok(Vec::new());
-  }
-
-  let mut wallet_infos = Vec::new();
-
-  let entries = fs::read_dir(&wallets_dir).map_err(|err| {
-    napi::Error::from_reason(format!(
-      "failed to read vault directory `{}`: {err}",
-      wallets_dir.display()
-    ))
-  })?;
-
-  for entry in entries {
-    let entry = entry.map_err(|err| {
-      napi::Error::from_reason(format!(
-        "failed to read entry in vault directory `{}`: {err}",
-        wallets_dir.display()
-      ))
-    })?;
-
-    let path = entry.path();
-    if path.extension().and_then(|ext| ext.to_str()) != Some("json") {
-      continue;
-    }
-
-    let content = match fs::read_to_string(&path) {
-      Ok(content) => content,
-      Err(_) => continue,
-    };
-
-    let wallet_info = match parse_wallet_info(&content) {
-      Ok(info) => info,
-      Err(_) => continue,
-    };
-
-    wallet_infos.push(wallet_info);
-  }
-
-  Ok(wallet_infos)
+  vault::list_wallets(vault_path_opt)
 }
 
-fn parse_wallet_info(content: &str) -> Result<WalletInfo> {
+pub(crate) fn parse_wallet_info(content: &str) -> Result<WalletInfo> {
   let value: Value = serde_json::from_str(content).map_err(to_napi_err)?;
 
   let keystore = value
@@ -222,54 +175,30 @@ fn parse_crypto_data(value: &Value) -> Result<CryptoData> {
     .ok_or_else(|| napi::Error::from_reason("missing mac field"))?
     .to_string();
 
-  // Determine KDF type from available fields (tcx-keystore uses flattened format)
-  let kdf_type = if let Some(pbkdf2_value) = obj.get("pbkdf2") {
-    let params = parse_pbkdf2_params(pbkdf2_value)?;
-    KdfType {
-      kdf: "pbkdf2".to_string(),
-      kdf_params: Some(params),
-      scrypt_params: None,
-    }
-  } else if let Some(scrypt_value) = obj.get("scrypt") {
-    let params = parse_scrypt_params(scrypt_value)?;
-    KdfType {
-      kdf: "scrypt".to_string(),
-      kdf_params: None,
-      scrypt_params: Some(params),
+  // Parse KDF fields (flat format: kdf + kdfparams)
+  let kdf = obj
+    .get("kdf")
+    .and_then(|v| v.as_str())
+    .unwrap_or("pbkdf2")
+    .to_string();
+
+  let (kdfparams, scrypt_params) = if let Some(kdfparams_value) = obj.get("kdfparams") {
+    if kdf == "scrypt" {
+      (None, Some(parse_scrypt_params(kdfparams_value)?))
+    } else {
+      (Some(parse_pbkdf2_params(kdfparams_value)?), None)
     }
   } else {
-    // Fallback: try to detect from kdfparams and kdf fields
-    let kdf_name = obj
-      .get("kdf")
-      .and_then(|v| v.as_str())
-      .unwrap_or("pbkdf2");
-    
-    if let Some(kdfparams) = obj.get("kdfparams") {
-      if kdf_name == "scrypt" {
-        let params = parse_scrypt_params(kdfparams)?;
-        KdfType {
-          kdf: "scrypt".to_string(),
-          kdf_params: None,
-          scrypt_params: Some(params),
-        }
-      } else {
-        let params = parse_pbkdf2_params(kdfparams)?;
-        KdfType {
-          kdf: "pbkdf2".to_string(),
-          kdf_params: Some(params),
-          scrypt_params: None,
-        }
-      }
-    } else {
-      return Err(napi::Error::from_reason("missing KDF parameters (pbkdf2 or scrypt)"));
-    }
+    (None, None)
   };
 
   Ok(CryptoData {
     cipher,
     cipher_params,
     ciphertext,
-    kdf_type,
+    kdf,
+    kdfparams,
+    scrypt_params,
     mac,
   })
 }
@@ -683,28 +612,11 @@ fn persist_wallet_info(wallet_info: &WalletInfo, vault_path: Option<String>) -> 
   let Some(vault_path) = vault_path else {
     return Ok(());
   };
-  let vault_path = require_trimmed(vault_path, "vaultPath")?;
-  let vault_dir = Path::new(&vault_path).join("wallets");
-
-  fs::create_dir_all(&vault_dir).map_err(|err| {
-    napi::Error::from_reason(format!(
-      "failed to create vault directory `{}`: {err}",
-      vault_dir.display()
-    ))
-  })?;
-
-  let path = vault_dir.join(format!("{}.json", wallet_info.meta.id));
-  let payload =
-    serde_json::to_string_pretty(&wallet_info_to_json(wallet_info)).map_err(to_napi_err)?;
-  fs::write(&path, payload).map_err(|err| {
-    napi::Error::from_reason(format!(
-      "failed to write wallet vault `{}`: {err}",
-      path.display()
-    ))
-  })
+  vault::save_wallet(wallet_info, vault_path)
 }
 
-fn wallet_info_to_json(wallet_info: &WalletInfo) -> Value {
+/// Converts WalletInfo to JSON Value for serialization
+pub(crate) fn wallet_info_to_json(wallet_info: &WalletInfo) -> Value {
   json!({
     "keystore": keystore_data_to_json(&wallet_info.keystore),
     "meta": wallet_meta_to_json(&wallet_info.meta),
@@ -716,7 +628,7 @@ pub(crate) fn keystore_to_json(data: &KeystoreData) -> String {
   serde_json::to_string(&keystore_data_to_json(data)).unwrap_or_default()
 }
 
-fn keystore_data_to_json(data: &KeystoreData) -> Value {
+pub(crate) fn keystore_data_to_json(data: &KeystoreData) -> Value {
   let mut value = Map::new();
   value.insert("id".to_string(), json!(data.id));
   value.insert("version".to_string(), json!(data.version));
@@ -731,22 +643,22 @@ fn keystore_data_to_json(data: &KeystoreData) -> Value {
   Value::Object(value)
 }
 
-fn crypto_data_to_json(data: &CryptoData) -> Value {
+pub(crate) fn crypto_data_to_json(data: &CryptoData) -> Value {
   let mut value = Map::new();
   value.insert("cipher".to_string(), json!(data.cipher));
   value.insert("cipherparams".to_string(), cipher_params_to_json(&data.cipher_params));
   value.insert("ciphertext".to_string(), json!(data.ciphertext));
   value.insert("mac".to_string(), json!(data.mac));
-  // Add KDF fields (tcx-keystore format with kdf and kdfparams)
-  value.insert("kdf".to_string(), json!(data.kdf_type.kdf.clone()));
-  if let Some(pbkdf2) = &data.kdf_type.kdf_params {
+  // Add KDF fields (flat format: kdf + kdfparams)
+  value.insert("kdf".to_string(), json!(data.kdf.clone()));
+  if let Some(pbkdf2) = &data.kdfparams {
     value.insert("kdfparams".to_string(), json!({
       "c": pbkdf2.c,
       "prf": pbkdf2.prf,
       "dklen": pbkdf2.dklen,
       "salt": pbkdf2.salt,
     }));
-  } else if let Some(scrypt) = &data.kdf_type.scrypt_params {
+  } else if let Some(scrypt) = &data.scrypt_params {
     value.insert("kdfparams".to_string(), json!({
       "n": scrypt.n,
       "p": scrypt.p,
@@ -758,12 +670,11 @@ fn crypto_data_to_json(data: &CryptoData) -> Value {
   Value::Object(value)
 }
 
-fn cipher_params_to_json(params: &CipherParams) -> Value {
+pub(crate) fn cipher_params_to_json(params: &CipherParams) -> Value {
   json!({ "iv": params.iv })
 }
 
-
-fn identity_data_to_json(data: &IdentityData) -> Value {
+pub(crate) fn identity_data_to_json(data: &IdentityData) -> Value {
   json!({
     "encAuthKey": enc_pair_data_to_json(&data.enc_auth_key),
     "encKey": data.enc_key,
@@ -772,14 +683,14 @@ fn identity_data_to_json(data: &IdentityData) -> Value {
   })
 }
 
-fn enc_pair_data_to_json(data: &EncPairData) -> Value {
+pub(crate) fn enc_pair_data_to_json(data: &EncPairData) -> Value {
   json!({
     "encStr": data.enc_str,
     "nonce": data.nonce,
   })
 }
 
-fn keystore_metadata_to_json(meta: &KeystoreMetadata) -> Value {
+pub(crate) fn keystore_metadata_to_json(meta: &KeystoreMetadata) -> Value {
   let mut value = Map::new();
   value.insert("name".to_string(), json!(meta.name));
   if let Some(password_hint) = &meta.password_hint {
@@ -794,7 +705,7 @@ fn keystore_metadata_to_json(meta: &KeystoreMetadata) -> Value {
   Value::Object(value)
 }
 
-fn wallet_account_to_json(account: &WalletAccount) -> Value {
+pub(crate) fn wallet_account_to_json(account: &WalletAccount) -> Value {
   let mut value = Map::new();
   value.insert("chainId".to_string(), json!(account.chain_id));
   value.insert("address".to_string(), json!(account.address));
@@ -810,7 +721,7 @@ fn wallet_account_to_json(account: &WalletAccount) -> Value {
   Value::Object(value)
 }
 
-fn wallet_meta_to_json(meta: &WalletMeta) -> Value {
+pub(crate) fn wallet_meta_to_json(meta: &WalletMeta) -> Value {
   let mut value = Map::new();
   value.insert("id".to_string(), json!(meta.id));
   value.insert("version".to_string(), json!(meta.version));
@@ -846,14 +757,14 @@ fn wallet_meta_to_json(meta: &WalletMeta) -> Value {
   Value::Object(value)
 }
 
-fn wallet_network_to_json(network: WalletNetwork) -> &'static str {
+pub(crate) fn wallet_network_to_json(network: WalletNetwork) -> &'static str {
   match network {
     WalletNetwork::Mainnet => "MAINNET",
     WalletNetwork::Testnet => "TESTNET",
   }
 }
 
-fn wallet_source_to_json(source: WalletSource) -> &'static str {
+pub(crate) fn wallet_source_to_json(source: WalletSource) -> &'static str {
   match source {
     WalletSource::Wif => "WIF",
     WalletSource::Private => "PRIVATE",
@@ -920,11 +831,9 @@ fn build_keystore_data(keystore: &TcxKeystore) -> KeystoreData {
         .and_then(|v| v.as_str())
         .unwrap_or("")
         .to_string(),
-      kdf_type: KdfType {
-        kdf: kdf_type_str,
-        kdf_params,
-        scrypt_params,
-      },
+      kdf: kdf_type_str,
+      kdfparams: kdf_params,
+      scrypt_params,
       mac: crypto_json
         .get("mac")
         .and_then(|v| v.as_str())

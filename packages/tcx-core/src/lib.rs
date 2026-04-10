@@ -7,6 +7,7 @@ mod ethereum;
 mod signing;
 mod strings;
 mod types;
+mod vault;
 mod wallet;
 
 pub use signing::{sign_message, sign_transaction};

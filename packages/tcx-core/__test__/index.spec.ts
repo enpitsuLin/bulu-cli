@@ -30,8 +30,8 @@ function keystoreToJson(keystore: KeystoreData): string {
       cipherparams: { iv: keystore.crypto.cipherparams.iv },
       ciphertext: keystore.crypto.ciphertext,
       mac: keystore.crypto.mac,
-      kdf: keystore.crypto.kdfType.kdf,
-      kdfparams: keystore.crypto.kdfType.kdfparams ?? keystore.crypto.kdfType.scryptParams,
+      kdf: keystore.crypto.kdf,
+      kdfparams: keystore.crypto.kdfparams ?? keystore.crypto.scryptParams,
     },
     identity: {
       encAuthKey: {
@@ -211,7 +211,7 @@ test('importWalletMnemonic derives the requested default account index and persi
       TRON_ACCOUNT_1_DERIVATION_PATH,
     ])
     expect(indexedWallet.accounts[0]?.address).not.toBe(defaultWallet.accounts[0]?.address)
-    expect(persisted.keystore).toBe(indexedWallet.keystore)
+    expect(persisted.keystore).toEqual(indexedWallet.keystore)
     expect(persisted.accounts.map((account) => account.derivationPath)).toEqual([
       ETH_ACCOUNT_1_DERIVATION_PATH,
       TRON_ACCOUNT_1_DERIVATION_PATH,

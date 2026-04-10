@@ -23,8 +23,12 @@ export interface CryptoData {
   cipherparams: CipherParams
   /** Encrypted ciphertext (hex-encoded). */
   ciphertext: string
-  /** Key derivation function type and parameters. */
-  kdfType: KdfType
+  /** KDF type name ("pbkdf2" or "scrypt"). */
+  kdf: string
+  /** PBKDF2 parameters (when kdf is "pbkdf2"). */
+  kdfparams?: Pbkdf2Params
+  /** SCrypt parameters (when kdf is "scrypt"). */
+  scryptParams?: SCryptParams
   /** Message authentication code (hex-encoded). */
   mac: string
 }
@@ -131,16 +135,6 @@ export declare function importWalletMnemonic(name: string, mnemonic: string, pas
  * ignored because private-key wallets are non-derivable.
  */
 export declare function importWalletPrivateKey(name: string, privateKey: string, passphrase: string, vaultPath?: string | undefined | null, index?: number | undefined | null): WalletInfo
-
-/** Key derivation function type and parameters. */
-export interface KdfType {
-  /** KDF type name ("pbkdf2" or "scrypt"). */
-  kdf: string
-  /** PBKDF2 parameters (if kdf is "pbkdf2"). */
-  kdfparams?: Pbkdf2Params
-  /** SCrypt parameters (if kdf is "scrypt"). */
-  scryptParams?: SCryptParams
-}
 
 /** Keystore data structure matching tcx-keystore Store. */
 export interface KeystoreData {
