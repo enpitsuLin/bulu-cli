@@ -169,7 +169,7 @@ pub struct WalletMeta {
 
 #[napi(object)]
 /// Wallet payload returned by create, import, and load operations.
-pub struct WalletResult {
+pub struct WalletInfo {
   /// Serialized keystore JSON.
   #[napi(js_name = "keystoreJson")]
   pub keystore_json: String,
@@ -297,7 +297,7 @@ struct DerivationRequest {
 /// If `entropy` is omitted, random 16-byte entropy is generated.
 /// If `derivations` is omitted, default Ethereum and Tron accounts are derived
 /// for the selected wallet network.
-pub fn create_wallet(name: String, passphrase: String) -> Result<WalletResult> {
+pub fn create_wallet(name: String, passphrase: String) -> Result<WalletInfo> {
   require_non_empty(&passphrase, "passphrase")?;
 
   let mnemonic = create_mnemonic(None)?;
@@ -323,7 +323,7 @@ pub fn import_wallet_mnemonic(
   name: String,
   mnemonic: String,
   passphrase: String,
-) -> Result<WalletResult> {
+) -> Result<WalletInfo> {
   require_non_empty(&passphrase, "passphrase")?;
 
   let normalized_mnemonic = normalize_mnemonic(&mnemonic);
@@ -351,7 +351,7 @@ pub fn import_wallet_private_key(
   name: String,
   private_key: String,
   passphrase: String,
-) -> Result<WalletResult> {
+) -> Result<WalletInfo> {
   require_non_empty(&passphrase, "passphrase")?;
 
   let normalized_private_key = require_trimmed(private_key, "privateKey")?;
@@ -383,7 +383,7 @@ pub fn load_wallet(
   keystore_json: String,
   password: String,
   derivations: Option<Vec<DerivationInput>>,
-) -> Result<WalletResult> {
+) -> Result<WalletInfo> {
   require_non_empty(&password, "password")?;
 
   let normalized_keystore_json = require_trimmed(keystore_json, "keystoreJson")?;
@@ -538,7 +538,7 @@ fn finalize_wallet(
   mut keystore: TcxKeystore,
   password: &str,
   derivations: Option<Vec<DerivationInput>>,
-) -> Result<WalletResult> {
+) -> Result<WalletInfo> {
   let network = keystore.store().meta.network;
 
   with_unlocked_keystore(&mut keystore, password, move |wallet| {
@@ -861,8 +861,8 @@ fn build_metadata(
   }
 }
 
-fn build_wallet_result(keystore: &TcxKeystore, accounts: Vec<WalletAccount>) -> WalletResult {
-  WalletResult {
+fn build_wallet_result(keystore: &TcxKeystore, accounts: Vec<WalletAccount>) -> WalletInfo {
+  WalletInfo {
     keystore_json: keystore.to_json(),
     meta: build_wallet_meta(keystore),
     accounts,

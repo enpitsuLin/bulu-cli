@@ -7,7 +7,7 @@
  * If `derivations` is omitted, default Ethereum and Tron accounts are derived
  * for the selected wallet network.
  */
-export declare function createWallet(name: string, passphrase: string): WalletResult
+export declare function createWallet(name: string, passphrase: string): WalletInfo
 
 /** A requested account derivation. */
 export interface DerivationInput {
@@ -80,7 +80,7 @@ export interface EthTransactionInput {
  * If `derivations` is omitted, default Ethereum and Tron accounts are derived
  * for the selected wallet network.
  */
-export declare function importWalletMnemonic(name: string, mnemonic: string, passphrase: string): WalletResult
+export declare function importWalletMnemonic(name: string, mnemonic: string, passphrase: string): WalletInfo
 
 /**
  * Imports a private key as a non-derivable wallet.
@@ -88,7 +88,7 @@ export declare function importWalletMnemonic(name: string, mnemonic: string, pas
  * If `derivations` is omitted, default Ethereum and Tron accounts are
  * returned. Derivation paths are ignored for non-derivable wallets.
  */
-export declare function importWalletPrivateKey(name: string, privateKey: string, passphrase: string): WalletResult
+export declare function importWalletPrivateKey(name: string, privateKey: string, passphrase: string): WalletInfo
 
 /**
  * Loads a serialized keystore JSON and derives accounts from it.
@@ -96,7 +96,7 @@ export declare function importWalletPrivateKey(name: string, privateKey: string,
  * If `derivations` is omitted, default Ethereum and Tron accounts are derived
  * for the wallet network stored in the keystore.
  */
-export declare function loadWallet(keystoreJson: string, password: string, derivations?: Array<DerivationInput> | undefined | null): WalletResult
+export declare function loadWallet(keystoreJson: string, password: string, derivations?: Array<DerivationInput> | undefined | null): WalletInfo
 
 /** Message signature returned to JavaScript. */
 export interface SignedMessage {
@@ -153,6 +153,16 @@ export interface WalletAccount {
   extPubKey?: string
 }
 
+/** Wallet payload returned by create, import, and load operations. */
+export interface WalletInfo {
+  /** Serialized keystore JSON. */
+  keystoreJson: string
+  /** Wallet metadata. */
+  meta: WalletMeta
+  /** Derived accounts requested for the operation. */
+  accounts: Array<WalletAccount>
+}
+
 /** Wallet metadata exposed to JavaScript. */
 export interface WalletMeta {
   /** Keystore identifier. */
@@ -185,16 +195,6 @@ export declare const enum WalletNetwork {
   Mainnet = 'MAINNET',
   /** Test network defaults. */
   Testnet = 'TESTNET'
-}
-
-/** Wallet payload returned by create, import, and load operations. */
-export interface WalletResult {
-  /** Serialized keystore JSON. */
-  keystoreJson: string
-  /** Wallet metadata. */
-  meta: WalletMeta
-  /** Derived accounts requested for the operation. */
-  accounts: Array<WalletAccount>
 }
 
 /** Source used to create or import the wallet. */
