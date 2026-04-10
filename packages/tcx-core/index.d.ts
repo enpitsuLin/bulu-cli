@@ -15,7 +15,12 @@ export interface CipherParams {
  */
 export declare function createWallet(name: string, passphrase: string, vaultPath?: string | undefined | null, index?: number | undefined | null): WalletInfo
 
-/** Crypto section of the keystore containing encrypted private key. */
+/**
+ * Crypto section of the keystore containing encrypted private key.
+ *
+ * Note: This struct uses custom serialization to match tcx-keystore format
+ * where kdf and kdfparams are flattened into the main crypto object.
+ */
 export interface CryptoData {
   /** Cipher algorithm name. */
   cipher: string
@@ -25,10 +30,11 @@ export interface CryptoData {
   ciphertext: string
   /** KDF type name ("pbkdf2" or "scrypt"). */
   kdf: string
-  /** PBKDF2 parameters (when kdf is "pbkdf2"). */
-  kdfparams?: Pbkdf2Params
-  /** SCrypt parameters (when kdf is "scrypt"). */
-  scryptParams?: SCryptParams
+  /**
+   * KDF parameters - use `KdfParams::pbkdf2()` or `KdfParams::scrypt()` to create.
+   * Serialized as "kdfparams" field to match tcx-keystore format.
+   */
+  kdfparams?: KdfParams
   /** Message authentication code (hex-encoded). */
   mac: string
 }
@@ -136,6 +142,30 @@ export declare function importWalletMnemonic(name: string, mnemonic: string, pas
  */
 export declare function importWalletPrivateKey(name: string, privateKey: string, passphrase: string, vaultPath?: string | undefined | null, index?: number | undefined | null): WalletInfo
 
+/**
+ * KDF parameters union type - can be either PBKDF2 or SCrypt.
+ *
+ * The fields present depend on the kdf type:
+ * - PBKDF2: c, prf, dklen, salt
+ * - SCrypt: n, p, r, dklen, salt
+ */
+export interface KdfParams {
+  /** Iteration count (PBKDF2 only). */
+  c?: number
+  /** Pseudorandom function (PBKDF2 only). */
+  prf?: string
+  /** CPU/memory cost parameter (SCrypt only). */
+  n?: number
+  /** Parallelization parameter (SCrypt only). */
+  p?: number
+  /** Block size parameter (SCrypt only). */
+  r?: number
+  /** Derived key length. */
+  dklen: number
+  /** Salt (hex-encoded). */
+  salt: string
+}
+
 /** Keystore data structure matching tcx-keystore Store. */
 export interface KeystoreData {
   /** Keystore identifier (UUID). */
@@ -181,32 +211,6 @@ export declare function listWallet(vaultPathOpt?: string | undefined | null): Ar
  * for the wallet network stored in the keystore.
  */
 export declare function loadWallet(keystoreJson: string, password: string, derivations?: Array<DerivationInput> | undefined | null): WalletInfo
-
-/** PBKDF2 key derivation function parameters. */
-export interface Pbkdf2Params {
-  /** Iteration count. */
-  c: number
-  /** Pseudorandom function. */
-  prf: string
-  /** Derived key length. */
-  dklen: number
-  /** Salt (hex-encoded). */
-  salt: string
-}
-
-/** SCrypt key derivation function parameters. */
-export interface SCryptParams {
-  /** CPU/memory cost parameter. */
-  n: number
-  /** Parallelization parameter. */
-  p: number
-  /** Block size parameter. */
-  r: number
-  /** Derived key length. */
-  dklen: number
-  /** Salt (hex-encoded). */
-  salt: string
-}
 
 /** Message signature returned to JavaScript. */
 export interface SignedMessage {

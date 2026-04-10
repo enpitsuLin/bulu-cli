@@ -11,9 +11,8 @@ use crate::error::{require_non_empty, require_trimmed, to_napi_err};
 use crate::strings::sanitize_optional_text;
 use crate::vault;
 use crate::types::{
-  CipherParams, CryptoData, DerivationInput, EncPairData, IdentityData, KeystoreData,
-  KeystoreMetadata, Pbkdf2Params, SCryptParams, WalletAccount, WalletInfo, WalletMeta,
-  WalletNetwork, WalletSource,
+  CipherParams, CryptoData, DerivationInput, EncPairData, IdentityData, KdfParams, KeystoreData,
+  KeystoreMetadata, WalletAccount, WalletInfo, WalletMeta, WalletNetwork, WalletSource,
 };
 
 #[napi(js_name = "listWallet")]
@@ -182,15 +181,9 @@ fn parse_crypto_data(value: &Value) -> Result<CryptoData> {
     .unwrap_or("pbkdf2")
     .to_string();
 
-  let (kdfparams, scrypt_params) = if let Some(kdfparams_value) = obj.get("kdfparams") {
-    if kdf == "scrypt" {
-      (None, Some(parse_scrypt_params(kdfparams_value)?))
-    } else {
-      (Some(parse_pbkdf2_params(kdfparams_value)?), None)
-    }
-  } else {
-    (None, None)
-  };
+  let kdfparams = obj.get("kdfparams")
+    .and_then(|v| parse_kdf_params(v, &kdf))
+    .unwrap_or_else(|| KdfParams::pbkdf2(10240, "hmac-sha256".to_string(), 32, String::new()));
 
   Ok(CryptoData {
     cipher,
@@ -198,7 +191,6 @@ fn parse_crypto_data(value: &Value) -> Result<CryptoData> {
     ciphertext,
     kdf,
     kdfparams,
-    scrypt_params,
     mac,
   })
 }
@@ -214,61 +206,41 @@ fn parse_cipher_params(value: &Value) -> Result<CipherParams> {
   })
 }
 
-fn parse_pbkdf2_params(value: &Value) -> Result<Pbkdf2Params> {
-  let obj = value.as_object().ok_or_else(|| napi::Error::from_reason("pbkdf2 params must be an object"))?;
-  Ok(Pbkdf2Params {
-    c: obj
-      .get("c")
-      .and_then(|v| v.as_u64())
-      .map(|v| v as u32)
-      .unwrap_or(10240),
-    prf: obj
-      .get("prf")
-      .and_then(|v| v.as_str())
-      .unwrap_or("hmac-sha256")
-      .to_string(),
-    dklen: obj
-      .get("dklen")
-      .and_then(|v| v.as_u64())
-      .map(|v| v as u32)
-      .unwrap_or(32),
-    salt: obj
-      .get("salt")
-      .and_then(|v| v.as_str())
-      .unwrap_or("")
-      .to_string(),
-  })
-}
+fn parse_kdf_params(value: &Value, kdf_type: &str) -> Option<KdfParams> {
+  let obj = value.as_object()?;
+  let dklen = obj
+    .get("dklen")
+    .and_then(|v| v.as_u64())
+    .map(|v| v as u32)
+    .unwrap_or(32);
+  let salt = obj
+    .get("salt")
+    .and_then(|v| v.as_str())
+    .unwrap_or("")
+    .to_string();
 
-fn parse_scrypt_params(value: &Value) -> Result<SCryptParams> {
-  let obj = value.as_object().ok_or_else(|| napi::Error::from_reason("scrypt params must be an object"))?;
-  Ok(SCryptParams {
-    n: obj
-      .get("n")
-      .and_then(|v| v.as_u64())
-      .map(|v| v as u32)
-      .unwrap_or(262144),
-    p: obj
-      .get("p")
-      .and_then(|v| v.as_u64())
-      .map(|v| v as u32)
-      .unwrap_or(1),
-    r: obj
-      .get("r")
-      .and_then(|v| v.as_u64())
-      .map(|v| v as u32)
-      .unwrap_or(8),
-    dklen: obj
-      .get("dklen")
-      .and_then(|v| v.as_u64())
-      .map(|v| v as u32)
-      .unwrap_or(32),
-    salt: obj
-      .get("salt")
-      .and_then(|v| v.as_str())
-      .unwrap_or("")
-      .to_string(),
-  })
+  if kdf_type == "scrypt" {
+    Some(KdfParams {
+      c: None,
+      prf: None,
+      n: obj.get("n").and_then(|v| v.as_u64()).map(|v| v as u32),
+      p: obj.get("p").and_then(|v| v.as_u64()).map(|v| v as u32),
+      r: obj.get("r").and_then(|v| v.as_u64()).map(|v| v as u32),
+      dklen,
+      salt,
+    })
+  } else {
+    // Default to pbkdf2
+    Some(KdfParams {
+      c: obj.get("c").and_then(|v| v.as_u64()).map(|v| v as u32),
+      prf: obj.get("prf").and_then(|v| v.as_str()).map(String::from),
+      n: None,
+      p: None,
+      r: None,
+      dklen,
+      salt,
+    })
+  }
 }
 
 fn parse_identity_data(value: &Value) -> Result<IdentityData> {
@@ -649,22 +621,22 @@ pub(crate) fn crypto_data_to_json(data: &CryptoData) -> Value {
   value.insert("cipherparams".to_string(), cipher_params_to_json(&data.cipher_params));
   value.insert("ciphertext".to_string(), json!(data.ciphertext));
   value.insert("mac".to_string(), json!(data.mac));
-  // Add KDF fields (flat format: kdf + kdfparams)
+  // Add KDF fields (flat format: kdf + kdfparams) - matches tcx-keystore format
   value.insert("kdf".to_string(), json!(data.kdf.clone()));
-  if let Some(pbkdf2) = &data.kdfparams {
+  if data.kdf == "scrypt" {
     value.insert("kdfparams".to_string(), json!({
-      "c": pbkdf2.c,
-      "prf": pbkdf2.prf,
-      "dklen": pbkdf2.dklen,
-      "salt": pbkdf2.salt,
+      "n": data.kdfparams.n,
+      "p": data.kdfparams.p,
+      "r": data.kdfparams.r,
+      "dklen": data.kdfparams.dklen,
+      "salt": data.kdfparams.salt,
     }));
-  } else if let Some(scrypt) = &data.scrypt_params {
+  } else {
     value.insert("kdfparams".to_string(), json!({
-      "n": scrypt.n,
-      "p": scrypt.p,
-      "r": scrypt.r,
-      "dklen": scrypt.dklen,
-      "salt": scrypt.salt,
+      "c": data.kdfparams.c,
+      "prf": data.kdfparams.prf,
+      "dklen": data.kdfparams.dklen,
+      "salt": data.kdfparams.salt,
     }));
   }
   Value::Object(value)
@@ -806,7 +778,13 @@ fn build_keystore_data(keystore: &TcxKeystore) -> KeystoreData {
   let crypto_json = serde_json::to_value(crypto).unwrap_or_default();
   
   // Extract KDF type and params from serialized crypto
-  let (kdf_type_str, kdf_params, scrypt_params) = extract_kdf_params(&crypto_json);
+  let kdf_type_str = crypto_json
+    .get("kdf")
+    .and_then(|v| v.as_str())
+    .unwrap_or("pbkdf2");
+  let kdf_params = crypto_json.get("kdfparams")
+    .and_then(|v| parse_kdf_params(v, kdf_type_str))
+    .unwrap_or_else(|| KdfParams::pbkdf2(10240, "hmac-sha256".to_string(), 32, String::new()));
 
   KeystoreData {
     id: store.id.clone(),
@@ -831,9 +809,8 @@ fn build_keystore_data(keystore: &TcxKeystore) -> KeystoreData {
         .and_then(|v| v.as_str())
         .unwrap_or("")
         .to_string(),
-      kdf: kdf_type_str,
+      kdf: kdf_type_str.to_string(),
       kdfparams: kdf_params,
-      scrypt_params,
       mac: crypto_json
         .get("mac")
         .and_then(|v| v.as_str())
@@ -865,129 +842,4 @@ fn build_keystore_data(keystore: &TcxKeystore) -> KeystoreData {
   }
 }
 
-fn extract_kdf_params(crypto_json: &Value) -> (String, Option<Pbkdf2Params>, Option<SCryptParams>) {
-  // tcx-keystore uses "kdf" and "kdfparams" fields due to #[serde(tag = "kdf", content = "kdfparams")]
-  let kdf_type = crypto_json
-    .get("kdf")
-    .and_then(|v| v.as_str())
-    .unwrap_or("pbkdf2");
-  
-  if let Some(kdfparams) = crypto_json.get("kdfparams") {
-    if kdf_type == "pbkdf2" {
-      let params = Pbkdf2Params {
-        c: kdfparams
-          .get("c")
-          .and_then(|v| v.as_u64())
-          .map(|v| v as u32)
-          .unwrap_or(10240),
-        prf: kdfparams
-          .get("prf")
-          .and_then(|v| v.as_str())
-          .unwrap_or("hmac-sha256")
-          .to_string(),
-        dklen: kdfparams
-          .get("dklen")
-          .and_then(|v| v.as_u64())
-          .map(|v| v as u32)
-          .unwrap_or(32),
-        salt: kdfparams
-          .get("salt")
-          .and_then(|v| v.as_str())
-          .unwrap_or("")
-          .to_string(),
-      };
-      return ("pbkdf2".to_string(), Some(params), None);
-    } else if kdf_type == "scrypt" {
-      let params = SCryptParams {
-        n: kdfparams
-          .get("n")
-          .and_then(|v| v.as_u64())
-          .map(|v| v as u32)
-          .unwrap_or(262144),
-        p: kdfparams
-          .get("p")
-          .and_then(|v| v.as_u64())
-          .map(|v| v as u32)
-          .unwrap_or(1),
-        r: kdfparams
-          .get("r")
-          .and_then(|v| v.as_u64())
-          .map(|v| v as u32)
-          .unwrap_or(8),
-        dklen: kdfparams
-          .get("dklen")
-          .and_then(|v| v.as_u64())
-          .map(|v| v as u32)
-          .unwrap_or(32),
-        salt: kdfparams
-          .get("salt")
-          .and_then(|v| v.as_str())
-          .unwrap_or("")
-          .to_string(),
-      };
-      return ("scrypt".to_string(), None, Some(params));
-    }
-  }
-  
-  // Fallback: Check for legacy format with pbkdf2/scrypt as direct fields (if any)
-  if let Some(pbkdf2) = crypto_json.get("pbkdf2") {
-    let params = Pbkdf2Params {
-      c: pbkdf2
-        .get("c")
-        .and_then(|v| v.as_u64())
-        .map(|v| v as u32)
-        .unwrap_or(10240),
-      prf: pbkdf2
-        .get("prf")
-        .and_then(|v| v.as_str())
-        .unwrap_or("hmac-sha256")
-        .to_string(),
-      dklen: pbkdf2
-        .get("dklen")
-        .and_then(|v| v.as_u64())
-        .map(|v| v as u32)
-        .unwrap_or(32),
-      salt: pbkdf2
-        .get("salt")
-        .and_then(|v| v.as_str())
-        .unwrap_or("")
-        .to_string(),
-    };
-    return ("pbkdf2".to_string(), Some(params), None);
-  }
 
-  // Check for scrypt
-  if let Some(scrypt) = crypto_json.get("scrypt") {
-    let params = SCryptParams {
-      n: scrypt
-        .get("n")
-        .and_then(|v| v.as_u64())
-        .map(|v| v as u32)
-        .unwrap_or(262144),
-      p: scrypt
-        .get("p")
-        .and_then(|v| v.as_u64())
-        .map(|v| v as u32)
-        .unwrap_or(1),
-      r: scrypt
-        .get("r")
-        .and_then(|v| v.as_u64())
-        .map(|v| v as u32)
-        .unwrap_or(8),
-      dklen: scrypt
-        .get("dklen")
-        .and_then(|v| v.as_u64())
-        .map(|v| v as u32)
-        .unwrap_or(32),
-      salt: scrypt
-        .get("salt")
-        .and_then(|v| v.as_str())
-        .unwrap_or("")
-        .to_string(),
-    };
-    return ("scrypt".to_string(), None, Some(params));
-  }
-
-  // Default to pbkdf2
-  ("pbkdf2".to_string(), None, None)
-}

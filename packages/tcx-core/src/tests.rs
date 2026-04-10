@@ -316,6 +316,7 @@ fn sign_message_signs_ethereum_personal_messages() {
     DEFAULT_ETH_MAINNET_CHAIN_ID.to_string(),
     "hello world".to_string(),
     TEST_PASSWORD.to_string(),
+    String::new(),
   )
   .expect("ethereum message signing should succeed");
 
@@ -341,6 +342,7 @@ fn sign_message_signs_tron_messages() {
     DEFAULT_TRON_MAINNET_CHAIN_ID.to_string(),
     "hello world".to_string(),
     TEST_PASSWORD.to_string(),
+    String::new(),
   )
   .expect("tron message signing should succeed");
 
@@ -380,6 +382,7 @@ fn sign_transaction_signs_ethereum_transactions() {
     "eip155:56".to_string(),
     tx_hex,
     TEST_PASSWORD.to_string(),
+    String::new(),
   )
   .expect("ethereum transaction signing should succeed");
 
@@ -427,6 +430,7 @@ fn sign_transaction_signs_ethereum_eip1559_transaction_hex() {
     DEFAULT_ETH_MAINNET_CHAIN_ID.to_string(),
     tx_hex,
     TEST_PASSWORD.to_string(),
+    String::new(),
   )
   .expect("eip1559 transaction signing should succeed");
 
@@ -460,6 +464,7 @@ fn sign_transaction_signs_tron_transactions() {
     DEFAULT_TRON_MAINNET_CHAIN_ID.to_string(),
     "0a0208312208b02efdc02638b61e40f083c3a7c92d5a65080112610a2d747970652e676f6f676c65617069732e636f6d2f70726f746f636f6c2e5472616e73666572436f6e747261637412300a1541a1e81654258bf14f63feb2e8d1380075d45b0dac1215410b3e84ec677b3e63c99affcadb91a6b4e086798f186470a0bfbfa7c92d".to_string(),
     TEST_PASSWORD.to_string(),
+    String::new(),
   )
   .expect("tron transaction signing should succeed");
 

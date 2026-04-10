@@ -147,6 +147,8 @@ pub struct EncPairData {
 }
 
 #[napi(object)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 /// Cipher parameters for encryption.
 pub struct CipherParams {
   /// Initialization vector (hex-encoded).
@@ -154,12 +156,24 @@ pub struct CipherParams {
 }
 
 #[napi(object)]
-/// PBKDF2 key derivation function parameters.
-pub struct Pbkdf2Params {
-  /// Iteration count.
-  pub c: u32,
-  /// Pseudorandom function.
-  pub prf: String,
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+/// KDF parameters union type - can be either PBKDF2 or SCrypt.
+/// 
+/// The fields present depend on the kdf type:
+/// - PBKDF2: c, prf, dklen, salt
+/// - SCrypt: n, p, r, dklen, salt
+pub struct KdfParams {
+  /// Iteration count (PBKDF2 only).
+  pub c: Option<u32>,
+  /// Pseudorandom function (PBKDF2 only).
+  pub prf: Option<String>,
+  /// CPU/memory cost parameter (SCrypt only).
+  pub n: Option<u32>,
+  /// Parallelization parameter (SCrypt only).
+  pub p: Option<u32>,
+  /// Block size parameter (SCrypt only).
+  pub r: Option<u32>,
   /// Derived key length.
   #[napi(js_name = "dklen")]
   pub dklen: u32,
@@ -167,24 +181,41 @@ pub struct Pbkdf2Params {
   pub salt: String,
 }
 
-#[napi(object)]
-/// SCrypt key derivation function parameters.
-pub struct SCryptParams {
-  /// CPU/memory cost parameter.
-  pub n: u32,
-  /// Parallelization parameter.
-  pub p: u32,
-  /// Block size parameter.
-  pub r: u32,
-  /// Derived key length.
-  #[napi(js_name = "dklen")]
-  pub dklen: u32,
-  /// Salt (hex-encoded).
-  pub salt: String,
+impl KdfParams {
+  /// Create PBKDF2 params
+  pub fn pbkdf2(c: u32, prf: String, dklen: u32, salt: String) -> Self {
+    Self {
+      c: Some(c),
+      prf: Some(prf),
+      n: None,
+      p: None,
+      r: None,
+      dklen,
+      salt,
+    }
+  }
+
+  /// Create SCrypt params
+  pub fn scrypt(n: u32, p: u32, r: u32, dklen: u32, salt: String) -> Self {
+    Self {
+      c: None,
+      prf: None,
+      n: Some(n),
+      p: Some(p),
+      r: Some(r),
+      dklen,
+      salt,
+    }
+  }
 }
 
 #[napi(object)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 /// Crypto section of the keystore containing encrypted private key.
+/// 
+/// Note: This struct uses custom serialization to match tcx-keystore format
+/// where kdf and kdfparams are flattened into the main crypto object.
 pub struct CryptoData {
   /// Cipher algorithm name.
   pub cipher: String,
@@ -195,11 +226,9 @@ pub struct CryptoData {
   pub ciphertext: String,
   /// KDF type name ("pbkdf2" or "scrypt").
   pub kdf: String,
-  /// PBKDF2 parameters (when kdf is "pbkdf2").
-  pub kdfparams: Option<Pbkdf2Params>,
-  /// SCrypt parameters (when kdf is "scrypt").
-  #[napi(js_name = "scryptParams")]
-  pub scrypt_params: Option<SCryptParams>,
+  /// KDF parameters - use `KdfParams::pbkdf2()` or `KdfParams::scrypt()` to create.
+  /// Serialized as "kdfparams" field to match tcx-keystore format.
+  pub kdfparams: KdfParams,
   /// Message authentication code (hex-encoded).
   pub mac: String,
 }
