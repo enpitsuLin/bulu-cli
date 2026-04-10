@@ -1,0 +1,37 @@
+name: Setup Node and pnpm
+description: Setup pnpm and Node.js with pnpm cache enabled.
+inputs:
+  node-version:
+    description: Node.js version to install.
+    required: false
+    default: '24'
+  pnpm-version:
+    description: pnpm version to install.
+    required: false
+    default: '10.33.0'
+  architecture:
+    description: Optional Node.js architecture.
+    required: false
+    default: ''
+runs:
+  using: composite
+  steps:
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v5
+      with:
+        version: ${{ inputs.pnpm-version }}
+
+    - name: Setup node
+      if: ${{ inputs.architecture == '' }}
+      uses: actions/setup-node@v6
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: pnpm
+
+    - name: Setup node with architecture
+      if: ${{ inputs.architecture != '' }}
+      uses: actions/setup-node@v6
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: pnpm
+        architecture: ${{ inputs.architecture }}

@@ -28,25 +28,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: pnpm/action-setup@v5
-        with:
-          version: 10.33.0
-      - name: Setup node
-        uses: actions/setup-node@v6
-        with:
-          node-version: 24
-          cache: pnpm
+
+      - uses: ./.github/actions/setup-node-pnpm
+
       - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
           components: clippy, rustfmt
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
       - name: Oxlint
         run: pnpm lint
+
       - name: Cargo fmt
         run: cargo fmt --all -- --check
+
       - name: Clippy
         run: cargo clippy -p tcx_napi_rs
 
@@ -78,58 +77,17 @@ jobs:
     runs-on: ${{ matrix.settings.host }}
     steps:
       - uses: actions/checkout@v6
-      - uses: pnpm/action-setup@v5
+
+      - uses: ./.github/actions/setup-node-pnpm
+
+      - uses: ./.github/actions/build-napi-binding
         with:
-          version: 10.33.0
-      - name: Setup node
-        uses: actions/setup-node@v6
-        with:
-          node-version: 24
-          cache: pnpm
-      - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ env.RUST_TOOLCHAIN }}
-          targets: ${{ matrix.settings.target }}
-      - name: Cache cargo
-        uses: actions/cache@v5
-        with:
-          path: |
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            ~/.napi-rs
-            .cargo-cache
-            target/
-          key: ${{ matrix.settings.target }}-cargo-${{ matrix.settings.host }}
-      - uses: mlugg/setup-zig@v2
-        if: ${{ contains(matrix.settings.target, 'musl') }}
-        with:
-          version: 0.14.1
-      - name: Install cargo-zigbuild
-        uses: taiki-e/install-action@v2
-        if: ${{ contains(matrix.settings.target, 'musl') }}
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        with:
-          tool: cargo-zigbuild
-      - name: Setup toolchain
-        run: ${{ matrix.settings.setup }}
-        if: ${{ matrix.settings.setup }}
-        shell: bash
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Build
-        run: ${{ matrix.settings.build }}
-        shell: bash
-      - name: Upload artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: bindings-${{ matrix.settings.target }}
-          path: |
-            ${{ env.PACKAGE_DIR }}/${{ env.APP_NAME }}.*.node
-            ${{ env.PACKAGE_DIR }}/${{ env.APP_NAME }}.*.wasm
-          if-no-files-found: error
+          app-name: ${{ env.APP_NAME }}
+          package-dir: ${{ env.PACKAGE_DIR }}
+          rust-toolchain: ${{ env.RUST_TOOLCHAIN }}
+          target: ${{ matrix.settings.target }}
+          setup-command: ${{ matrix.settings.setup }}
+          build-command: ${{ matrix.settings.build }}
 
   test-macOS-windows-binding:
     name: Test bindings on ${{ matrix.settings.target }} - node@${{ matrix.node }}
@@ -157,25 +115,25 @@ jobs:
     runs-on: ${{ matrix.settings.host }}
     steps:
       - uses: actions/checkout@v6
-      - uses: pnpm/action-setup@v5
-        with:
-          version: 10.33.0
-      - name: Setup node
-        uses: actions/setup-node@v6
+
+      - uses: ./.github/actions/setup-node-pnpm
         with:
           node-version: ${{ matrix.node }}
-          cache: pnpm
           architecture: ${{ matrix.settings.architecture }}
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
       - name: Download artifacts
         uses: actions/download-artifact@v8
         with:
           name: bindings-${{ matrix.settings.target }}
           path: ${{ env.PACKAGE_DIR }}
+
       - name: List packages
         run: ls -R ${{ env.PACKAGE_DIR }}
         shell: bash
+
       - name: Test bindings
         run: pnpm test
 
@@ -195,14 +153,11 @@ jobs:
     runs-on: ${{ contains(matrix.target, 'aarch64') && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v6
-      - uses: pnpm/action-setup@v5
-        with:
-          version: 10.33.0
-      - name: Setup node
-        uses: actions/setup-node@v6
+
+      - uses: ./.github/actions/setup-node-pnpm
         with:
           node-version: ${{ matrix.node }}
-          cache: pnpm
+
       - name: Output docker params
         id: docker
         run: |
@@ -222,23 +177,29 @@ jobs:
               console.log('IMAGE=node:${{ matrix.node }}-slim')
             }
           " >> $GITHUB_OUTPUT
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
       - name: Download artifacts
         uses: actions/download-artifact@v8
         with:
           name: bindings-${{ matrix.target }}
           path: ${{ env.PACKAGE_DIR }}
+
       - name: List packages
         run: ls -R ${{ env.PACKAGE_DIR }}
         shell: bash
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
         if: ${{ contains(matrix.target, 'armv7') }}
         with:
           platforms: all
+
       - run: docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
         if: ${{ contains(matrix.target, 'armv7') }}
+
       - name: Test bindings
         uses: tj-actions/docker-run@v2
         with:
@@ -246,56 +207,3 @@ jobs:
           name: test-bindings-${{ matrix.target }}
           options: '-v ${{ github.workspace }}:${{ github.workspace }} -w ${{ github.workspace }} --platform ${{ steps.docker.outputs.PLATFORM }}'
           args: sh -lc "corepack enable && pnpm test"
-
-  publish:
-    name: Publish
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      id-token: write
-    needs:
-      - lint
-      - test-macOS-windows-binding
-      - test-linux-binding
-    steps:
-      - uses: actions/checkout@v6
-      - uses: pnpm/action-setup@v5
-        with:
-          version: 10.33.0
-      - name: Setup node
-        uses: actions/setup-node@v6
-        with:
-          node-version: 24
-          cache: pnpm
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: create npm dirs
-        run: pnpm --dir ${{ env.PACKAGE_DIR }} exec napi create-npm-dirs
-      - name: Download all artifacts
-        uses: actions/download-artifact@v8
-        with:
-          path: ${{ env.PACKAGE_DIR }}/artifacts
-      - name: Move artifacts
-        run: pnpm --dir ${{ env.PACKAGE_DIR }} artifacts
-      - name: List packages
-        run: ls -R ./${{ env.PACKAGE_DIR }}/npm
-        shell: bash
-      - name: Publish
-        run: |
-          npm config set provenance true
-          if git log -1 --pretty=%B | grep "^[0-9]\+\.[0-9]\+\.[0-9]\+$";
-          then
-            echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
-            cd "$PACKAGE_DIR"
-            npm publish --access public
-          elif git log -1 --pretty=%B | grep "^[0-9]\+\.[0-9]\+\.[0-9]\+";
-          then
-            echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
-            cd "$PACKAGE_DIR"
-            npm publish --tag next --access public
-          else
-            echo "Not a release, skipping publish"
-          fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

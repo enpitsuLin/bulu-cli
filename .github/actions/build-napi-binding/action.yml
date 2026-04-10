@@ -1,0 +1,79 @@
+name: Build napi binding
+description: Build and upload one napi-rs binding artifact for a target.
+inputs:
+  app-name:
+    description: Native binding binary name.
+    required: false
+    default: tcx-napi-rs
+  package-dir:
+    description: Package directory containing the napi project.
+    required: false
+    default: packages/tcx-napi-rs
+  rust-toolchain:
+    description: Rust toolchain to install.
+    required: true
+  target:
+    description: Rust target triple to build.
+    required: true
+  setup-command:
+    description: Optional shell command to prepare the target toolchain.
+    required: false
+    default: ''
+  build-command:
+    description: Shell command used to build the binding.
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Setup Rust toolchain
+      uses: dtolnay/rust-toolchain@master
+      with:
+        toolchain: ${{ inputs.rust-toolchain }}
+        targets: ${{ inputs.target }}
+
+    - name: Cache cargo
+      uses: actions/cache@v5
+      with:
+        path: |
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          ~/.napi-rs
+          .cargo-cache
+          target/
+        key: ${{ inputs.target }}-cargo-${{ runner.os }}
+
+    - uses: mlugg/setup-zig@v2
+      if: ${{ contains(inputs.target, 'musl') }}
+      with:
+        version: 0.14.1
+
+    - name: Install cargo-zigbuild
+      uses: taiki-e/install-action@v2
+      if: ${{ contains(inputs.target, 'musl') }}
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      with:
+        tool: cargo-zigbuild
+
+    - name: Setup toolchain
+      run: ${{ inputs.setup-command }}
+      if: ${{ inputs.setup-command != '' }}
+      shell: bash
+
+    - name: Install dependencies
+      run: pnpm install --frozen-lockfile
+      shell: bash
+
+    - name: Build
+      run: ${{ inputs.build-command }}
+      shell: bash
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v7
+      with:
+        name: bindings-${{ inputs.target }}
+        path: |
+          ${{ inputs.package-dir }}/${{ inputs.app-name }}.*.node
+          ${{ inputs.package-dir }}/${{ inputs.app-name }}.*.wasm
+        if-no-files-found: error

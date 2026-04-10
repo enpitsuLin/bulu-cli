@@ -1,0 +1,133 @@
+name: Publish
+env:
+  DEBUG: napi:*
+  APP_NAME: tcx-napi-rs
+  PACKAGE_DIR: packages/tcx-napi-rs
+  RUST_TOOLCHAIN: nightly-2026-04-06
+  MACOSX_DEPLOYMENT_TARGET: '10.13'
+  CARGO_INCREMENTAL: '1'
+on:
+  push:
+    tags:
+      - 'v*'
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        settings:
+          - host: macos-latest
+            target: x86_64-apple-darwin
+            build: pnpm --dir packages/tcx-napi-rs exec napi build --platform --release --target x86_64-apple-darwin
+          - host: windows-latest
+            target: x86_64-pc-windows-msvc
+            build: pnpm --dir packages/tcx-napi-rs exec napi build --platform --release --target x86_64-pc-windows-msvc
+          - host: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            build: pnpm --dir packages/tcx-napi-rs exec napi build --platform --release --target x86_64-unknown-linux-gnu --use-napi-cross
+          - host: macos-latest
+            target: aarch64-apple-darwin
+            build: pnpm --dir packages/tcx-napi-rs exec napi build --platform --release --target aarch64-apple-darwin
+          - host: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            build: pnpm --dir packages/tcx-napi-rs exec napi build --platform --release --target aarch64-unknown-linux-gnu --use-napi-cross
+          - host: windows-latest
+            target: aarch64-pc-windows-msvc
+            setup: echo "CFLAGS_aarch64_pc_windows_msvc=-DSECP256K1_LITTLE_ENDIAN" >> $GITHUB_ENV
+            build: pnpm --dir packages/tcx-napi-rs exec napi build --platform --release --target aarch64-pc-windows-msvc
+    name: release - ${{ matrix.settings.target }} - node@24
+    runs-on: ${{ matrix.settings.host }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: ./.github/actions/setup-node-pnpm
+
+      - uses: ./.github/actions/build-napi-binding
+        with:
+          app-name: ${{ env.APP_NAME }}
+          package-dir: ${{ env.PACKAGE_DIR }}
+          rust-toolchain: ${{ env.RUST_TOOLCHAIN }}
+          target: ${{ matrix.settings.target }}
+          setup-command: ${{ matrix.settings.setup }}
+          build-command: ${{ matrix.settings.build }}
+
+  publish:
+    name: Publish
+    needs:
+      - build
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: write
+      id-token: write
+    env:
+      NPM_CONFIG_REGISTRY: https://registry.npmjs.org/
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: ./.github/actions/setup-node-pnpm
+
+      - name: Resolve release channel
+        id: release
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "npm_tag=latest" >> "$GITHUB_OUTPUT"
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "npm_tag=next" >> "$GITHUB_OUTPUT"
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build workspace packages
+        run: pnpm --filter @bulu-cli/core build
+
+      - name: create npm dirs
+        run: pnpm --dir ${{ env.PACKAGE_DIR }} exec napi create-npm-dirs
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: ${{ env.PACKAGE_DIR }}/artifacts
+
+      - name: Move artifacts
+        run: pnpm --dir ${{ env.PACKAGE_DIR }} artifacts
+
+      - name: List packages
+        run: ls -R ./${{ env.PACKAGE_DIR }}/npm
+        shell: bash
+
+      - name: Publish
+        env:
+          NPM_TAG: ${{ steps.release.outputs.npm_tag }}
+        run: |
+          if [ "$NPM_TAG" = "latest" ];
+          then
+            pnpm -r publish --access public --no-git-checks --ignore-scripts
+          else
+            pnpm -r publish --tag next --access public --no-git-checks --ignore-scripts
+          fi
+
+      - name: Create GitHub release with generated changelog
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PRERELEASE: ${{ steps.release.outputs.prerelease }}
+        shell: bash
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "GitHub release $GITHUB_REF_NAME already exists"
+            exit 0
+          fi
+
+          args=(--verify-tag --title "$GITHUB_REF_NAME" --generate-notes)
+          if [ "$PRERELEASE" = "true" ]; then
+            args+=(--prerelease)
+          fi
+
+          gh release create "$GITHUB_REF_NAME" "${args[@]}"

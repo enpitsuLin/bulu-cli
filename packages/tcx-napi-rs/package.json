@@ -3,6 +3,11 @@
   "version": "0.1.0",
   "main": "index.js",
   "types": "index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/enpitsuLin/bulu-cli.git",
+    "directory": "packages/tcx-napi-rs"
+  },
   "keywords": [
     "napi-rs",
     "NAPI",

@@ -2,6 +2,11 @@
   "name": "@bulu-cli/core",
   "type": "module",
   "version": "0.0.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/enpitsuLin/bulu-cli.git",
+    "directory": "packages/bulu-cli"
+  },
   "bin": {
     "bulu": "./dist/index.mjs"
   },
