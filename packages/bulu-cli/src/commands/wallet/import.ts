@@ -1,10 +1,9 @@
 import type { WalletInfo } from '@bulu-cli/tcx-core'
-import { importWalletMnemonic, importWalletPrivateKey, loadWallet } from '@bulu-cli/tcx-core'
+import { importWalletKeystore, importWalletMnemonic, importWalletPrivateKey } from '@bulu-cli/tcx-core'
 import { defineCommand } from 'citty'
 import { readFileSync } from 'node:fs'
 import { getVaultPath } from '../../core/config'
 import { resolveTCXPassphrase } from '../../core/tcx'
-import { persistWallet, renameWallet } from '../../core/wallet-store'
 import { renderWalletDetail } from './shared'
 
 export interface WalletImportArgs {
@@ -54,9 +53,7 @@ function resolveImportSource(args: WalletImportArgs) {
 
 function importFromKeystore(name: string, keystoreFile: string, passphrase: string, vaultPath: string): WalletInfo {
   const keystoreJson = readFileSync(keystoreFile, 'utf-8')
-  const wallet = renameWallet(loadWallet(keystoreJson, passphrase), name)
-  persistWallet(wallet, vaultPath)
-  return wallet
+  return importWalletKeystore(name, keystoreJson, passphrase, vaultPath)
 }
 
 export async function runWalletImport(args: WalletImportArgs): Promise<void> {

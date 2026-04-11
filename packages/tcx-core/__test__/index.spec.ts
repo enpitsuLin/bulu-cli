@@ -4,11 +4,13 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import {
-  type WalletInfo,
   type KeystoreData,
+  type WalletInfo,
   createWallet,
   deleteWallet,
   deriveAccounts,
+  getWallet,
+  importWalletKeystore,
   importWalletMnemonic,
   importWalletPrivateKey,
   listWallet,
@@ -20,41 +22,7 @@ import { Buffer } from 'node:buffer'
 
 /** Helper to convert KeystoreData object to JSON string for functions that need it */
 function keystoreToJson(keystore: KeystoreData): string {
-  return JSON.stringify({
-    id: keystore.id,
-    version: keystore.version,
-    sourceFingerprint: keystore.sourceFingerprint,
-    crypto: {
-      cipher: keystore.crypto.cipher,
-      cipherparams: { iv: keystore.crypto.cipherparams.iv },
-      ciphertext: keystore.crypto.ciphertext,
-      mac: keystore.crypto.mac,
-      kdf: keystore.crypto.kdf,
-      kdfparams: keystore.crypto.kdfparams,
-    },
-    identity: {
-      encAuthKey: {
-        encStr: keystore.identity.encAuthKey.encStr,
-        nonce: keystore.identity.encAuthKey.nonce,
-      },
-      encKey: keystore.identity.encKey,
-      identifier: keystore.identity.identifier,
-      ipfsId: keystore.identity.ipfsId,
-    },
-    encOriginal: {
-      encStr: keystore.encOriginal.encStr,
-      nonce: keystore.encOriginal.nonce,
-    },
-    imTokenMeta: {
-      name: keystore.imTokenMeta.name,
-      passwordHint: keystore.imTokenMeta.passwordHint,
-      timestamp: keystore.imTokenMeta.timestamp,
-      source: keystore.imTokenMeta.source,
-      network: keystore.imTokenMeta.network,
-      identifiedChainTypes: keystore.imTokenMeta.identifiedChainTypes,
-    },
-    curve: keystore.curve,
-  })
+  return JSON.stringify(keystore)
 }
 
 const PASSWORD = 'imToken'
@@ -282,6 +250,21 @@ test('loadWallet restores keystore json and derives requested accounts', () => {
   })
 })
 
+test('importWalletKeystore renames and persists imported keystores', () => {
+  withTempVault((tempDir) => {
+    const sourceWallet = importWalletMnemonic('Source Wallet', MNEMONIC, PASSWORD, join(tempDir, 'source'))
+    const wallet = importWalletKeystore('Imported Keystore', keystoreToJson(sourceWallet.keystore), PASSWORD, tempDir)
+    const walletPath = join(tempDir, 'wallets', `${wallet.meta.id}.json`)
+    const persisted = JSON.parse(readFileSync(walletPath, 'utf-8')) as WalletInfo
+
+    expect(wallet.meta.name).toBe('Imported Keystore')
+    expect(wallet.keystore.imTokenMeta.name).toBe('Imported Keystore')
+    expect(wallet.accounts.map((account) => account.chainId)).toEqual([ETH_MAINNET_CHAIN_ID, TRON_MAINNET_CHAIN_ID])
+    expect(persisted.meta.name).toBe('Imported Keystore')
+    expect(persisted.keystore.imTokenMeta.name).toBe('Imported Keystore')
+  })
+})
+
 test('deriveAccounts batches arbitrary derivations through a single unlock flow', () => {
   withTempVault((tempDir) => {
     const sourceWallet = importWalletMnemonic('Imported Mnemonic', MNEMONIC, PASSWORD, tempDir)
@@ -305,6 +288,29 @@ test('deriveAccounts batches arbitrary derivations through a single unlock flow'
     expect(accounts[1]?.derivationPath).toBe("m/44'/60'/0'/0/1")
     expect(accounts[2]?.chainId).toBe(TRON_MAINNET_CHAIN_ID)
     expect(accounts[0]?.address).not.toBe(accounts[1]?.address)
+  })
+})
+
+test('getWallet resolves wallets by exact name and unique id prefix', () => {
+  withTempVault((tempDir) => {
+    const walletByName = createWallet('Wallet By Name', PASSWORD, tempDir)
+    const walletByPrefix = importWalletMnemonic('Wallet By Prefix', MNEMONIC, PASSWORD, tempDir)
+
+    const loadedByName = getWallet('Wallet By Name', tempDir)
+    const loadedByPrefix = getWallet(walletByPrefix.meta.id.slice(0, 8), tempDir)
+
+    expect(loadedByName.meta.id).toBe(walletByName.meta.id)
+    expect(loadedByPrefix.meta.id).toBe(walletByPrefix.meta.id)
+  })
+})
+
+test('getWallet rejects ambiguous wallet names', () => {
+  withTempVault((tempDir) => {
+    createWallet('Duplicate', PASSWORD, tempDir)
+    importWalletMnemonic('Duplicate', MNEMONIC, PASSWORD, tempDir)
+
+    expect(() => getWallet('Duplicate', tempDir)).toThrow(/Multiple wallets share the name "Duplicate"/)
+    expect(listWallet(tempDir)).toHaveLength(2)
   })
 })
 

@@ -12,7 +12,6 @@ use super::*;
 use crate::constants::{
   DEFAULT_ETH_DERIVATION_PATH, DEFAULT_ETH_MAINNET_CHAIN_ID, DEFAULT_TRON_MAINNET_CHAIN_ID,
 };
-use crate::wallet::keystore_to_json;
 
 const TEST_PASSWORD: &str = "imToken";
 const TEST_MNEMONIC: &str =
@@ -49,7 +48,14 @@ fn wallet_vault_path(vault_dir: &Path, wallet_id: &str) -> PathBuf {
 }
 
 fn keystore_json_value(wallet: &WalletInfo) -> Value {
-  serde_json::from_str(&keystore_to_json(&wallet.keystore)).expect("keystore JSON should parse")
+  serde_json::to_value(&wallet.keystore).expect("keystore JSON should serialize")
+}
+
+fn keystore_json(wallet: &WalletInfo) -> String {
+  wallet
+    .keystore
+    .to_json_string()
+    .expect("keystore JSON should serialize")
 }
 
 fn encode_unsigned_eth_transaction(input: EthTransactionInput) -> String {
@@ -243,7 +249,7 @@ fn load_wallet_restores_wallet_from_keystore_json() {
   .expect("mnemonic import should succeed");
 
   let wallet = load_wallet(
-    keystore_to_json(&source_wallet.keystore),
+    keystore_json(&source_wallet),
     TEST_PASSWORD.to_string(),
     Some(vec![DerivationInput {
       chain_id: DEFAULT_ETH_MAINNET_CHAIN_ID.to_string(),
@@ -277,7 +283,7 @@ fn derive_accounts_returns_requested_accounts() {
   .expect("mnemonic import should succeed");
 
   let accounts = derive_accounts(
-    keystore_to_json(&source_wallet.keystore),
+    keystore_json(&source_wallet),
     TEST_PASSWORD.to_string(),
     Some(vec![
       DerivationInput {
@@ -323,7 +329,7 @@ fn derive_accounts_rejects_unsupported_chain_id_namespace() {
   .expect("mnemonic import should succeed");
 
   let err = derive_accounts(
-    keystore_to_json(&source_wallet.keystore),
+    keystore_json(&source_wallet),
     TEST_PASSWORD.to_string(),
     Some(vec![DerivationInput {
       chain_id: "bip122:000000000019d6689c085ae165831e93".to_string(),
@@ -331,10 +337,140 @@ fn derive_accounts_rejects_unsupported_chain_id_namespace() {
       network: None,
     }]),
   )
-  .err()
-  .expect("unsupported namespaces should fail");
+  .expect_err("unsupported namespaces should fail");
 
   assert_eq!(err.reason, "unsupported chainId namespace `bip122`");
+
+  let _ = fs::remove_dir_all(vault_dir);
+}
+
+#[test]
+fn wallet_info_and_keystore_data_round_trip_with_serde() {
+  let (vault_dir, vault_path) = temp_vault("wallet-serde-round-trip");
+  let wallet = import_wallet_mnemonic(
+    "Round trip".to_string(),
+    TEST_MNEMONIC.to_string(),
+    TEST_PASSWORD.to_string(),
+    vault_path,
+    Some(1),
+  )
+  .expect("mnemonic import should succeed");
+
+  let wallet_json = serde_json::to_value(&wallet).expect("wallet should serialize");
+  let reparsed_wallet: WalletInfo =
+    serde_json::from_value(wallet_json.clone()).expect("wallet should deserialize");
+  assert_eq!(
+    serde_json::to_value(&reparsed_wallet).expect("wallet should reserialize"),
+    wallet_json
+  );
+
+  let keystore_json = keystore_json_value(&wallet);
+  let reparsed_keystore: KeystoreData =
+    serde_json::from_value(keystore_json.clone()).expect("keystore should deserialize");
+  assert_eq!(
+    serde_json::to_value(&reparsed_keystore).expect("keystore should reserialize"),
+    keystore_json
+  );
+
+  let _ = fs::remove_dir_all(vault_dir);
+}
+
+#[test]
+fn import_wallet_keystore_renames_and_persists_wallet() {
+  let (source_vault_dir, source_vault_path) = temp_vault("import-keystore-source");
+  let source_wallet = import_wallet_mnemonic(
+    "Source".to_string(),
+    TEST_MNEMONIC.to_string(),
+    TEST_PASSWORD.to_string(),
+    source_vault_path,
+    None,
+  )
+  .expect("source wallet import should succeed");
+
+  let (vault_dir, vault_path) = temp_vault("import-keystore");
+  let wallet = import_wallet_keystore(
+    "Imported keystore".to_string(),
+    keystore_json(&source_wallet),
+    TEST_PASSWORD.to_string(),
+    vault_path,
+    None,
+  )
+  .expect("keystore import should succeed");
+  let persisted = read_vault_json(&wallet_vault_path(&vault_dir, &wallet.meta.id));
+
+  assert_eq!(wallet.meta.name, "Imported keystore");
+  assert_eq!(wallet.keystore.meta.name, "Imported keystore");
+  assert_eq!(wallet.accounts.len(), 2);
+  assert_eq!(persisted["meta"]["name"], "Imported keystore");
+  assert_eq!(
+    persisted["keystore"]["imTokenMeta"]["name"],
+    "Imported keystore"
+  );
+
+  let _ = fs::remove_dir_all(source_vault_dir);
+  let _ = fs::remove_dir_all(vault_dir);
+}
+
+#[test]
+fn get_wallet_loads_wallets_by_name_and_unique_prefix() {
+  let (vault_dir, vault_path) = temp_vault("get-wallet");
+  let wallet_by_name = create_wallet(
+    "Wallet by name".to_string(),
+    TEST_PASSWORD.to_string(),
+    vault_path.clone(),
+    None,
+  )
+  .expect("wallet creation should succeed");
+  let wallet_by_prefix = import_wallet_mnemonic(
+    "Wallet by prefix".to_string(),
+    TEST_MNEMONIC.to_string(),
+    TEST_PASSWORD.to_string(),
+    vault_path.clone(),
+    None,
+  )
+  .expect("wallet import should succeed");
+
+  let loaded_by_name = get_wallet("Wallet by name".to_string(), vault_path.clone())
+    .expect("wallet should load by name");
+  let loaded_by_prefix = get_wallet(
+    wallet_by_prefix.meta.id[..8].to_string(),
+    vault_path.clone(),
+  )
+  .expect("wallet should load by unique prefix");
+
+  assert_eq!(loaded_by_name.meta.id, wallet_by_name.meta.id);
+  assert_eq!(loaded_by_prefix.meta.id, wallet_by_prefix.meta.id);
+
+  let _ = fs::remove_dir_all(vault_dir);
+}
+
+#[test]
+fn get_wallet_rejects_ambiguous_wallet_names() {
+  let (vault_dir, vault_path) = temp_vault("get-wallet-ambiguous-name");
+  import_wallet_mnemonic(
+    "Duplicate".to_string(),
+    TEST_MNEMONIC.to_string(),
+    TEST_PASSWORD.to_string(),
+    vault_path.clone(),
+    None,
+  )
+  .expect("first wallet import should succeed");
+  create_wallet(
+    "Duplicate".to_string(),
+    TEST_PASSWORD.to_string(),
+    vault_path.clone(),
+    None,
+  )
+  .expect("second wallet creation should succeed");
+
+  let err = get_wallet("Duplicate".to_string(), vault_path.clone())
+    .expect_err("ambiguous wallet name should fail");
+  assert!(err
+    .reason
+    .starts_with("Multiple wallets share the name \"Duplicate\"."));
+
+  let remaining_wallets = list_wallet(vault_path).expect("listing wallets should succeed");
+  assert_eq!(remaining_wallets.len(), 2);
 
   let _ = fs::remove_dir_all(vault_dir);
 }
@@ -393,8 +529,7 @@ fn delete_wallet_rejects_ambiguous_wallet_names() {
   .expect("second wallet creation should succeed");
 
   let err = delete_wallet("Duplicate".to_string(), vault_path.clone())
-    .err()
-    .expect("ambiguous wallet name should fail");
+    .expect_err("ambiguous wallet name should fail");
   assert!(err
     .reason
     .starts_with("Multiple wallets share the name \"Duplicate\"."));

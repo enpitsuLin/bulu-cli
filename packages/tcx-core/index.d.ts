@@ -15,12 +15,7 @@ export interface CipherParams {
  */
 export declare function createWallet(name: string, passphrase: string, vaultPath: string, index?: number | undefined | null): WalletInfo
 
-/**
- * Crypto section of the keystore containing encrypted private key.
- *
- * Note: This struct uses custom serialization to match tcx-keystore format
- * where kdf and kdfparams are flattened into the main crypto object.
- */
+/** Crypto section of the keystore containing encrypted private key. */
 export interface CryptoData {
   /** Cipher algorithm name. */
   cipher: string
@@ -30,10 +25,7 @@ export interface CryptoData {
   ciphertext: string
   /** KDF type name ("pbkdf2" or "scrypt"). */
   kdf: string
-  /**
-   * KDF parameters - use `KdfParams::pbkdf2()` or `KdfParams::scrypt()` to create.
-   * Serialized as "kdfparams" field to match tcx-keystore format.
-   */
+  /** KDF parameters serialized as the `kdfparams` field. */
   kdfparams: KdfParams
   /** Message authentication code (hex-encoded). */
   mac: string
@@ -115,6 +107,9 @@ export interface EthTransactionInput {
   accessList: Array<EthAccessListItem>
 }
 
+/** Loads a persisted wallet from the vault by wallet id, exact name, or unique id prefix. */
+export declare function getWallet(nameOrId: string, vaultPath: string): WalletInfo
+
 /** Identity information for the keystore. */
 export interface IdentityData {
   /** Encrypted authentication key. */
@@ -126,6 +121,14 @@ export interface IdentityData {
   /** IPFS identifier. */
   ipfsId: string
 }
+
+/**
+ * Imports a keystore JSON into the local vault under the provided wallet name.
+ *
+ * The wallet is renamed before persistence, then default or requested accounts
+ * are derived in the same unlock flow.
+ */
+export declare function importWalletKeystore(name: string, keystoreJson: string, password: string, vaultPath: string, derivations?: Array<DerivationInput> | undefined | null): WalletInfo
 
 /**
  * Imports an existing mnemonic-backed wallet.
@@ -226,8 +229,6 @@ export interface SignedMessage {
  *
  * `chain_id` selects the signer implementation. Ethereum uses personal-sign
  * semantics, while Tron uses the default TRON message header and version.
- *
- * `name` is used to find the wallet file in the vault directory.
  */
 export declare function signMessage(name: string, chainId: string, message: string, password: string, vaultPath: string): SignedMessage
 
@@ -237,8 +238,6 @@ export declare function signMessage(name: string, chainId: string, message: stri
  *
  * `chain_id` selects the signer implementation. Ethereum expects an unsigned
  * RLP-encoded transaction hex, while Tron expects raw transaction bytes hex.
- *
- * `name` is used to find the wallet file in the vault directory.
  */
 export declare function signTransaction(name: string, chainId: string, txHex: string, password: string, vaultPath: string): EthSignedTransaction | TronSignedTransaction
 
