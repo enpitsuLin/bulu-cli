@@ -2,14 +2,15 @@ use std::any::Any;
 
 use rlp::Rlp;
 use tcx_common::{parse_u64, FromHex, ToHex};
+use tcx_constants::CurveType;
 use tcx_eth::transaction::{
   AccessList as TcxEthAccessList, EthMessageInput as TcxEthMessageInput,
   EthMessageOutput as TcxEthMessageOutput, EthTxInput as TcxEthTxInput,
   EthTxOutput as TcxEthTxOutput,
 };
-use tcx_keystore::{Keystore as TcxKeystore, MessageSigner, TransactionSigner};
+use tcx_keystore::{Keystore as TcxKeystore, MessageSigner, SignatureParameters, TransactionSigner};
 
-use crate::derivation::{ethereum_chain_reference, ResolvedDerivation};
+use crate::derivation::{ethereum_chain_reference, Chain, ResolvedDerivation};
 use crate::error::{CoreError, CoreResult, ResultExt};
 use crate::types::{EthMessageInput, EthMessageSignatureType, EthSignedTransaction, SignedMessage};
 
@@ -30,7 +31,13 @@ impl ChainSigner for EthereumSigner {
     derivation_path: &str,
     message: &str,
   ) -> CoreResult<SignedMessage> {
-    let params = resolved.signature_parameters(derivation_path);
+    let params = SignatureParameters {
+      curve: CurveType::SECP256k1,
+      derivation_path: derivation_path.to_string(),
+      chain_type: Chain::Ethereum.coin_name().to_string(),
+      network: resolved.network.to_string(),
+      seg_wit: String::new(),
+    };
     let signed: TcxEthMessageOutput = keystore
       .sign_message(
         &params,
@@ -55,7 +62,13 @@ impl ChainSigner for EthereumSigner {
     let tx = tx_data
       .downcast::<TcxEthTxInput>()
       .map_err(|_| CoreError::new("invalid Ethereum transaction data"))?;
-    let params = resolved.signature_parameters(derivation_path);
+    let params = SignatureParameters {
+      curve: CurveType::SECP256k1,
+      derivation_path: derivation_path.to_string(),
+      chain_type: Chain::Ethereum.coin_name().to_string(),
+      network: resolved.network.to_string(),
+      seg_wit: String::new(),
+    };
     let signed: TcxEthTxOutput = keystore.sign_transaction(&params, &*tx).map_core_err()?;
     Ok(SignedTransaction::Ethereum(EthSignedTransaction {
       signature: signed.signature,

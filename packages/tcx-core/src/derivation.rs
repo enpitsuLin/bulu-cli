@@ -2,7 +2,7 @@ use tcx_common::{parse_u64, ToHex};
 use tcx_constants::{CoinInfo, CurveType};
 use tcx_eth::address::EthAddress;
 use tcx_keystore::keystore::IdentityNetwork;
-use tcx_keystore::{Keystore as TcxKeystore, SignatureParameters};
+use tcx_keystore::Keystore as TcxKeystore;
 use tcx_primitive::TypedPublicKey;
 use tcx_tron::TronAddress;
 
@@ -72,22 +72,10 @@ impl Chain {
     }
   }
 
-  fn coin_name(self) -> &'static str {
+  pub(crate) fn coin_name(self) -> &'static str {
     match self {
       Self::Ethereum => "ETHEREUM",
       Self::Tron => "TRON",
-    }
-  }
-}
-
-impl ResolvedDerivation {
-  pub(crate) fn signature_parameters(&self, derivation_path: &str) -> SignatureParameters {
-    SignatureParameters {
-      curve: CurveType::SECP256k1,
-      derivation_path: derivation_path.to_string(),
-      chain_type: self.chain.coin_name().to_string(),
-      network: self.network.to_string(),
-      seg_wit: String::new(),
     }
   }
 }

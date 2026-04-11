@@ -1,12 +1,13 @@
 use std::any::Any;
 
-use tcx_keystore::{Keystore as TcxKeystore, MessageSigner, TransactionSigner};
+use tcx_constants::CurveType;
+use tcx_keystore::{Keystore as TcxKeystore, MessageSigner, SignatureParameters, TransactionSigner};
 use tcx_tron::transaction::{
   TronMessageInput as TcxTronMessageInput, TronMessageOutput as TcxTronMessageOutput, TronTxInput,
   TronTxOutput as TcxTronTxOutput,
 };
 
-use crate::derivation::ResolvedDerivation;
+use crate::derivation::{Chain, ResolvedDerivation};
 use crate::error::{CoreError, CoreResult, ResultExt};
 use crate::strings::strip_hex_prefix;
 use crate::types::{SignedMessage, TronMessageInput, TronSignedTransaction};
@@ -29,7 +30,13 @@ impl ChainSigner for TronSigner {
     derivation_path: &str,
     message: &str,
   ) -> CoreResult<SignedMessage> {
-    let params = resolved.signature_parameters(derivation_path);
+    let params = SignatureParameters {
+      curve: CurveType::SECP256k1,
+      derivation_path: derivation_path.to_string(),
+      chain_type: Chain::Tron.coin_name().to_string(),
+      network: resolved.network.to_string(),
+      seg_wit: String::new(),
+    };
     let signed: TcxTronMessageOutput = keystore
       .sign_message(
         &params,
@@ -55,7 +62,13 @@ impl ChainSigner for TronSigner {
     let tx = tx_data
       .downcast::<TronTxInput>()
       .map_err(|_| CoreError::new("invalid Tron transaction data"))?;
-    let params = resolved.signature_parameters(derivation_path);
+    let params = SignatureParameters {
+      curve: CurveType::SECP256k1,
+      derivation_path: derivation_path.to_string(),
+      chain_type: Chain::Tron.coin_name().to_string(),
+      network: resolved.network.to_string(),
+      seg_wit: String::new(),
+    };
     let signed: TcxTronTxOutput = keystore.sign_transaction(&params, &*tx).map_core_err()?;
     Ok(SignedTransaction::Tron(TronSignedTransaction {
       signatures: signed.signatures,
