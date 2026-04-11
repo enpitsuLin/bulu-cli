@@ -43,6 +43,10 @@ fn read_vault_json(path: &PathBuf) -> Value {
   serde_json::from_str(&persisted).expect("vault JSON should parse")
 }
 
+fn read_vault_text(path: &PathBuf) -> String {
+  fs::read_to_string(path).expect("vault JSON should be readable")
+}
+
 fn wallet_vault_path(vault_dir: &Path, wallet_id: &str) -> PathBuf {
   vault_dir.join("wallets").join(format!("{wallet_id}.json"))
 }
@@ -99,8 +103,23 @@ fn create_wallet_persists_wallet_info_when_vault_path_is_provided() {
   .expect("create wallet should succeed");
   let wallet_path = wallet_vault_path(&vault_dir, &wallet.meta.id);
   let persisted = read_vault_json(&wallet_path);
+  let persisted_text = read_vault_text(&wallet_path);
 
   assert!(wallet_path.exists());
+  assert!(
+    persisted_text.find("\"meta\"").expect("meta should exist")
+      < persisted_text
+        .find("\"keystore\"")
+        .expect("keystore should exist")
+  );
+  assert!(
+    persisted_text
+      .find("\"keystore\"")
+      .expect("keystore should exist")
+      < persisted_text
+        .find("\"accounts\"")
+        .expect("accounts should exist")
+  );
   assert_eq!(persisted["keystore"], keystore_json_value(&wallet));
   assert_eq!(persisted["meta"]["id"], wallet.meta.id);
   assert_eq!(persisted["meta"]["source"], "NEW_MNEMONIC");

@@ -275,10 +275,10 @@ export interface WalletAccount {
 
 /** Wallet payload returned by create, import, and load operations. */
 export interface WalletInfo {
-  /** Keystore data object. */
-  keystore: KeystoreData
   /** Wallet metadata. */
   meta: WalletMeta
+  /** Keystore data object. */
+  keystore: KeystoreData
   /** Derived accounts requested for the operation. */
   accounts: Array<WalletAccount>
 }

@@ -239,10 +239,10 @@ pub struct KeystoreData {
 #[serde(rename_all = "camelCase")]
 /// Wallet payload returned by create, import, and load operations.
 pub struct WalletInfo {
-  /// Keystore data object.
-  pub keystore: KeystoreData,
   /// Wallet metadata.
   pub meta: WalletMeta,
+  /// Keystore data object.
+  pub keystore: KeystoreData,
   /// Derived accounts requested for the operation.
   pub accounts: Vec<WalletAccount>,
 }
@@ -371,8 +371,8 @@ impl WalletInfo {
     accounts: Vec<WalletAccount>,
   ) -> CoreResult<Self> {
     Ok(Self {
-      keystore: KeystoreData::try_from_keystore(keystore)?,
       meta: WalletMeta::from(keystore),
+      keystore: KeystoreData::try_from_keystore(keystore)?,
       accounts,
     })
   }
