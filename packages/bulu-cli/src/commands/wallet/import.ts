@@ -43,8 +43,11 @@ export default defineCommand({
   }),
   async run({ args }) {
     const name = args.name.trim()
+
+    const out = createOutput(resolveOutputOptions(args))
     if (!name) {
-      throw new Error('Wallet name is required')
+      out.warn('Wallet name is required')
+      process.exit(1)
     }
 
     const index = parseIndex(args.index)
@@ -54,15 +57,16 @@ export default defineCommand({
 
     const sourceCount = (mnemonic ? 1 : 0) + (privateKey ? 1 : 0) + (keystoreFile ? 1 : 0)
     if (sourceCount !== 1) {
-      throw new Error('Provide exactly one of --mnemonic, --privateKey, or --keystoreFile')
+      out.warn('Provide exactly one of --mnemonic, --privateKey, or --keystoreFile')
+      process.exit(1)
     }
     if (keystoreFile && index !== undefined) {
-      throw new Error('--index is not supported with --keystoreFile')
+      out.warn('--index is not supported with --keystoreFile')
+      process.exit(1)
     }
 
     const passphrase = await resolveTCXPassphrase()
     const vaultPath = getVaultPath()
-    const out = createOutput(resolveOutputOptions(args))
 
     let wallet: WalletInfo
     try {

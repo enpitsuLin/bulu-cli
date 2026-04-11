@@ -484,8 +484,11 @@ fn get_wallet_rejects_ambiguous_wallet_names() {
   wallet2["meta"]["id"] = Value::String(wallet2_id.to_string());
   wallet2["keystore"]["id"] = Value::String(wallet2_id.to_string());
   fs::create_dir_all(wallet2_path.parent().unwrap()).expect("should create wallets dir");
-  fs::write(&wallet2_path, serde_json::to_string_pretty(&wallet2).unwrap())
-    .expect("should write second wallet");
+  fs::write(
+    &wallet2_path,
+    serde_json::to_string_pretty(&wallet2).unwrap(),
+  )
+  .expect("should write second wallet");
 
   let err = get_wallet("Duplicate".to_string(), vault_path.clone())
     .expect_err("ambiguous wallet name should fail");
@@ -554,8 +557,11 @@ fn delete_wallet_rejects_ambiguous_wallet_names() {
   wallet2["meta"]["id"] = Value::String(wallet2_id.to_string());
   wallet2["keystore"]["id"] = Value::String(wallet2_id.to_string());
   fs::create_dir_all(wallet2_path.parent().unwrap()).expect("should create wallets dir");
-  fs::write(&wallet2_path, serde_json::to_string_pretty(&wallet2).unwrap())
-    .expect("should write second wallet");
+  fs::write(
+    &wallet2_path,
+    serde_json::to_string_pretty(&wallet2).unwrap(),
+  )
+  .expect("should write second wallet");
 
   let err = delete_wallet("Duplicate".to_string(), vault_path.clone())
     .expect_err("ambiguous wallet name should fail");
@@ -876,7 +882,8 @@ fn export_wallet_rejects_nonexistent_wallet() {
   // Check that error message indicates wallet not found
   // The exact message may vary, but should contain "not found" or indicate the wallet doesn't exist
   assert!(
-    err.reason.to_lowercase().contains("not found") || err.reason.to_lowercase().contains("no wallets"),
+    err.reason.to_lowercase().contains("not found")
+      || err.reason.to_lowercase().contains("no wallets"),
     "expected 'not found' error, got: {}",
     err.reason
   );

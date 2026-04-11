@@ -21,16 +21,10 @@ export default defineCommand({
   async run({ args }) {
     const vaultPath = getVaultPath()
     const wallets = listWallet(vaultPath)
-    const outputOpts = resolveOutputOptions(args)
-    const output = createOutput(outputOpts)
+    const output = createOutput(resolveOutputOptions(args))
 
     if (wallets.length === 0) {
       output.warn('No wallets found')
-      return
-    }
-
-    if (outputOpts.json) {
-      output.data(wallets)
       return
     }
 

@@ -1,5 +1,4 @@
 import { defineCommand } from 'citty'
-import { styleText } from 'node:util'
 import { getVaultPath } from '../../core/config'
 import { createOutput, resolveOutputOptions } from '../../core/output'
 import { exportWallet } from '@bulu-cli/tcx-core'
@@ -21,22 +20,21 @@ export default defineCommand({
     },
   }),
   async run({ args }) {
+    const out = createOutput(resolveOutputOptions(args))
     if (!args.confirm) {
-      console.error(
-        styleText('yellow', '⚠ WARNING: You are about to export sensitive key material (mnemonic or private key).'),
+      out.warn(
+        [
+          'You are about to export sensitive key material (mnemonic or private key).',
+          '  This action is irreversible and may compromise your wallet security if the exported',
+          '  data is exposed. To proceed, rerun this command with the --confirm flag.',
+        ].join('\n'),
       )
-      console.error(
-        styleText('yellow', '  This action is irreversible and may compromise your wallet security if the exported'),
-      )
-      console.error(styleText('yellow', '  data is exposed. To proceed, rerun this command with the --confirm flag.'))
       process.exit(1)
     }
 
     const vaultPath = getVaultPath()
     const passphrase = await resolveTCXPassphrase()
     const exported = exportWallet(args.wallet, passphrase, vaultPath)
-
-    const out = createOutput(resolveOutputOptions(args))
 
     out.warn('The following output contains sensitive key material. Do not share it.')
 
