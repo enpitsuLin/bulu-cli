@@ -1,7 +1,7 @@
 {
   "name": "@bulu-cli/tcx-core",
   "description": "Rust-powered Node.js bindings for Ethereum and Tron wallet operations",
-  "version": "0.0.1-alpha.3",
+  "version": "0.0.1-alpha.4",
   "main": "index.js",
   "types": "index.d.ts",
   "repository": {
