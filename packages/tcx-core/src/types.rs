@@ -9,7 +9,7 @@ use tcx_tron::transaction::{
   TronMessageInput as TcxTronMessageInput, TronTxInput as TcxTronTxInput,
 };
 
-use crate::error::{CoreError, CoreResult};
+use crate::error::{CoreResult, ResultExt};
 
 #[napi(object)]
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -357,11 +357,11 @@ pub struct TronSignedTransaction {
 
 impl KeystoreData {
   pub(crate) fn to_json_string(&self) -> CoreResult<String> {
-    serde_json::to_string(self).map_err(CoreError::from_err)
+    serde_json::to_string(self).map_core_err()
   }
 
   pub(crate) fn try_from_keystore(value: &TcxKeystore) -> CoreResult<Self> {
-    serde_json::from_str(&value.to_json()).map_err(CoreError::from_err)
+    serde_json::from_str(&value.to_json()).map_core_err()
   }
 }
 

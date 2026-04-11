@@ -4,6 +4,34 @@ use std::fmt::{self, Display, Formatter};
 
 pub(crate) type CoreResult<T> = std::result::Result<T, CoreError>;
 
+pub(crate) trait ResultExt<T> {
+  fn map_core_err(self) -> CoreResult<T>;
+  fn core_context(self, context: impl Display) -> CoreResult<T>;
+}
+
+impl<T, E> ResultExt<T> for std::result::Result<T, E>
+where
+  E: Display,
+{
+  fn map_core_err(self) -> CoreResult<T> {
+    self.map_err(CoreError::from_err)
+  }
+
+  fn core_context(self, context: impl Display) -> CoreResult<T> {
+    self.map_err(|err| CoreError::with_context(context, err))
+  }
+}
+
+pub(crate) trait CoreResultExt<T> {
+  fn into_napi(self) -> napi::Result<T>;
+}
+
+impl<T> CoreResultExt<T> for CoreResult<T> {
+  fn into_napi(self) -> napi::Result<T> {
+    self.map_err(to_napi_err)
+  }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct CoreError {
   reason: String,
@@ -33,12 +61,8 @@ impl Display for CoreError {
 
 impl StdError for CoreError {}
 
-pub(crate) fn to_napi_err(err: impl Display) -> Error {
+fn to_napi_err(err: impl Display) -> Error {
   Error::from_reason(err.to_string())
-}
-
-pub(crate) fn napi_result<T>(result: CoreResult<T>) -> napi::Result<T> {
-  result.map_err(to_napi_err)
 }
 
 pub(crate) fn require_non_empty(value: &str, field_name: &str) -> CoreResult<()> {

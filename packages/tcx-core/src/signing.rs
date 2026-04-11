@@ -1,7 +1,7 @@
 use napi::{Either, Result};
 use napi_derive::napi;
 
-use crate::error::napi_result;
+use crate::error::CoreResultExt;
 use crate::service::{self, SignedTransaction};
 use crate::types::{EthSignedTransaction, SignedMessage, TronSignedTransaction};
 
@@ -17,9 +17,7 @@ pub fn sign_message(
   password: String,
   vault_path: String,
 ) -> Result<SignedMessage> {
-  napi_result(service::sign_message(
-    name, chain_id, message, password, vault_path,
-  ))
+  service::sign_message(name, chain_id, message, password, vault_path).into_napi()
 }
 
 #[napi(js_name = "signTransaction")]
@@ -35,9 +33,8 @@ pub fn sign_transaction(
   password: String,
   vault_path: String,
 ) -> Result<Either<EthSignedTransaction, TronSignedTransaction>> {
-  let signed = napi_result(service::sign_transaction(
-    name, chain_id, tx_hex, password, vault_path,
-  ))?;
+  let signed =
+    service::sign_transaction(name, chain_id, tx_hex, password, vault_path).into_napi()?;
 
   Ok(match signed {
     SignedTransaction::Ethereum(result) => Either::A(result),

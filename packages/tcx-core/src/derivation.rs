@@ -10,7 +10,7 @@ use crate::constants::{
   DEFAULT_ETH_DERIVATION_PATH, DEFAULT_ETH_MAINNET_CHAIN_ID, DEFAULT_ETH_TESTNET_CHAIN_ID,
   DEFAULT_TRON_DERIVATION_PATH, DEFAULT_TRON_MAINNET_CHAIN_ID, DEFAULT_TRON_TESTNET_CHAIN_ID,
 };
-use crate::error::{require_trimmed, CoreError, CoreResult};
+use crate::error::{require_trimmed, CoreError, CoreResult, ResultExt};
 use crate::strings::{empty_to_none, sanitize_optional_text};
 use crate::types::{DerivationInput, WalletAccount};
 
@@ -185,7 +185,7 @@ fn derive_account(
     Chain::Ethereum => keystore.derive_coin::<EthAddress>(&coin_info),
     Chain::Tron => keystore.derive_coin::<TronAddress>(&coin_info),
   }
-  .map_err(CoreError::from_err)?;
+  .map_core_err()?;
 
   Ok(WalletAccount {
     chain_id: request.resolved.chain_id.clone(),

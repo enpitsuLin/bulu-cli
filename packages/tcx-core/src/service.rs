@@ -14,7 +14,7 @@ use tcx_tron::transaction::{
 };
 
 use crate::derivation::{derive_accounts_for_wallet, resolve_derivation, Chain};
-use crate::error::{require_non_empty, require_trimmed, CoreError, CoreResult};
+use crate::error::{require_non_empty, require_trimmed, CoreResult, ResultExt};
 use crate::ethereum::parse_eth_transaction_hex;
 use crate::strings::{sanitize_optional_text, strip_hex_prefix};
 use crate::types::{
@@ -56,8 +56,7 @@ pub(crate) fn create_wallet(
     Source::NewMnemonic,
     "New Wallet",
   );
-  let keystore =
-    TcxKeystore::from_mnemonic(&mnemonic, &passphrase, metadata).map_err(CoreError::from_err)?;
+  let keystore = TcxKeystore::from_mnemonic(&mnemonic, &passphrase, metadata).map_core_err()?;
   let wallet_info = build_wallet_info(keystore, &passphrase, None, index)?;
   VaultRepository::new(vault_path)?.save_wallet(&wallet_info)?;
   Ok(wallet_info)
@@ -82,8 +81,8 @@ pub(crate) fn import_wallet_mnemonic(
     Source::Mnemonic,
     "Imported Mnemonic Wallet",
   );
-  let keystore = TcxKeystore::from_mnemonic(&normalized_mnemonic, &passphrase, metadata)
-    .map_err(CoreError::from_err)?;
+  let keystore =
+    TcxKeystore::from_mnemonic(&normalized_mnemonic, &passphrase, metadata).map_core_err()?;
   let wallet_info = build_wallet_info(keystore, &passphrase, None, index)?;
   VaultRepository::new(vault_path)?.save_wallet(&wallet_info)?;
   Ok(wallet_info)
@@ -113,7 +112,7 @@ pub(crate) fn import_wallet_private_key(
     metadata,
     None,
   )
-  .map_err(CoreError::from_err)?;
+  .map_core_err()?;
   let wallet_info = build_wallet_info(keystore, &passphrase, None, None)?;
   VaultRepository::new(vault_path)?.save_wallet(&wallet_info)?;
   Ok(wallet_info)
@@ -200,7 +199,7 @@ pub(crate) fn sign_message(
               signature_type: Some(EthMessageSignatureType::PersonalSign),
             }),
           )
-          .map_err(CoreError::from_err)?;
+          .map_core_err()?;
         Ok(SignedMessage {
           signature: signed.signature,
         })
@@ -215,7 +214,7 @@ pub(crate) fn sign_message(
               version: Some(1),
             }),
           )
-          .map_err(CoreError::from_err)?;
+          .map_core_err()?;
         Ok(SignedMessage {
           signature: signed.signature,
         })
@@ -256,7 +255,7 @@ pub(crate) fn sign_transaction(
         let tx = parse_eth_transaction_hex(&normalized_tx_hex, &request.resolved.chain_id)?;
         let signed: TcxEthTxOutput = unlocked_keystore
           .sign_transaction(&params, &tx)
-          .map_err(CoreError::from_err)?;
+          .map_core_err()?;
         Ok(SignedTransaction::Ethereum(EthSignedTransaction {
           signature: signed.signature,
           tx_hash: signed.tx_hash,
@@ -270,7 +269,7 @@ pub(crate) fn sign_transaction(
               raw_data: strip_hex_prefix(&normalized_tx_hex).to_string(),
             },
           )
-          .map_err(CoreError::from_err)?;
+          .map_core_err()?;
         Ok(SignedTransaction::Tron(TronSignedTransaction {
           signatures: signed.signatures,
         }))
@@ -298,18 +297,17 @@ fn with_unlocked_keystore<T>(
   password: &str,
   f: impl FnOnce(&mut TcxKeystore) -> CoreResult<T>,
 ) -> CoreResult<T> {
-  let mut guard =
-    KeystoreGuard::unlock_by_password(keystore, password).map_err(CoreError::from_err)?;
+  let mut guard = KeystoreGuard::unlock_by_password(keystore, password).map_core_err()?;
   f(guard.keystore_mut())
 }
 
 fn load_tcx_keystore(keystore_json: String) -> CoreResult<TcxKeystore> {
   let normalized_keystore_json = require_trimmed(keystore_json, "keystoreJson")?;
-  TcxKeystore::from_json(&normalized_keystore_json).map_err(CoreError::from_err)
+  TcxKeystore::from_json(&normalized_keystore_json).map_core_err()
 }
 
 fn stored_keystore(wallet: &WalletInfo) -> CoreResult<TcxKeystore> {
-  TcxKeystore::from_json(&wallet.keystore.to_json_string()?).map_err(CoreError::from_err)
+  TcxKeystore::from_json(&wallet.keystore.to_json_string()?).map_core_err()
 }
 
 fn normalize_mnemonic(mnemonic: &str) -> String {
@@ -319,10 +317,10 @@ fn normalize_mnemonic(mnemonic: &str) -> String {
 fn create_mnemonic(entropy: Option<String>) -> CoreResult<String> {
   match entropy {
     Some(entropy_hex) => {
-      let entropy = Vec::from_hex_auto(entropy_hex.trim()).map_err(CoreError::from_err)?;
-      mnemonic_from_entropy(&entropy).map_err(CoreError::from_err)
+      let entropy = Vec::from_hex_auto(entropy_hex.trim()).map_core_err()?;
+      mnemonic_from_entropy(&entropy).map_core_err()
     }
-    None => mnemonic_from_entropy(&random_u8_16()).map_err(CoreError::from_err),
+    None => mnemonic_from_entropy(&random_u8_16()).map_core_err(),
   }
 }
 

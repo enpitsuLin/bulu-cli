@@ -1,25 +1,25 @@
 use napi::Result;
 use napi_derive::napi;
 
-use crate::error::napi_result;
+use crate::error::CoreResultExt;
 use crate::service;
 use crate::types::{DerivationInput, WalletAccount, WalletInfo};
 
 #[napi(js_name = "listWallet")]
 pub fn list_wallet(vault_path: String) -> Result<Vec<WalletInfo>> {
-  napi_result(service::list_wallets(vault_path))
+  service::list_wallets(vault_path).into_napi()
 }
 
 #[napi(js_name = "getWallet")]
 /// Loads a persisted wallet from the vault by wallet id, exact name, or unique id prefix.
 pub fn get_wallet(name_or_id: String, vault_path: String) -> Result<WalletInfo> {
-  napi_result(service::get_wallet(name_or_id, vault_path))
+  service::get_wallet(name_or_id, vault_path).into_napi()
 }
 
 #[napi(js_name = "deleteWallet")]
 /// Deletes a wallet from the vault by wallet id, exact name, or unique id prefix.
 pub fn delete_wallet(name_or_id: String, vault_path: String) -> Result<()> {
-  napi_result(service::delete_wallet(name_or_id, vault_path))
+  service::delete_wallet(name_or_id, vault_path).into_napi()
 }
 
 #[napi(js_name = "createWallet")]
@@ -34,7 +34,7 @@ pub fn create_wallet(
   vault_path: String,
   index: Option<u32>,
 ) -> Result<WalletInfo> {
-  napi_result(service::create_wallet(name, passphrase, vault_path, index))
+  service::create_wallet(name, passphrase, vault_path, index).into_napi()
 }
 
 #[napi(js_name = "importWalletMnemonic")]
@@ -50,9 +50,7 @@ pub fn import_wallet_mnemonic(
   vault_path: String,
   index: Option<u32>,
 ) -> Result<WalletInfo> {
-  napi_result(service::import_wallet_mnemonic(
-    name, mnemonic, passphrase, vault_path, index,
-  ))
+  service::import_wallet_mnemonic(name, mnemonic, passphrase, vault_path, index).into_napi()
 }
 
 #[napi(js_name = "importWalletPrivateKey")]
@@ -68,13 +66,7 @@ pub fn import_wallet_private_key(
   vault_path: String,
   index: Option<u32>,
 ) -> Result<WalletInfo> {
-  napi_result(service::import_wallet_private_key(
-    name,
-    private_key,
-    passphrase,
-    vault_path,
-    index,
-  ))
+  service::import_wallet_private_key(name, private_key, passphrase, vault_path, index).into_napi()
 }
 
 #[napi(js_name = "loadWallet")]
@@ -87,7 +79,7 @@ pub fn load_wallet(
   password: String,
   derivations: Option<Vec<DerivationInput>>,
 ) -> Result<WalletInfo> {
-  napi_result(service::load_wallet(keystore_json, password, derivations))
+  service::load_wallet(keystore_json, password, derivations).into_napi()
 }
 
 #[napi(js_name = "importWalletKeystore")]
@@ -102,13 +94,8 @@ pub fn import_wallet_keystore(
   vault_path: String,
   derivations: Option<Vec<DerivationInput>>,
 ) -> Result<WalletInfo> {
-  napi_result(service::import_wallet_keystore(
-    name,
-    keystore_json,
-    password,
-    vault_path,
-    derivations,
-  ))
+  service::import_wallet_keystore(name, keystore_json, password, vault_path, derivations)
+    .into_napi()
 }
 
 #[napi(js_name = "deriveAccounts")]
@@ -121,9 +108,5 @@ pub fn derive_accounts(
   password: String,
   derivations: Option<Vec<DerivationInput>>,
 ) -> Result<Vec<WalletAccount>> {
-  napi_result(service::derive_accounts(
-    keystore_json,
-    password,
-    derivations,
-  ))
+  service::derive_accounts(keystore_json, password, derivations).into_napi()
 }

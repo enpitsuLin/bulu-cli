@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use crate::error::{require_trimmed, CoreError, CoreResult};
+use crate::error::{require_trimmed, CoreError, CoreResult, ResultExt};
 use crate::types::WalletInfo;
 
 const WALLETS_DIR: &str = "wallets";
@@ -33,14 +33,10 @@ impl VaultRepository {
     self.ensure_wallets_dir()?;
 
     let path = self.wallet_file_path(&wallet_info.meta.id);
-    let payload = serde_json::to_string_pretty(wallet_info).map_err(CoreError::from_err)?;
+    let payload = serde_json::to_string_pretty(wallet_info).map_core_err()?;
 
-    fs::write(&path, payload).map_err(|err| {
-      CoreError::with_context(
-        format!("failed to write wallet vault `{}`", path.display()),
-        err,
-      )
-    })?;
+    fs::write(&path, payload)
+      .core_context(format!("failed to write wallet vault `{}`", path.display()))?;
 
     set_file_permissions(&path);
     Ok(())
@@ -53,27 +49,17 @@ impl VaultRepository {
 
     check_vault_permissions(&self.wallets_dir);
 
-    let entries = fs::read_dir(&self.wallets_dir).map_err(|err| {
-      CoreError::with_context(
-        format!(
-          "failed to read vault directory `{}`",
-          self.wallets_dir.display()
-        ),
-        err,
-      )
-    })?;
+    let entries = fs::read_dir(&self.wallets_dir).core_context(format!(
+      "failed to read vault directory `{}`",
+      self.wallets_dir.display()
+    ))?;
 
     let mut wallet_infos = Vec::new();
     for entry in entries {
-      let entry = entry.map_err(|err| {
-        CoreError::with_context(
-          format!(
-            "failed to read entry in vault directory `{}`",
-            self.wallets_dir.display()
-          ),
-          err,
-        )
-      })?;
+      let entry = entry.core_context(format!(
+        "failed to read entry in vault directory `{}`",
+        self.wallets_dir.display()
+      ))?;
 
       let path = entry.path();
       if path.extension().and_then(|ext| ext.to_str()) != Some(WALLET_FILE_EXTENSION) {
@@ -109,12 +95,10 @@ impl VaultRepository {
     let wallet = resolve_wallet(&normalized_identifier, &wallets, &self.vault_path)?;
     let path = self.wallet_file_path(&wallet.meta.id);
 
-    fs::remove_file(&path).map_err(|err| {
-      CoreError::with_context(
-        format!("failed to delete wallet vault `{}`", path.display()),
-        err,
-      )
-    })?;
+    fs::remove_file(&path).core_context(format!(
+      "failed to delete wallet vault `{}`",
+      path.display()
+    ))?;
 
     Ok(())
   }
@@ -123,15 +107,10 @@ impl VaultRepository {
     let root_dir = Path::new(&self.vault_path);
 
     if !self.wallets_dir.exists() {
-      fs::create_dir_all(&self.wallets_dir).map_err(|err| {
-        CoreError::with_context(
-          format!(
-            "failed to create vault directory `{}`",
-            self.wallets_dir.display()
-          ),
-          err,
-        )
-      })?;
+      fs::create_dir_all(&self.wallets_dir).core_context(format!(
+        "failed to create vault directory `{}`",
+        self.wallets_dir.display()
+      ))?;
     }
 
     if root_dir.exists() {

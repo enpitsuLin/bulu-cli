@@ -3,13 +3,13 @@ use tcx_common::{parse_u64, FromHex, ToHex};
 use tcx_eth::transaction::{AccessList as TcxEthAccessList, EthTxInput as TcxEthTxInput};
 
 use crate::derivation::ethereum_chain_reference;
-use crate::error::{CoreError, CoreResult};
+use crate::error::{CoreError, CoreResult, ResultExt};
 
 pub(crate) fn parse_eth_transaction_hex(
   tx_hex: &str,
   request_chain_id: &str,
 ) -> CoreResult<TcxEthTxInput> {
-  let tx_bytes = Vec::from_hex_auto(tx_hex).map_err(CoreError::from_err)?;
+  let tx_bytes = Vec::from_hex_auto(tx_hex).map_core_err()?;
   if tx_bytes.is_empty() {
     return Err(CoreError::new("txHex must not be empty"));
   }
@@ -78,7 +78,7 @@ fn parse_eip2930_transaction(tx_bytes: &[u8], request_chain_id: &str) -> CoreRes
     tx_type: "0x01".to_string(),
     max_fee_per_gas: String::new(),
     max_priority_fee_per_gas: String::new(),
-    access_list: parse_eth_access_list(&tx.at(7).map_err(CoreError::from_err)?)?,
+    access_list: parse_eth_access_list(&tx.at(7).map_core_err()?)?,
   })
 }
 
@@ -105,7 +105,7 @@ fn parse_eip1559_transaction(tx_bytes: &[u8], request_chain_id: &str) -> CoreRes
     tx_type: "0x02".to_string(),
     max_fee_per_gas: rlp_uint_hex_at(&tx, 3)?,
     max_priority_fee_per_gas: rlp_uint_hex_at(&tx, 2)?,
-    access_list: parse_eth_access_list(&tx.at(8).map_err(CoreError::from_err)?)?,
+    access_list: parse_eth_access_list(&tx.at(8).map_core_err()?)?,
   })
 }
 
@@ -116,7 +116,7 @@ fn expect_list_item_count(rlp: &Rlp, field_name: &str) -> CoreResult<usize> {
     )));
   }
 
-  rlp.item_count().map_err(CoreError::from_err)
+  rlp.item_count().map_core_err()
 }
 
 fn ensure_zero_signature_placeholders(rlp: &Rlp, tx_kind: &str) -> CoreResult<()> {
@@ -136,10 +136,10 @@ fn rlp_item_is_zero(rlp: &Rlp, index: usize) -> CoreResult<bool> {
 fn rlp_item_bytes(rlp: &Rlp, index: usize) -> CoreResult<Vec<u8>> {
   rlp
     .at(index)
-    .map_err(CoreError::from_err)?
+    .map_core_err()?
     .data()
     .map(|bytes| bytes.to_vec())
-    .map_err(CoreError::from_err)
+    .map_core_err()
 }
 
 fn rlp_uint_hex_at(rlp: &Rlp, index: usize) -> CoreResult<String> {
@@ -174,14 +174,14 @@ fn parse_eth_access_list(access_list: &Rlp) -> CoreResult<Vec<TcxEthAccessList>>
   let mut parsed = Vec::with_capacity(item_count);
 
   for index in 0..item_count {
-    let item = access_list.at(index).map_err(CoreError::from_err)?;
+    let item = access_list.at(index).map_core_err()?;
     if expect_list_item_count(&item, "txHex")? != 2 {
       return Err(CoreError::new(
         "txHex contains an invalid Ethereum access list entry",
       ));
     }
 
-    let storage_keys_rlp = item.at(1).map_err(CoreError::from_err)?;
+    let storage_keys_rlp = item.at(1).map_core_err()?;
     let storage_key_count = expect_list_item_count(&storage_keys_rlp, "txHex")?;
     let mut storage_keys = Vec::with_capacity(storage_key_count);
     for storage_index in 0..storage_key_count {
@@ -199,9 +199,8 @@ fn parse_eth_access_list(access_list: &Rlp) -> CoreResult<Vec<TcxEthAccessList>>
 }
 
 fn validate_eth_chain_id(request_chain_id: &str, tx_chain_id: &str) -> CoreResult<()> {
-  let expected_chain_id =
-    parse_u64(&ethereum_chain_reference(request_chain_id)?).map_err(CoreError::from_err)?;
-  let actual_chain_id = parse_u64(tx_chain_id).map_err(CoreError::from_err)?;
+  let expected_chain_id = parse_u64(&ethereum_chain_reference(request_chain_id)?).map_core_err()?;
+  let actual_chain_id = parse_u64(tx_chain_id).map_core_err()?;
 
   if expected_chain_id != actual_chain_id {
     return Err(CoreError::new(format!(
