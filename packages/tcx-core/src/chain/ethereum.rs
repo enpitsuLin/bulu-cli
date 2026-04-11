@@ -94,15 +94,25 @@ fn parse_eth_transaction_hex(tx_hex: &str, request_chain_id: &str) -> CoreResult
 
 fn parse_legacy_transaction(tx_bytes: &[u8], request_chain_id: &str) -> CoreResult<TcxEthTxInput> {
   let tx = Rlp::new(tx_bytes);
-  let item_count = expect_list_item_count(&tx, "txHex")?;
+  if !tx.is_list() {
+    return Err(CoreError::new("txHex must encode an RLP list"));
+  }
+  let item_count = tx.item_count().map_core_err()?;
 
   let chain_id = match item_count {
     6 => ethereum_chain_reference(request_chain_id)?,
     9 => {
-      ensure_zero_signature_placeholders(&tx, "legacy")?;
-      let parsed_chain_id = rlp_uint_hex_at(&tx, 6)?;
-      validate_eth_chain_id(request_chain_id, &parsed_chain_id)?;
-      parsed_chain_id
+      // Verify unsigned transaction (no signature placeholders)
+      let r = tx.at(7).map_core_err()?.data().map(|b| b.to_vec()).map_core_err()?;
+      let s = tx.at(8).map_core_err()?.data().map(|b| b.to_vec()).map_core_err()?;
+      if !r.iter().all(|v| *v == 0) || !s.iter().all(|v| *v == 0) {
+        return Err(CoreError::new(
+          "txHex must be an unsigned Ethereum legacy transaction",
+        ));
+      }
+      let parsed = rlp_bytes_to_hex(&tx, 6, true)?;
+      validate_eth_chain_id(request_chain_id, &parsed)?;
+      parsed
     }
     _ => {
       return Err(CoreError::new(
@@ -112,12 +122,12 @@ fn parse_legacy_transaction(tx_bytes: &[u8], request_chain_id: &str) -> CoreResu
   };
 
   Ok(TcxEthTxInput {
-    nonce: rlp_uint_hex_at(&tx, 0)?,
-    gas_price: rlp_uint_hex_at(&tx, 1)?,
-    gas_limit: rlp_uint_hex_at(&tx, 2)?,
-    to: rlp_address_hex_at(&tx, 3)?,
-    value: rlp_uint_hex_at(&tx, 4)?,
-    data: rlp_bytes_hex_at(&tx, 5)?,
+    nonce: rlp_bytes_to_hex(&tx, 0, true)?,
+    gas_price: rlp_bytes_to_hex(&tx, 1, true)?,
+    gas_limit: rlp_bytes_to_hex(&tx, 2, true)?,
+    to: rlp_bytes_to_hex(&tx, 3, false)?,
+    value: rlp_bytes_to_hex(&tx, 4, true)?,
+    data: rlp_bytes_to_hex(&tx, 5, false)?,
     chain_id,
     tx_type: String::new(),
     max_fee_per_gas: String::new(),
@@ -128,24 +138,26 @@ fn parse_legacy_transaction(tx_bytes: &[u8], request_chain_id: &str) -> CoreResu
 
 fn parse_eip2930_transaction(tx_bytes: &[u8], request_chain_id: &str) -> CoreResult<TcxEthTxInput> {
   let tx = Rlp::new(tx_bytes);
-  let item_count = expect_list_item_count(&tx, "txHex")?;
-  if item_count != 8 {
+  if !tx.is_list() {
+    return Err(CoreError::new("txHex must encode an RLP list"));
+  }
+  if tx.item_count().map_core_err()? != 8 {
     return Err(CoreError::new(
       "txHex must be an unsigned Ethereum EIP-2930 transaction",
     ));
   }
 
-  let chain_id = rlp_uint_hex_at(&tx, 0)?;
+  let chain_id = rlp_bytes_to_hex(&tx, 0, true)?;
   validate_eth_chain_id(request_chain_id, &chain_id)?;
 
   Ok(TcxEthTxInput {
     chain_id,
-    nonce: rlp_uint_hex_at(&tx, 1)?,
-    gas_price: rlp_uint_hex_at(&tx, 2)?,
-    gas_limit: rlp_uint_hex_at(&tx, 3)?,
-    to: rlp_address_hex_at(&tx, 4)?,
-    value: rlp_uint_hex_at(&tx, 5)?,
-    data: rlp_bytes_hex_at(&tx, 6)?,
+    nonce: rlp_bytes_to_hex(&tx, 1, true)?,
+    gas_price: rlp_bytes_to_hex(&tx, 2, true)?,
+    gas_limit: rlp_bytes_to_hex(&tx, 3, true)?,
+    to: rlp_bytes_to_hex(&tx, 4, false)?,
+    value: rlp_bytes_to_hex(&tx, 5, true)?,
+    data: rlp_bytes_to_hex(&tx, 6, false)?,
     tx_type: "0x01".to_string(),
     max_fee_per_gas: String::new(),
     max_priority_fee_per_gas: String::new(),
@@ -155,113 +167,74 @@ fn parse_eip2930_transaction(tx_bytes: &[u8], request_chain_id: &str) -> CoreRes
 
 fn parse_eip1559_transaction(tx_bytes: &[u8], request_chain_id: &str) -> CoreResult<TcxEthTxInput> {
   let tx = Rlp::new(tx_bytes);
-  let item_count = expect_list_item_count(&tx, "txHex")?;
-  if item_count != 9 {
+  if !tx.is_list() {
+    return Err(CoreError::new("txHex must encode an RLP list"));
+  }
+  if tx.item_count().map_core_err()? != 9 {
     return Err(CoreError::new(
       "txHex must be an unsigned Ethereum EIP-1559 transaction",
     ));
   }
 
-  let chain_id = rlp_uint_hex_at(&tx, 0)?;
+  let chain_id = rlp_bytes_to_hex(&tx, 0, true)?;
   validate_eth_chain_id(request_chain_id, &chain_id)?;
 
   Ok(TcxEthTxInput {
     chain_id,
-    nonce: rlp_uint_hex_at(&tx, 1)?,
+    nonce: rlp_bytes_to_hex(&tx, 1, true)?,
     gas_price: String::new(),
-    gas_limit: rlp_uint_hex_at(&tx, 4)?,
-    to: rlp_address_hex_at(&tx, 5)?,
-    value: rlp_uint_hex_at(&tx, 6)?,
-    data: rlp_bytes_hex_at(&tx, 7)?,
+    gas_limit: rlp_bytes_to_hex(&tx, 4, true)?,
+    to: rlp_bytes_to_hex(&tx, 5, false)?,
+    value: rlp_bytes_to_hex(&tx, 6, true)?,
+    data: rlp_bytes_to_hex(&tx, 7, false)?,
     tx_type: "0x02".to_string(),
-    max_fee_per_gas: rlp_uint_hex_at(&tx, 3)?,
-    max_priority_fee_per_gas: rlp_uint_hex_at(&tx, 2)?,
+    max_fee_per_gas: rlp_bytes_to_hex(&tx, 3, true)?,
+    max_priority_fee_per_gas: rlp_bytes_to_hex(&tx, 2, true)?,
     access_list: parse_eth_access_list(&tx.at(8).map_core_err()?)?,
   })
 }
 
-fn expect_list_item_count(rlp: &Rlp, field_name: &str) -> CoreResult<usize> {
-  if !rlp.is_list() {
-    return Err(CoreError::new(format!(
-      "{field_name} must encode an RLP list"
-    )));
-  }
-
-  rlp.item_count().map_core_err()
-}
-
-fn ensure_zero_signature_placeholders(rlp: &Rlp, tx_kind: &str) -> CoreResult<()> {
-  if !rlp_item_is_zero(rlp, 7)? || !rlp_item_is_zero(rlp, 8)? {
-    return Err(CoreError::new(format!(
-      "txHex must be an unsigned Ethereum {tx_kind} transaction"
-    )));
-  }
-
-  Ok(())
-}
-
-fn rlp_item_is_zero(rlp: &Rlp, index: usize) -> CoreResult<bool> {
-  Ok(rlp_item_bytes(rlp, index)?.iter().all(|value| *value == 0))
-}
-
-fn rlp_item_bytes(rlp: &Rlp, index: usize) -> CoreResult<Vec<u8>> {
-  rlp
-    .at(index)
-    .map_core_err()?
-    .data()
-    .map(|bytes| bytes.to_vec())
-    .map_core_err()
-}
-
-fn rlp_uint_hex_at(rlp: &Rlp, index: usize) -> CoreResult<String> {
-  let bytes = rlp_item_bytes(rlp, index)?;
+/// Convert RLP item at index to hex string.
+/// If `is_uint` is true, empty bytes become "0x0", otherwise empty string.
+fn rlp_bytes_to_hex(rlp: &Rlp, index: usize, is_uint: bool) -> CoreResult<String> {
+  let bytes = rlp.at(index).map_core_err()?.data().map(|b| b.to_vec()).map_core_err()?;
   Ok(if bytes.is_empty() {
-    "0x0".to_string()
-  } else {
-    format!("0x{}", bytes.to_hex())
-  })
-}
-
-fn rlp_bytes_hex_at(rlp: &Rlp, index: usize) -> CoreResult<String> {
-  let bytes = rlp_item_bytes(rlp, index)?;
-  Ok(if bytes.is_empty() {
-    String::new()
-  } else {
-    format!("0x{}", bytes.to_hex())
-  })
-}
-
-fn rlp_address_hex_at(rlp: &Rlp, index: usize) -> CoreResult<String> {
-  let bytes = rlp_item_bytes(rlp, index)?;
-  Ok(if bytes.is_empty() {
-    String::new()
+    if is_uint { "0x0".to_string() } else { String::new() }
   } else {
     format!("0x{}", bytes.to_hex())
   })
 }
 
 fn parse_eth_access_list(access_list: &Rlp) -> CoreResult<Vec<TcxEthAccessList>> {
-  let item_count = expect_list_item_count(access_list, "txHex")?;
+  if !access_list.is_list() {
+    return Err(CoreError::new("txHex access list must be an RLP list"));
+  }
+  let item_count = access_list.item_count().map_core_err()?;
   let mut parsed = Vec::with_capacity(item_count);
 
   for index in 0..item_count {
     let item = access_list.at(index).map_core_err()?;
-    if expect_list_item_count(&item, "txHex")? != 2 {
+    if !item.is_list() || item.item_count().map_core_err()? != 2 {
       return Err(CoreError::new(
         "txHex contains an invalid Ethereum access list entry",
       ));
     }
 
     let storage_keys_rlp = item.at(1).map_core_err()?;
-    let storage_key_count = expect_list_item_count(&storage_keys_rlp, "txHex")?;
+    if !storage_keys_rlp.is_list() {
+      return Err(CoreError::new(
+        "txHex contains an invalid Ethereum access list entry",
+      ));
+    }
+    let storage_key_count = storage_keys_rlp.item_count().map_core_err()?;
     let mut storage_keys = Vec::with_capacity(storage_key_count);
     for storage_index in 0..storage_key_count {
-      let storage_key = rlp_item_bytes(&storage_keys_rlp, storage_index)?;
-      storage_keys.push(format!("0x{}", storage_key.to_hex()));
+      let key_bytes = storage_keys_rlp.at(storage_index).map_core_err()?.data().map(|b| b.to_vec()).map_core_err()?;
+      storage_keys.push(format!("0x{}", key_bytes.to_hex()));
     }
 
     parsed.push(TcxEthAccessList {
-      address: rlp_address_hex_at(&item, 0)?,
+      address: rlp_bytes_to_hex(&item, 0, false)?,
       storage_keys,
     });
   }
@@ -270,10 +243,10 @@ fn parse_eth_access_list(access_list: &Rlp) -> CoreResult<Vec<TcxEthAccessList>>
 }
 
 fn validate_eth_chain_id(request_chain_id: &str, tx_chain_id: &str) -> CoreResult<()> {
-  let expected_chain_id = parse_u64(&ethereum_chain_reference(request_chain_id)?).map_core_err()?;
-  let actual_chain_id = parse_u64(tx_chain_id).map_core_err()?;
+  let expected = parse_u64(&ethereum_chain_reference(request_chain_id)?).map_core_err()?;
+  let actual = parse_u64(tx_chain_id).map_core_err()?;
 
-  if expected_chain_id != actual_chain_id {
+  if expected != actual {
     return Err(CoreError::new(format!(
       "txHex chain id `{tx_chain_id}` does not match chainId `{request_chain_id}`"
     )));
