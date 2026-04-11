@@ -31,7 +31,7 @@ function keystoreToJson(keystore: KeystoreData): string {
       ciphertext: keystore.crypto.ciphertext,
       mac: keystore.crypto.mac,
       kdf: keystore.crypto.kdf,
-      kdfparams: keystore.crypto.kdfparams ?? keystore.crypto.scryptParams,
+      kdfparams: keystore.crypto.kdfparams,
     },
     identity: {
       encAuthKey: {

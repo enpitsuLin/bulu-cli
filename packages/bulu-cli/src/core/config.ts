@@ -132,3 +132,34 @@ export function setDefaultWalletIfMissing(
 
   writeFileSync(getConfigPath(cwd), JSON.stringify(config, null, 2))
 }
+
+export function clearDefaultWalletIfMatches(walletName: string, cwd = getConfigDir()): void {
+  let config: Record<string, unknown>
+  try {
+    config = loadUserConfigSync(cwd)
+  } catch {
+    return
+  }
+
+  const defaultConfig = config.default
+  if (typeof defaultConfig !== 'object' || defaultConfig === null || Array.isArray(defaultConfig)) {
+    return
+  }
+
+  const defaultWallet = (defaultConfig as Record<string, unknown>).wallet
+  if (defaultWallet !== walletName) {
+    return
+  }
+
+  const nextDefault = { ...(defaultConfig as Record<string, unknown>) }
+  delete nextDefault.wallet
+
+  if (Object.keys(nextDefault).length === 0) {
+    delete config.default
+  } else {
+    config.default = nextDefault
+  }
+
+  ensureConfigDir(cwd)
+  writeFileSync(getConfigPath(cwd), JSON.stringify(config, null, 2))
+}
