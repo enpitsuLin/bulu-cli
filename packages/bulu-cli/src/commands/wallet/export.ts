@@ -2,8 +2,8 @@ import { defineCommand } from 'citty'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { getVaultPath } from '../../core/config'
-import { resolveStoredWallet } from '../../core/wallet-store'
 import { createOutput, resolveOutputOptions } from '../../core/output'
+import { getWallet } from '@bulu-cli/tcx-core'
 
 const EXPORT_FILE_MODE = 0o600
 
@@ -24,8 +24,8 @@ export default defineCommand({
   },
   async run({ args }) {
     const vaultPath = getVaultPath()
-    const storedWallet = resolveStoredWallet(args.wallet, vaultPath)
-    const keystore = storedWallet.data.keystore
+    const wallet = getWallet(args.wallet, vaultPath)
+    const keystore = wallet.keystore
 
     const out = createOutput(resolveOutputOptions(args))
 
@@ -37,6 +37,6 @@ export default defineCommand({
     const targetPath = resolve(args.file)
     mkdirSync(dirname(targetPath), { recursive: true })
     writeFileSync(targetPath, JSON.stringify(keystore, null, 2), { mode: EXPORT_FILE_MODE })
-    out.success(`Exported wallet "${storedWallet.wallet.meta.name}" to ${targetPath}`)
+    out.success(`Exported wallet "${wallet.meta.name}" to ${targetPath}`)
   },
 })

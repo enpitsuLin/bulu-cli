@@ -7,15 +7,6 @@ import { resolveTCXPassphrase } from '../../core/tcx'
 import { createOutput, resolveOutputOptions } from '../../core/output'
 import { withDefaultArgs } from '../../core/args-def'
 
-export interface WalletImportArgs {
-  name: string
-  mnemonic?: string
-  privateKey?: string
-  keystoreFile?: string
-  index?: string
-  json?: boolean
-}
-
 function parseIndex(indexValue?: string): number | undefined {
   if (indexValue === undefined || indexValue === '') {
     return undefined

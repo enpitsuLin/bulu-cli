@@ -6,12 +6,6 @@ import { createOutput, resolveOutputOptions } from '../../core/output'
 import { getConfigDir } from '../../core/config'
 import { withDefaultArgs } from '../../core/args-def'
 
-export interface WalletDeleteArgs {
-  wallet: string
-  confirm?: boolean
-  json?: boolean
-}
-
 export default defineCommand({
   meta: { name: 'delete', description: 'Delete a wallet from the local vault' },
   args: withDefaultArgs({

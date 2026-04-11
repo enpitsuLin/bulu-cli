@@ -140,10 +140,6 @@ export function loadBuluConfigSync(cwd?: string): BuluConfig {
   return mergeConfig(CONFIG_DEFAULTS as Record<string, unknown>, overrides)
 }
 
-export async function loadBuluConfig(cwd?: string): Promise<BuluConfig> {
-  return loadBuluConfigSync(cwd)
-}
-
 export function getConfigValueByPath(config: unknown, keyPath: string): unknown {
   let current = config
 
@@ -170,78 +166,4 @@ export function setConfigValueByPath(config: UserConfig, keyPath: string, value:
   }
 
   current[segments[segments.length - 1]] = value
-}
-
-export function setDefaultWalletIfMissing(
-  walletName: string,
-  options?: {
-    cwd?: string
-    shouldReplace?: (currentWallet: string) => boolean
-  },
-): void {
-  const cwd = options?.cwd ?? getConfigDir()
-  let config: Record<string, unknown>
-  try {
-    config = loadUserConfigSync(cwd)
-  } catch {
-    return
-  }
-
-  const defaultConfig = config.default
-  let configuredWallet: string | undefined
-  if (
-    typeof defaultConfig === 'object' &&
-    defaultConfig !== null &&
-    !Array.isArray(defaultConfig) &&
-    typeof (defaultConfig as Record<string, unknown>).wallet === 'string'
-  ) {
-    configuredWallet = (defaultConfig as Record<string, unknown>).wallet as string
-  }
-
-  if (configuredWallet) {
-    if (!options?.shouldReplace?.(configuredWallet)) {
-      return
-    }
-  }
-
-  ensureConfigDir(cwd)
-  const nextDefault =
-    typeof defaultConfig === 'object' && defaultConfig !== null && !Array.isArray(defaultConfig)
-      ? { ...(defaultConfig as Record<string, unknown>) }
-      : {}
-  nextDefault.wallet = walletName
-  config.default = nextDefault
-
-  saveUserConfigSync(config, cwd)
-}
-
-export function clearDefaultWalletIfMatches(walletName: string, cwd = getConfigDir()): void {
-  let config: Record<string, unknown>
-  try {
-    config = loadUserConfigSync(cwd)
-  } catch {
-    return
-  }
-
-  const defaultConfig = config.default
-  if (typeof defaultConfig !== 'object' || defaultConfig === null || Array.isArray(defaultConfig)) {
-    return
-  }
-
-  const defaultWallet = (defaultConfig as Record<string, unknown>).wallet
-  if (defaultWallet !== walletName) {
-    return
-  }
-
-  const nextDefault = { ...(defaultConfig as Record<string, unknown>) }
-  delete nextDefault.wallet
-
-  if (Object.keys(nextDefault).length === 0) {
-    delete config.default
-  } else {
-    config.default = nextDefault
-  }
-
-  ensureConfigDir(cwd)
-  saveUserConfigSync(config, cwd)
 }
