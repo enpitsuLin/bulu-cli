@@ -21,8 +21,8 @@ use super::{ChainSigner, SignedTransaction};
 pub(crate) struct EthereumSigner;
 
 impl ChainSigner for EthereumSigner {
-  fn parse_transaction(&self, tx_hex: &str, chain_id: &str) -> CoreResult<Box<dyn Any>> {
-    let tx = parse_eth_transaction_hex(tx_hex, chain_id)?;
+  fn prepare_transaction(&self, tx_hex: &str, chain_id: &str) -> CoreResult<Box<dyn Any>> {
+    let tx = prepare_eth_transaction(tx_hex, chain_id)?;
     Ok(Box::new(tx))
   }
 
@@ -79,7 +79,7 @@ impl ChainSigner for EthereumSigner {
   }
 }
 
-fn parse_eth_transaction_hex(tx_hex: &str, request_chain_id: &str) -> CoreResult<TcxEthTxInput> {
+fn prepare_eth_transaction(tx_hex: &str, request_chain_id: &str) -> CoreResult<TcxEthTxInput> {
   let tx_bytes = Vec::from_hex_auto(tx_hex).map_core_err()?;
   if tx_bytes.is_empty() {
     return Err(CoreError::new("txHex must not be empty"));

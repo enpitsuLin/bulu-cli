@@ -19,7 +19,7 @@ use super::{ChainSigner, SignedTransaction};
 pub(crate) struct TronSigner;
 
 impl ChainSigner for TronSigner {
-  fn parse_transaction(&self, tx_hex: &str, _chain_id: &str) -> CoreResult<Box<dyn Any>> {
+  fn prepare_transaction(&self, tx_hex: &str, _chain_id: &str) -> CoreResult<Box<dyn Any>> {
     // Tron transactions are passed as raw hex bytes without additional parsing
     let raw_data = strip_hex_prefix(tx_hex).to_string();
     Ok(Box::new(TronTxInput { raw_data }))

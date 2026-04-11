@@ -254,7 +254,7 @@ pub(crate) fn sign_transaction(
     )?;
 
     let signer = get_chain_signer(request.resolved.chain);
-    let tx_data = signer.parse_transaction(&normalized_tx_hex, &request.resolved.chain_id)?;
+    let tx_data = signer.prepare_transaction(&normalized_tx_hex, &request.resolved.chain_id)?;
     signer.sign_transaction(
       unlocked_keystore,
       &request.resolved,

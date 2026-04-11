@@ -12,8 +12,9 @@ pub(crate) enum SignedTransaction {
 
 /// Chain signer trait that abstracts signing functionality for different blockchains
 pub(crate) trait ChainSigner {
-  /// Parse transaction input from hex string
-  fn parse_transaction(&self, tx_hex: &str, chain_id: &str) -> CoreResult<Box<dyn std::any::Any>>;
+  /// Prepare transaction for signing from hex string
+  /// Validates and converts raw transaction hex into chain-specific input format
+  fn prepare_transaction(&self, tx_hex: &str, chain_id: &str) -> CoreResult<Box<dyn std::any::Any>>;
 
   /// Sign a message
   fn sign_message(
