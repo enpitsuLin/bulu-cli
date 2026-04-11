@@ -80,13 +80,13 @@ impl Chain {
   }
 }
 
-impl DerivationRequest {
-  pub(crate) fn signature_parameters(&self) -> SignatureParameters {
+impl ResolvedDerivation {
+  pub(crate) fn signature_parameters(&self, derivation_path: &str) -> SignatureParameters {
     SignatureParameters {
       curve: CurveType::SECP256k1,
-      derivation_path: self.derivation_path.clone(),
-      chain_type: self.resolved.chain.coin_name().to_string(),
-      network: self.resolved.network.to_string(),
+      derivation_path: derivation_path.to_string(),
+      chain_type: self.chain.coin_name().to_string(),
+      network: self.network.to_string(),
       seg_wit: String::new(),
     }
   }
