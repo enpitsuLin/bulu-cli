@@ -33,6 +33,12 @@ fn temp_vault_dir(test_name: &str) -> PathBuf {
   ))
 }
 
+fn temp_vault(test_name: &str) -> (PathBuf, String) {
+  let vault_dir = temp_vault_dir(test_name);
+  let vault_path = vault_dir.to_string_lossy().into_owned();
+  (vault_dir, vault_path)
+}
+
 fn read_vault_json(path: &PathBuf) -> Value {
   let persisted = fs::read_to_string(path).expect("vault JSON should be readable");
   serde_json::from_str(&persisted).expect("vault JSON should parse")
@@ -54,8 +60,14 @@ fn encode_unsigned_eth_transaction(input: EthTransactionInput) -> String {
 
 #[test]
 fn create_wallet_returns_keystore_json_and_default_accounts() {
-  let wallet = create_wallet("Created".to_string(), TEST_PASSWORD.to_string(), None, None)
-    .expect("create wallet should succeed");
+  let (vault_dir, vault_path) = temp_vault("create-wallet-defaults");
+  let wallet = create_wallet(
+    "Created".to_string(),
+    TEST_PASSWORD.to_string(),
+    vault_path,
+    None,
+  )
+  .expect("create wallet should succeed");
 
   assert_eq!(wallet.meta.source, WalletSource::NewMnemonic);
   assert_eq!(wallet.meta.network, WalletNetwork::Mainnet);
@@ -65,15 +77,17 @@ fn create_wallet_returns_keystore_json_and_default_accounts() {
   assert_eq!(wallet.meta.version, 12000);
   assert!(wallet.meta.derivable);
   assert_eq!(wallet.keystore.version, 12000);
+
+  let _ = fs::remove_dir_all(vault_dir);
 }
 
 #[test]
 fn create_wallet_persists_wallet_info_when_vault_path_is_provided() {
-  let vault_dir = temp_vault_dir("create-wallet");
+  let (vault_dir, vault_path) = temp_vault("create-wallet");
   let wallet = create_wallet(
     "Created".to_string(),
     TEST_PASSWORD.to_string(),
-    Some(vault_dir.to_string_lossy().into_owned()),
+    vault_path,
     None,
   )
   .expect("create wallet should succeed");
@@ -98,11 +112,12 @@ fn create_wallet_persists_wallet_info_when_vault_path_is_provided() {
 
 #[test]
 fn import_wallet_mnemonic_returns_default_accounts() {
+  let (vault_dir, vault_path) = temp_vault("import-mnemonic-defaults");
   let wallet = import_wallet_mnemonic(
     "Imported mnemonic".to_string(),
     TEST_MNEMONIC.to_string(),
     TEST_PASSWORD.to_string(),
-    None,
+    vault_path,
     None,
   )
   .expect("mnemonic import should succeed");
@@ -112,24 +127,27 @@ fn import_wallet_mnemonic_returns_default_accounts() {
   assert_eq!(wallet.accounts.len(), 2);
   assert_eq!(wallet.accounts[0].chain_id, DEFAULT_ETH_MAINNET_CHAIN_ID);
   assert_eq!(wallet.accounts[1].chain_id, DEFAULT_TRON_MAINNET_CHAIN_ID);
+
+  let _ = fs::remove_dir_all(vault_dir);
 }
 
 #[test]
 fn import_wallet_mnemonic_uses_index_for_default_derivations_and_persists_wallet_info() {
+  let (default_vault_dir, default_vault_path) = temp_vault("import-mnemonic-default");
   let default_wallet = import_wallet_mnemonic(
     "Default mnemonic".to_string(),
     TEST_MNEMONIC.to_string(),
     TEST_PASSWORD.to_string(),
-    None,
+    default_vault_path,
     None,
   )
   .expect("mnemonic import should succeed");
-  let vault_dir = temp_vault_dir("import-mnemonic");
+  let (vault_dir, vault_path) = temp_vault("import-mnemonic");
   let indexed_wallet = import_wallet_mnemonic(
     "Indexed mnemonic".to_string(),
     TEST_MNEMONIC.to_string(),
     TEST_PASSWORD.to_string(),
-    Some(vault_dir.to_string_lossy().into_owned()),
+    vault_path,
     Some(1),
   )
   .expect("indexed mnemonic import should succeed");
@@ -158,16 +176,18 @@ fn import_wallet_mnemonic_uses_index_for_default_derivations_and_persists_wallet
     TRON_ACCOUNT_1_DERIVATION_PATH
   );
 
+  let _ = fs::remove_dir_all(default_vault_dir);
   let _ = fs::remove_dir_all(vault_dir);
 }
 
 #[test]
 fn import_wallet_private_key_returns_non_derivable_accounts() {
+  let (vault_dir, vault_path) = temp_vault("import-private-key-defaults");
   let wallet = import_wallet_private_key(
     "Imported private key".to_string(),
     TEST_PRIVATE_KEY.to_string(),
     TEST_PASSWORD.to_string(),
-    None,
+    vault_path,
     None,
   )
   .expect("private key import should succeed");
@@ -182,16 +202,18 @@ fn import_wallet_private_key_returns_non_derivable_accounts() {
   assert_eq!(wallet.meta.version, 12001);
   assert_eq!(wallet.meta.curve.as_deref(), Some("secp256k1"));
   assert!(!wallet.meta.derivable);
+
+  let _ = fs::remove_dir_all(vault_dir);
 }
 
 #[test]
 fn import_wallet_private_key_persists_wallet_info_and_ignores_index() {
-  let vault_dir = temp_vault_dir("import-private-key");
+  let (vault_dir, vault_path) = temp_vault("import-private-key");
   let wallet = import_wallet_private_key(
     "Imported private key".to_string(),
     TEST_PRIVATE_KEY.to_string(),
     TEST_PASSWORD.to_string(),
-    Some(vault_dir.to_string_lossy().into_owned()),
+    vault_path,
     Some(9),
   )
   .expect("private key import should succeed");
@@ -210,11 +232,12 @@ fn import_wallet_private_key_persists_wallet_info_and_ignores_index() {
 
 #[test]
 fn load_wallet_restores_wallet_from_keystore_json() {
+  let (vault_dir, vault_path) = temp_vault("load-wallet-source");
   let source_wallet = import_wallet_mnemonic(
     "Imported mnemonic".to_string(),
     TEST_MNEMONIC.to_string(),
     TEST_PASSWORD.to_string(),
-    None,
+    vault_path,
     None,
   )
   .expect("mnemonic import should succeed");
@@ -237,15 +260,18 @@ fn load_wallet_restores_wallet_from_keystore_json() {
     wallet.accounts[0].derivation_path.as_deref(),
     Some("m/44'/60'/0'/0/1")
   );
+
+  let _ = fs::remove_dir_all(vault_dir);
 }
 
 #[test]
 fn derive_accounts_returns_requested_accounts() {
+  let (vault_dir, vault_path) = temp_vault("derive-accounts");
   let source_wallet = import_wallet_mnemonic(
     "Imported mnemonic".to_string(),
     TEST_MNEMONIC.to_string(),
     TEST_PASSWORD.to_string(),
-    None,
+    vault_path,
     None,
   )
   .expect("mnemonic import should succeed");
@@ -280,15 +306,18 @@ fn derive_accounts_returns_requested_accounts() {
     Some("m/44'/60'/0'/0/1")
   );
   assert_ne!(accounts[0].address, accounts[1].address);
+
+  let _ = fs::remove_dir_all(vault_dir);
 }
 
 #[test]
 fn derive_accounts_rejects_unsupported_chain_id_namespace() {
+  let (vault_dir, vault_path) = temp_vault("derive-unsupported-chain");
   let source_wallet = import_wallet_mnemonic(
     "Imported mnemonic".to_string(),
     TEST_MNEMONIC.to_string(),
     TEST_PASSWORD.to_string(),
-    None,
+    vault_path,
     None,
   )
   .expect("mnemonic import should succeed");
@@ -306,6 +335,8 @@ fn derive_accounts_rejects_unsupported_chain_id_namespace() {
   .expect("unsupported namespaces should fail");
 
   assert_eq!(err.reason, "unsupported chainId namespace `bip122`");
+
+  let _ = fs::remove_dir_all(vault_dir);
 }
 
 #[test]
@@ -316,7 +347,7 @@ fn sign_message_signs_ethereum_personal_messages() {
     "Imported mnemonic".to_string(),
     TEST_MNEMONIC.to_string(),
     TEST_PASSWORD.to_string(),
-    Some(vault_path.clone()),
+    vault_path.clone(),
     None,
   )
   .expect("mnemonic import should succeed");
@@ -346,7 +377,7 @@ fn sign_message_signs_tron_messages() {
     "Imported mnemonic".to_string(),
     TEST_MNEMONIC.to_string(),
     TEST_PASSWORD.to_string(),
-    Some(vault_path.clone()),
+    vault_path.clone(),
     None,
   )
   .expect("mnemonic import should succeed");
@@ -376,7 +407,7 @@ fn sign_transaction_signs_ethereum_transactions() {
     "Imported private key".to_string(),
     TEST_PRIVATE_KEY.to_string(),
     TEST_PASSWORD.to_string(),
-    Some(vault_path.clone()),
+    vault_path.clone(),
     None,
   )
   .expect("private key import should succeed");
@@ -428,7 +459,7 @@ fn sign_transaction_signs_ethereum_eip1559_transaction_hex() {
     "Imported mnemonic".to_string(),
     TEST_MNEMONIC.to_string(),
     TEST_PASSWORD.to_string(),
-    Some(vault_path.clone()),
+    vault_path.clone(),
     None,
   )
   .expect("mnemonic import should succeed");
@@ -480,7 +511,7 @@ fn sign_transaction_signs_tron_transactions() {
     "Imported mnemonic".to_string(),
     TEST_MNEMONIC.to_string(),
     TEST_PASSWORD.to_string(),
-    Some(vault_path.clone()),
+    vault_path.clone(),
     None,
   )
   .expect("mnemonic import should succeed");

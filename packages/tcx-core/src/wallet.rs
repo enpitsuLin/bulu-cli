@@ -16,8 +16,8 @@ use crate::types::{
 use crate::vault;
 
 #[napi(js_name = "listWallet")]
-pub fn list_wallet(vault_path_opt: Option<String>) -> Result<Vec<WalletInfo>> {
-  vault::list_wallets(vault_path_opt)
+pub fn list_wallet(vault_path: String) -> Result<Vec<WalletInfo>> {
+  vault::list_wallets(vault_path)
 }
 
 pub(crate) fn parse_wallet_info(content: &str) -> Result<WalletInfo> {
@@ -395,13 +395,13 @@ fn parse_wallet_account(value: &Value) -> Result<WalletAccount> {
 #[napi(js_name = "createWallet")]
 /// Creates a new mnemonic-backed wallet.
 ///
-/// If `vaultPath` is provided, the returned WalletInfo is also persisted under
+/// The returned WalletInfo is also persisted under
 /// `<vaultPath>/wallets/<wallet id>.json`. `index` selects the default derived
 /// account index.
 pub fn create_wallet(
   name: String,
   passphrase: String,
-  vault_path: Option<String>,
+  vault_path: String,
   index: Option<u32>,
 ) -> Result<WalletInfo> {
   require_non_empty(&passphrase, "passphrase")?;
@@ -416,21 +416,22 @@ pub fn create_wallet(
   );
   let keystore =
     TcxKeystore::from_mnemonic(&mnemonic, &passphrase, metadata).map_err(to_napi_err)?;
-
-  finalize_wallet(keystore, &passphrase, None, vault_path, index)
+  let wallet_info = build_wallet_info(keystore, &passphrase, None, index)?;
+  persist_wallet_info(&wallet_info, vault_path)?;
+  Ok(wallet_info)
 }
 
 #[napi(js_name = "importWalletMnemonic")]
 /// Imports an existing mnemonic-backed wallet.
 ///
-/// If `vaultPath` is provided, the returned WalletInfo is also persisted under
+/// The returned WalletInfo is also persisted under
 /// `<vaultPath>/wallets/<wallet id>.json`. `index` selects the default derived
 /// account index.
 pub fn import_wallet_mnemonic(
   name: String,
   mnemonic: String,
   passphrase: String,
-  vault_path: Option<String>,
+  vault_path: String,
   index: Option<u32>,
 ) -> Result<WalletInfo> {
   require_non_empty(&passphrase, "passphrase")?;
@@ -447,21 +448,22 @@ pub fn import_wallet_mnemonic(
   );
   let keystore =
     TcxKeystore::from_mnemonic(&normalized_mnemonic, &passphrase, metadata).map_err(to_napi_err)?;
-
-  finalize_wallet(keystore, &passphrase, None, vault_path, index)
+  let wallet_info = build_wallet_info(keystore, &passphrase, None, index)?;
+  persist_wallet_info(&wallet_info, vault_path)?;
+  Ok(wallet_info)
 }
 
 #[napi(js_name = "importWalletPrivateKey")]
 /// Imports a private key as a non-derivable wallet.
 ///
-/// If `vaultPath` is provided, the returned WalletInfo is also persisted under
+/// The returned WalletInfo is also persisted under
 /// `<vaultPath>/wallets/<wallet id>.json`. `index` is accepted for API parity
 /// but ignored because private-key wallets are non-derivable.
 pub fn import_wallet_private_key(
   name: String,
   private_key: String,
   passphrase: String,
-  vault_path: Option<String>,
+  vault_path: String,
   index: Option<u32>,
 ) -> Result<WalletInfo> {
   require_non_empty(&passphrase, "passphrase")?;
@@ -483,8 +485,9 @@ pub fn import_wallet_private_key(
     None,
   )
   .map_err(to_napi_err)?;
-
-  finalize_wallet(keystore, &passphrase, None, vault_path, None)
+  let wallet_info = build_wallet_info(keystore, &passphrase, None, None)?;
+  persist_wallet_info(&wallet_info, vault_path)?;
+  Ok(wallet_info)
 }
 
 #[napi(js_name = "loadWallet")]
@@ -502,7 +505,7 @@ pub fn load_wallet(
   let normalized_keystore_json = require_trimmed(keystore_json, "keystoreJson")?;
   let keystore = TcxKeystore::from_json(&normalized_keystore_json).map_err(to_napi_err)?;
 
-  finalize_wallet(keystore, &password, derivations, None, None)
+  build_wallet_info(keystore, &password, derivations, None)
 }
 
 #[napi(js_name = "deriveAccounts")]
@@ -526,23 +529,18 @@ pub fn derive_accounts(
   })
 }
 
-fn finalize_wallet(
+fn build_wallet_info(
   mut keystore: TcxKeystore,
   password: &str,
   derivations: Option<Vec<DerivationInput>>,
-  vault_path: Option<String>,
   index: Option<u32>,
 ) -> Result<WalletInfo> {
   let network = keystore.store().meta.network;
 
-  let wallet_info = with_unlocked_keystore(&mut keystore, password, move |wallet| {
+  with_unlocked_keystore(&mut keystore, password, move |wallet| {
     let accounts = derive_accounts_for_wallet(wallet, network, derivations, index)?;
     Ok(build_wallet_result(wallet, accounts))
-  })?;
-
-  persist_wallet_info(&wallet_info, vault_path)?;
-
-  Ok(wallet_info)
+  })
 }
 
 pub(crate) fn with_unlocked_keystore<T>(
@@ -596,10 +594,7 @@ fn build_wallet_result(keystore: &TcxKeystore, accounts: Vec<WalletAccount>) -> 
   }
 }
 
-fn persist_wallet_info(wallet_info: &WalletInfo, vault_path: Option<String>) -> Result<()> {
-  let Some(vault_path) = vault_path else {
-    return Ok(());
-  };
+fn persist_wallet_info(wallet_info: &WalletInfo, vault_path: String) -> Result<()> {
   vault::save_wallet(wallet_info, vault_path)
 }
 

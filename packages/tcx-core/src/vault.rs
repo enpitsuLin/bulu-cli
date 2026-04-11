@@ -95,6 +95,7 @@ pub fn check_vault_permissions(_path: &Path) {}
 
 /// Ensures the vault wallets directory exists, creating it if necessary
 fn ensure_vault_dir(vault_path: &str) -> Result<PathBuf> {
+  let root_dir = Path::new(vault_path);
   let vault_dir = wallets_dir(vault_path);
 
   if !vault_dir.exists() {
@@ -104,9 +105,12 @@ fn ensure_vault_dir(vault_path: &str) -> Result<PathBuf> {
         vault_dir.display()
       ))
     })?;
-    // Set restrictive permissions on newly created directory
-    set_dir_permissions(&vault_dir);
   }
+
+  if root_dir.exists() {
+    set_dir_permissions(root_dir);
+  }
+  set_dir_permissions(&vault_dir);
 
   Ok(vault_dir)
 }
@@ -137,12 +141,8 @@ pub fn save_wallet(wallet_info: &WalletInfo, vault_path: String) -> Result<()> {
 
 /// Lists all wallets in the vault directory
 ///
-/// Returns an empty vector if the vault path is None or the wallets directory doesn't exist
-pub fn list_wallets(vault_path_opt: Option<String>) -> Result<Vec<WalletInfo>> {
-  let Some(vault_path) = vault_path_opt else {
-    return Ok(Vec::new());
-  };
-
+/// Returns an empty vector if the wallets directory doesn't exist
+pub fn list_wallets(vault_path: String) -> Result<Vec<WalletInfo>> {
   let vault_path = normalize_vault_path(vault_path)?;
   let wallets_dir = wallets_dir(&vault_path);
 

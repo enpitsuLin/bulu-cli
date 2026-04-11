@@ -66,6 +66,15 @@ const TRON_MAINNET_CHAIN_ID = 'tron:0x2b6653dc'
 const ETH_ACCOUNT_1_DERIVATION_PATH = "m/44'/60'/0'/0/1"
 const TRON_ACCOUNT_1_DERIVATION_PATH = "m/44'/195'/0'/0/1"
 
+function withTempVault(run: (tempDir: string) => void) {
+  const tempDir = mkdtempSync(join(tmpdir(), 'tcx-core-wallet-'))
+  try {
+    run(tempDir)
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true })
+  }
+}
+
 function stripHexPrefix(value: string): string {
   return value.startsWith('0x') || value.startsWith('0X') ? value.slice(2) : value
 }
@@ -157,15 +166,17 @@ function buildUnsignedLegacyEthTxHex(input: {
 }
 
 test('createWallet returns keystore json and default accounts', () => {
-  const wallet = createWallet('Created', PASSWORD)
+  withTempVault((tempDir) => {
+    const wallet = createWallet('Created', PASSWORD, tempDir)
 
-  expect(wallet).not.toHaveProperty('mnemonic')
-  expect(wallet.meta.source).toBe(WalletSource.NewMnemonic)
-  expect(wallet.meta.network).toBe(WalletNetwork.Mainnet)
-  expect(wallet.meta.derivable).toBe(true)
-  expect(wallet.accounts).toHaveLength(2)
-  expect(wallet.accounts.map((account) => account.chainId)).toEqual([ETH_MAINNET_CHAIN_ID, TRON_MAINNET_CHAIN_ID])
-  expect(wallet.keystore.version).toBe(12000)
+    expect(wallet).not.toHaveProperty('mnemonic')
+    expect(wallet.meta.source).toBe(WalletSource.NewMnemonic)
+    expect(wallet.meta.network).toBe(WalletNetwork.Mainnet)
+    expect(wallet.meta.derivable).toBe(true)
+    expect(wallet.accounts).toHaveLength(2)
+    expect(wallet.accounts.map((account) => account.chainId)).toEqual([ETH_MAINNET_CHAIN_ID, TRON_MAINNET_CHAIN_ID])
+    expect(wallet.keystore.version).toBe(12000)
+  })
 })
 
 test('createWallet persists WalletInfo when vaultPath is provided', () => {
@@ -190,18 +201,19 @@ test('createWallet persists WalletInfo when vaultPath is provided', () => {
 })
 
 test('importWalletMnemonic returns default accounts', () => {
-  const wallet = importWalletMnemonic('Imported Mnemonic', MNEMONIC, PASSWORD)
+  withTempVault((tempDir) => {
+    const wallet = importWalletMnemonic('Imported Mnemonic', MNEMONIC, PASSWORD, tempDir)
 
-  expect(wallet).not.toHaveProperty('mnemonic')
-  expect(wallet.meta.source).toBe(WalletSource.Mnemonic)
-  expect(wallet.accounts).toHaveLength(2)
-  expect(wallet.accounts.map((account) => account.chainId)).toEqual([ETH_MAINNET_CHAIN_ID, TRON_MAINNET_CHAIN_ID])
+    expect(wallet).not.toHaveProperty('mnemonic')
+    expect(wallet.meta.source).toBe(WalletSource.Mnemonic)
+    expect(wallet.accounts).toHaveLength(2)
+    expect(wallet.accounts.map((account) => account.chainId)).toEqual([ETH_MAINNET_CHAIN_ID, TRON_MAINNET_CHAIN_ID])
+  })
 })
 
 test('importWalletMnemonic derives the requested default account index and persists WalletInfo', () => {
-  const tempDir = mkdtempSync(join(tmpdir(), 'tcx-core-wallet-'))
-  try {
-    const defaultWallet = importWalletMnemonic('Default Mnemonic', MNEMONIC, PASSWORD)
+  withTempVault((tempDir) => {
+    const defaultWallet = importWalletMnemonic('Default Mnemonic', MNEMONIC, PASSWORD, join(tempDir, 'default'))
     const indexedWallet = importWalletMnemonic('Indexed Mnemonic', MNEMONIC, PASSWORD, tempDir, 1)
     const walletPath = join(tempDir, 'wallets', `${indexedWallet.meta.id}.json`)
     const persisted = JSON.parse(readFileSync(walletPath, 'utf-8')) as WalletInfo
@@ -216,22 +228,22 @@ test('importWalletMnemonic derives the requested default account index and persi
       ETH_ACCOUNT_1_DERIVATION_PATH,
       TRON_ACCOUNT_1_DERIVATION_PATH,
     ])
-  } finally {
-    rmSync(tempDir, { recursive: true, force: true })
-  }
+  })
 })
 
 test('importWalletPrivateKey returns a non-derivable wallet', () => {
-  const wallet = importWalletPrivateKey('Imported Private Key', PRIVATE_KEY, PASSWORD)
+  withTempVault((tempDir) => {
+    const wallet = importWalletPrivateKey('Imported Private Key', PRIVATE_KEY, PASSWORD, tempDir)
 
-  expect(wallet).not.toHaveProperty('mnemonic')
-  expect(wallet.meta.source).toBe(WalletSource.Private)
-  expect(wallet.meta.derivable).toBe(false)
-  expect(wallet.accounts).toHaveLength(2)
-  expect(wallet.accounts.map((account) => account.chainId)).toEqual([ETH_MAINNET_CHAIN_ID, TRON_MAINNET_CHAIN_ID])
-  expect(wallet.accounts[0]?.derivationPath).toBeUndefined()
-  expect(wallet.accounts[0]?.extPubKey).toBeUndefined()
-  expect(wallet.meta.curve).toBe('secp256k1')
+    expect(wallet).not.toHaveProperty('mnemonic')
+    expect(wallet.meta.source).toBe(WalletSource.Private)
+    expect(wallet.meta.derivable).toBe(false)
+    expect(wallet.accounts).toHaveLength(2)
+    expect(wallet.accounts.map((account) => account.chainId)).toEqual([ETH_MAINNET_CHAIN_ID, TRON_MAINNET_CHAIN_ID])
+    expect(wallet.accounts[0]?.derivationPath).toBeUndefined()
+    expect(wallet.accounts[0]?.extPubKey).toBeUndefined()
+    expect(wallet.meta.curve).toBe('secp256k1')
+  })
 })
 
 test('importWalletPrivateKey persists WalletInfo and ignores index for non-derivable wallets', () => {
@@ -254,43 +266,47 @@ test('importWalletPrivateKey persists WalletInfo and ignores index for non-deriv
 })
 
 test('loadWallet restores keystore json and derives requested accounts', () => {
-  const sourceWallet = importWalletMnemonic('Imported Mnemonic', MNEMONIC, PASSWORD)
+  withTempVault((tempDir) => {
+    const sourceWallet = importWalletMnemonic('Imported Mnemonic', MNEMONIC, PASSWORD, tempDir)
 
-  const wallet = loadWallet(keystoreToJson(sourceWallet.keystore), PASSWORD, [
-    {
-      chainId: ETH_MAINNET_CHAIN_ID,
-      derivationPath: "m/44'/60'/0'/0/1",
-    },
-  ])
+    const wallet = loadWallet(keystoreToJson(sourceWallet.keystore), PASSWORD, [
+      {
+        chainId: ETH_MAINNET_CHAIN_ID,
+        derivationPath: "m/44'/60'/0'/0/1",
+      },
+    ])
 
-  expect(wallet).not.toHaveProperty('mnemonic')
-  expect(wallet.meta.source).toBe(WalletSource.Mnemonic)
-  expect(wallet.accounts).toHaveLength(1)
-  expect(wallet.accounts[0]?.derivationPath).toBe("m/44'/60'/0'/0/1")
+    expect(wallet).not.toHaveProperty('mnemonic')
+    expect(wallet.meta.source).toBe(WalletSource.Mnemonic)
+    expect(wallet.accounts).toHaveLength(1)
+    expect(wallet.accounts[0]?.derivationPath).toBe("m/44'/60'/0'/0/1")
+  })
 })
 
 test('deriveAccounts batches arbitrary derivations through a single unlock flow', () => {
-  const sourceWallet = importWalletMnemonic('Imported Mnemonic', MNEMONIC, PASSWORD)
+  withTempVault((tempDir) => {
+    const sourceWallet = importWalletMnemonic('Imported Mnemonic', MNEMONIC, PASSWORD, tempDir)
 
-  const accounts = deriveAccounts(keystoreToJson(sourceWallet.keystore), PASSWORD, [
-    {
-      chainId: ETH_MAINNET_CHAIN_ID,
-      derivationPath: "m/44'/60'/0'/0/0",
-    },
-    {
-      chainId: ETH_MAINNET_CHAIN_ID,
-      derivationPath: "m/44'/60'/0'/0/1",
-    },
-    {
-      chainId: TRON_MAINNET_CHAIN_ID,
-    },
-  ])
+    const accounts = deriveAccounts(keystoreToJson(sourceWallet.keystore), PASSWORD, [
+      {
+        chainId: ETH_MAINNET_CHAIN_ID,
+        derivationPath: "m/44'/60'/0'/0/0",
+      },
+      {
+        chainId: ETH_MAINNET_CHAIN_ID,
+        derivationPath: "m/44'/60'/0'/0/1",
+      },
+      {
+        chainId: TRON_MAINNET_CHAIN_ID,
+      },
+    ])
 
-  expect(accounts).toHaveLength(3)
-  expect(accounts[0]?.derivationPath).toBe("m/44'/60'/0'/0/0")
-  expect(accounts[1]?.derivationPath).toBe("m/44'/60'/0'/0/1")
-  expect(accounts[2]?.chainId).toBe(TRON_MAINNET_CHAIN_ID)
-  expect(accounts[0]?.address).not.toBe(accounts[1]?.address)
+    expect(accounts).toHaveLength(3)
+    expect(accounts[0]?.derivationPath).toBe("m/44'/60'/0'/0/0")
+    expect(accounts[1]?.derivationPath).toBe("m/44'/60'/0'/0/1")
+    expect(accounts[2]?.chainId).toBe(TRON_MAINNET_CHAIN_ID)
+    expect(accounts[0]?.address).not.toBe(accounts[1]?.address)
+  })
 })
 
 test('signMessage signs Ethereum personal messages', () => {
@@ -354,14 +370,11 @@ test('signTransaction signs Ethereum transactions', () => {
   }
 })
 
-test('listWallet returns empty array when vaultPath is not provided', () => {
-  const wallets = listWallet()
-  expect(wallets).toEqual([])
-})
-
-test('listWallet returns empty array when vaultPath does not exist', () => {
-  const wallets = listWallet('/nonexistent/path')
-  expect(wallets).toEqual([])
+test('listWallet returns empty array when vault directory does not exist', () => {
+  withTempVault((tempDir) => {
+    const wallets = listWallet(join(tempDir, 'missing'))
+    expect(wallets).toEqual([])
+  })
 })
 
 test('listWallet returns persisted wallets from vault directory', () => {

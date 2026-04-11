@@ -9,11 +9,11 @@ export interface CipherParams {
 /**
  * Creates a new mnemonic-backed wallet.
  *
- * If `vaultPath` is provided, the returned WalletInfo is also persisted under
+ * The returned WalletInfo is also persisted under
  * `<vaultPath>/wallets/<wallet id>.json`. `index` selects the default derived
  * account index.
  */
-export declare function createWallet(name: string, passphrase: string, vaultPath?: string | undefined | null, index?: number | undefined | null): WalletInfo
+export declare function createWallet(name: string, passphrase: string, vaultPath: string, index?: number | undefined | null): WalletInfo
 
 /**
  * Crypto section of the keystore containing encrypted private key.
@@ -127,20 +127,20 @@ export interface IdentityData {
 /**
  * Imports an existing mnemonic-backed wallet.
  *
- * If `vaultPath` is provided, the returned WalletInfo is also persisted under
+ * The returned WalletInfo is also persisted under
  * `<vaultPath>/wallets/<wallet id>.json`. `index` selects the default derived
  * account index.
  */
-export declare function importWalletMnemonic(name: string, mnemonic: string, passphrase: string, vaultPath?: string | undefined | null, index?: number | undefined | null): WalletInfo
+export declare function importWalletMnemonic(name: string, mnemonic: string, passphrase: string, vaultPath: string, index?: number | undefined | null): WalletInfo
 
 /**
  * Imports a private key as a non-derivable wallet.
  *
- * If `vaultPath` is provided, the returned WalletInfo is also persisted under
+ * The returned WalletInfo is also persisted under
  * `<vaultPath>/wallets/<wallet id>.json`. `index` is accepted for API parity
  * but ignored because private-key wallets are non-derivable.
  */
-export declare function importWalletPrivateKey(name: string, privateKey: string, passphrase: string, vaultPath?: string | undefined | null, index?: number | undefined | null): WalletInfo
+export declare function importWalletPrivateKey(name: string, privateKey: string, passphrase: string, vaultPath: string, index?: number | undefined | null): WalletInfo
 
 /**
  * KDF parameters union type - can be either PBKDF2 or SCrypt.
@@ -202,7 +202,7 @@ export interface KeystoreMetadata {
   identifiedChainTypes?: Array<string>
 }
 
-export declare function listWallet(vaultPathOpt?: string | undefined | null): Array<WalletInfo>
+export declare function listWallet(vaultPath: string): Array<WalletInfo>
 
 /**
  * Loads a serialized keystore JSON and derives accounts from it.
