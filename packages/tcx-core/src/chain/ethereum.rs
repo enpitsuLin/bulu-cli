@@ -8,7 +8,9 @@ use tcx_eth::transaction::{
   EthMessageOutput as TcxEthMessageOutput, EthTxInput as TcxEthTxInput,
   EthTxOutput as TcxEthTxOutput,
 };
-use tcx_keystore::{Keystore as TcxKeystore, MessageSigner, SignatureParameters, TransactionSigner};
+use tcx_keystore::{
+  Keystore as TcxKeystore, MessageSigner, SignatureParameters, TransactionSigner,
+};
 
 use crate::derivation::{ethereum_chain_reference, Chain, ResolvedDerivation};
 use crate::error::{CoreError, CoreResult, ResultExt};

@@ -1,7 +1,9 @@
 use std::any::Any;
 
 use tcx_constants::CurveType;
-use tcx_keystore::{Keystore as TcxKeystore, MessageSigner, SignatureParameters, TransactionSigner};
+use tcx_keystore::{
+  Keystore as TcxKeystore, MessageSigner, SignatureParameters, TransactionSigner,
+};
 use tcx_tron::transaction::{
   TronMessageInput as TcxTronMessageInput, TronMessageOutput as TcxTronMessageOutput, TronTxInput,
   TronTxOutput as TcxTronTxOutput,
