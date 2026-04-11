@@ -14,7 +14,7 @@ use tcx_tron::transaction::{
 };
 
 use crate::derivation::{derive_accounts_for_wallet, resolve_derivation, Chain};
-use crate::error::{require_non_empty, require_trimmed, CoreResult, ResultExt};
+use crate::error::{require_non_empty, require_trimmed, CoreError, CoreResult, ResultExt};
 use crate::ethereum::parse_eth_transaction_hex;
 use crate::strings::{sanitize_optional_text, strip_hex_prefix};
 use crate::types::{
@@ -48,6 +48,14 @@ pub(crate) fn create_wallet(
 ) -> CoreResult<WalletInfo> {
   require_non_empty(&passphrase, "passphrase")?;
 
+  let vault = VaultRepository::new(vault_path)?;
+  if vault.wallet_name_exists(&name)? {
+    return Err(CoreError::new(format!(
+      r#"Wallet "{}" already exists"#,
+      name
+    )));
+  }
+
   let mnemonic = create_mnemonic(None)?;
   let metadata = build_metadata(
     Some(name),
@@ -58,7 +66,7 @@ pub(crate) fn create_wallet(
   );
   let keystore = TcxKeystore::from_mnemonic(&mnemonic, &passphrase, metadata).map_core_err()?;
   let wallet_info = build_wallet_info(keystore, &passphrase, None, index)?;
-  VaultRepository::new(vault_path)?.save_wallet(&wallet_info)?;
+  vault.save_wallet(&wallet_info)?;
   Ok(wallet_info)
 }
 
@@ -74,6 +82,14 @@ pub(crate) fn import_wallet_mnemonic(
   let normalized_mnemonic = normalize_mnemonic(&mnemonic);
   require_non_empty(&normalized_mnemonic, "mnemonic")?;
 
+  let vault = VaultRepository::new(vault_path)?;
+  if vault.wallet_name_exists(&name)? {
+    return Err(CoreError::new(format!(
+      r#"Wallet "{}" already exists"#,
+      name
+    )));
+  }
+
   let metadata = build_metadata(
     Some(name),
     None,
@@ -84,7 +100,7 @@ pub(crate) fn import_wallet_mnemonic(
   let keystore =
     TcxKeystore::from_mnemonic(&normalized_mnemonic, &passphrase, metadata).map_core_err()?;
   let wallet_info = build_wallet_info(keystore, &passphrase, None, index)?;
-  VaultRepository::new(vault_path)?.save_wallet(&wallet_info)?;
+  vault.save_wallet(&wallet_info)?;
   Ok(wallet_info)
 }
 
@@ -98,6 +114,15 @@ pub(crate) fn import_wallet_private_key(
   require_non_empty(&passphrase, "passphrase")?;
 
   let normalized_private_key = require_trimmed(private_key, "privateKey")?;
+
+  let vault = VaultRepository::new(vault_path)?;
+  if vault.wallet_name_exists(&name)? {
+    return Err(CoreError::new(format!(
+      r#"Wallet "{}" already exists"#,
+      name
+    )));
+  }
+
   let metadata = build_metadata(
     Some(name),
     None,
@@ -114,7 +139,7 @@ pub(crate) fn import_wallet_private_key(
   )
   .map_core_err()?;
   let wallet_info = build_wallet_info(keystore, &passphrase, None, None)?;
-  VaultRepository::new(vault_path)?.save_wallet(&wallet_info)?;
+  vault.save_wallet(&wallet_info)?;
   Ok(wallet_info)
 }
 
@@ -139,11 +164,20 @@ pub(crate) fn import_wallet_keystore(
   require_non_empty(&password, "password")?;
 
   let normalized_name = require_trimmed(name, "name")?;
+
+  let vault = VaultRepository::new(vault_path)?;
+  if vault.wallet_name_exists(&normalized_name)? {
+    return Err(CoreError::new(format!(
+      r#"Wallet "{}" already exists"#,
+      normalized_name
+    )));
+  }
+
   let mut keystore = load_tcx_keystore(keystore_json)?;
   keystore.store_mut().meta.name = normalized_name;
 
   let wallet_info = build_wallet_info(keystore, &password, derivations, None)?;
-  VaultRepository::new(vault_path)?.save_wallet(&wallet_info)?;
+  vault.save_wallet(&wallet_info)?;
   Ok(wallet_info)
 }
 

@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync, mkdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -304,10 +304,46 @@ test('getWallet resolves wallets by exact name and unique id prefix', () => {
   })
 })
 
-test('getWallet rejects ambiguous wallet names', () => {
+test('createWallet rejects duplicate wallet names', () => {
   withTempVault((tempDir) => {
     createWallet('Duplicate', PASSWORD, tempDir)
-    importWalletMnemonic('Duplicate', MNEMONIC, PASSWORD, tempDir)
+
+    expect(() => createWallet('Duplicate', PASSWORD, tempDir)).toThrow(/Wallet "Duplicate" already exists/)
+    expect(listWallet(tempDir)).toHaveLength(1)
+  })
+})
+
+test('importWalletMnemonic rejects duplicate wallet names', () => {
+  withTempVault((tempDir) => {
+    createWallet('Duplicate', PASSWORD, tempDir)
+
+    expect(() => importWalletMnemonic('Duplicate', MNEMONIC, PASSWORD, tempDir)).toThrow(
+      /Wallet "Duplicate" already exists/,
+    )
+    expect(listWallet(tempDir)).toHaveLength(1)
+  })
+})
+
+test('importWalletPrivateKey rejects duplicate wallet names', () => {
+  withTempVault((tempDir) => {
+    createWallet('Duplicate', PASSWORD, tempDir)
+
+    expect(() => importWalletPrivateKey('Duplicate', PRIVATE_KEY, PASSWORD, tempDir)).toThrow(
+      /Wallet "Duplicate" already exists/,
+    )
+    expect(listWallet(tempDir)).toHaveLength(1)
+  })
+})
+
+test('getWallet rejects ambiguous wallet names', () => {
+  withTempVault((tempDir) => {
+    // Create first wallet
+    const wallet1 = createWallet('Duplicate', PASSWORD, tempDir)
+
+    // Manually create a second wallet file with the same name (simulating manual file copy)
+    const wallet2Data = JSON.parse(readFileSync(join(tempDir, 'wallets', `${wallet1.meta.id}.json`), 'utf-8'))
+    wallet2Data.meta.id = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee' // Different ID
+    writeFileSync(join(tempDir, 'wallets', 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee.json'), JSON.stringify(wallet2Data))
 
     expect(() => getWallet('Duplicate', tempDir)).toThrow(/Multiple wallets share the name "Duplicate"/)
     expect(listWallet(tempDir)).toHaveLength(2)
@@ -420,8 +456,13 @@ test('deleteWallet removes wallets by exact name and unique id prefix', () => {
 test('deleteWallet rejects ambiguous wallet names', () => {
   const tempDir = mkdtempSync(join(tmpdir(), 'tcx-core-wallet-'))
   try {
-    createWallet('Duplicate', PASSWORD, tempDir)
-    importWalletMnemonic('Duplicate', MNEMONIC, PASSWORD, tempDir)
+    // Create first wallet
+    const wallet1 = createWallet('Duplicate', PASSWORD, tempDir)
+
+    // Manually create a second wallet file with the same name (simulating manual file copy)
+    const wallet2Data = JSON.parse(readFileSync(join(tempDir, 'wallets', `${wallet1.meta.id}.json`), 'utf-8'))
+    wallet2Data.meta.id = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee' // Different ID
+    writeFileSync(join(tempDir, 'wallets', 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee.json'), JSON.stringify(wallet2Data))
 
     expect(() => deleteWallet('Duplicate', tempDir)).toThrow(/Multiple wallets share the name "Duplicate"/)
     expect(listWallet(tempDir)).toHaveLength(2)

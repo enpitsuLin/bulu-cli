@@ -29,6 +29,11 @@ impl VaultRepository {
     })
   }
 
+  pub(crate) fn wallet_name_exists(&self, name: &str) -> CoreResult<bool> {
+    let wallets = self.list_wallets()?;
+    Ok(wallets.iter().any(|wallet| wallet.meta.name == name))
+  }
+
   pub(crate) fn save_wallet(&self, wallet_info: &WalletInfo) -> CoreResult<()> {
     self.ensure_wallets_dir()?;
 
