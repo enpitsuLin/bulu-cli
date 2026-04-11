@@ -29,6 +29,62 @@ fn wallet_file_path(vault_path: &str, wallet_id: &str) -> PathBuf {
   wallets_dir(vault_path).join(format!("{wallet_id}.{WALLET_FILE_EXTENSION}"))
 }
 
+fn format_wallet_candidates(wallets: &[&WalletInfo]) -> String {
+  wallets
+    .iter()
+    .map(|wallet| format!("{} ({})", wallet.meta.name, wallet.meta.id))
+    .collect::<Vec<_>>()
+    .join(", ")
+}
+
+fn resolve_wallet_id<'a>(
+  identifier: &str,
+  wallets: &'a [WalletInfo],
+  vault_path: &str,
+) -> Result<&'a str> {
+  if wallets.is_empty() {
+    return Err(napi::Error::from_reason(format!(
+      "No wallets found in vault: {vault_path}"
+    )));
+  }
+
+  if let Some(wallet) = wallets.iter().find(|wallet| wallet.meta.id == identifier) {
+    return Ok(wallet.meta.id.as_str());
+  }
+
+  let exact_name_matches = wallets
+    .iter()
+    .filter(|wallet| wallet.meta.name == identifier)
+    .collect::<Vec<_>>();
+  if exact_name_matches.len() == 1 {
+    return Ok(exact_name_matches[0].meta.id.as_str());
+  }
+  if exact_name_matches.len() > 1 {
+    return Err(napi::Error::from_reason(format!(
+      "Multiple wallets share the name \"{identifier}\". Use a wallet id instead: {}",
+      format_wallet_candidates(&exact_name_matches)
+    )));
+  }
+
+  let id_prefix_matches = wallets
+    .iter()
+    .filter(|wallet| wallet.meta.id.starts_with(identifier))
+    .collect::<Vec<_>>();
+  if id_prefix_matches.len() == 1 {
+    return Ok(id_prefix_matches[0].meta.id.as_str());
+  }
+  if id_prefix_matches.len() > 1 {
+    return Err(napi::Error::from_reason(format!(
+      "Wallet id prefix \"{identifier}\" is ambiguous. Matches: {}",
+      format_wallet_candidates(&id_prefix_matches)
+    )));
+  }
+
+  Err(napi::Error::from_reason(format!(
+    "Wallet \"{identifier}\" not found"
+  )))
+}
+
 /// Validates and normalizes the vault path
 fn normalize_vault_path(vault_path: String) -> Result<String> {
   require_trimmed(vault_path, "vaultPath")
@@ -189,6 +245,24 @@ pub fn list_wallets(vault_path: String) -> Result<Vec<WalletInfo>> {
   }
 
   Ok(wallet_infos)
+}
+
+/// Deletes a wallet file resolved by wallet id, exact name, or unique id prefix.
+pub fn delete_wallet(identifier: String, vault_path: String) -> Result<()> {
+  let vault_path = normalize_vault_path(vault_path)?;
+  let normalized_identifier = require_trimmed(identifier, "nameOrId")?;
+  let wallets = list_wallets(vault_path.clone())?;
+  let wallet_id = resolve_wallet_id(&normalized_identifier, &wallets, &vault_path)?;
+  let path = wallet_file_path(&vault_path, wallet_id);
+
+  fs::remove_file(&path).map_err(|err| {
+    napi::Error::from_reason(format!(
+      "failed to delete wallet vault `{}`: {err}",
+      path.display()
+    ))
+  })?;
+
+  Ok(())
 }
 
 /// Finds a wallet by name in the vault directory and returns its keystore JSON

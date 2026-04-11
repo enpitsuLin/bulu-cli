@@ -7,6 +7,7 @@ import {
   type WalletInfo,
   type KeystoreData,
   createWallet,
+  deleteWallet,
   deriveAccounts,
   importWalletMnemonic,
   importWalletPrivateKey,
@@ -388,6 +389,36 @@ test('listWallet returns persisted wallets from vault directory', () => {
     expect(wallets[0]?.meta.name).toBeDefined()
     expect(wallets[0]?.keystore).toBeDefined()
     expect(wallets[0]?.accounts).toBeDefined()
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true })
+  }
+})
+
+test('deleteWallet removes wallets by exact name and unique id prefix', () => {
+  const tempDir = mkdtempSync(join(tmpdir(), 'tcx-core-wallet-'))
+  try {
+    const walletByName = createWallet('Wallet By Name', PASSWORD, tempDir)
+    const walletByPrefix = importWalletMnemonic('Wallet By Prefix', MNEMONIC, PASSWORD, tempDir)
+
+    deleteWallet('Wallet By Name', tempDir)
+    expect(existsSync(join(tempDir, 'wallets', `${walletByName.meta.id}.json`))).toBe(false)
+
+    deleteWallet(walletByPrefix.meta.id.slice(0, 8), tempDir)
+    expect(existsSync(join(tempDir, 'wallets', `${walletByPrefix.meta.id}.json`))).toBe(false)
+    expect(listWallet(tempDir)).toEqual([])
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true })
+  }
+})
+
+test('deleteWallet rejects ambiguous wallet names', () => {
+  const tempDir = mkdtempSync(join(tmpdir(), 'tcx-core-wallet-'))
+  try {
+    createWallet('Duplicate', PASSWORD, tempDir)
+    importWalletMnemonic('Duplicate', MNEMONIC, PASSWORD, tempDir)
+
+    expect(() => deleteWallet('Duplicate', tempDir)).toThrow(/Multiple wallets share the name "Duplicate"/)
+    expect(listWallet(tempDir)).toHaveLength(2)
   } finally {
     rmSync(tempDir, { recursive: true, force: true })
   }

@@ -20,6 +20,12 @@ pub fn list_wallet(vault_path: String) -> Result<Vec<WalletInfo>> {
   vault::list_wallets(vault_path)
 }
 
+#[napi(js_name = "deleteWallet")]
+/// Deletes a wallet from the vault by wallet id, exact name, or unique id prefix.
+pub fn delete_wallet(name_or_id: String, vault_path: String) -> Result<()> {
+  vault::delete_wallet(name_or_id, vault_path)
+}
+
 pub(crate) fn parse_wallet_info(content: &str) -> Result<WalletInfo> {
   let value: Value = serde_json::from_str(content).map_err(to_napi_err)?;
 

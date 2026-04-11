@@ -39,6 +39,9 @@ export interface CryptoData {
   mac: string
 }
 
+/** Deletes a wallet from the vault by wallet id, exact name, or unique id prefix. */
+export declare function deleteWallet(nameOrId: string, vaultPath: string): void
+
 /** A requested account derivation. */
 export interface DerivationInput {
   /** CAIP-2 chain id, for example `eip155:1` or `tron:0x2b6653dc`. */

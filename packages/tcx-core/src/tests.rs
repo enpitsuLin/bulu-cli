@@ -340,6 +340,72 @@ fn derive_accounts_rejects_unsupported_chain_id_namespace() {
 }
 
 #[test]
+fn delete_wallet_deletes_wallets_by_name_and_unique_id_prefix() {
+  let (vault_dir, vault_path) = temp_vault("delete-wallet");
+  let wallet_by_name = create_wallet(
+    "Wallet by name".to_string(),
+    TEST_PASSWORD.to_string(),
+    vault_path.clone(),
+    None,
+  )
+  .expect("wallet creation should succeed");
+  let wallet_by_prefix = import_wallet_mnemonic(
+    "Wallet by prefix".to_string(),
+    TEST_MNEMONIC.to_string(),
+    TEST_PASSWORD.to_string(),
+    vault_path.clone(),
+    None,
+  )
+  .expect("wallet import should succeed");
+
+  delete_wallet("Wallet by name".to_string(), vault_path.clone())
+    .expect("wallet deletion by name should succeed");
+  assert!(!wallet_vault_path(&vault_dir, &wallet_by_name.meta.id).exists());
+
+  let unique_prefix = &wallet_by_prefix.meta.id[..8];
+  delete_wallet(unique_prefix.to_string(), vault_path.clone())
+    .expect("wallet deletion by id prefix should succeed");
+  assert!(!wallet_vault_path(&vault_dir, &wallet_by_prefix.meta.id).exists());
+
+  let remaining_wallets = list_wallet(vault_path).expect("listing wallets should succeed");
+  assert!(remaining_wallets.is_empty());
+
+  let _ = fs::remove_dir_all(vault_dir);
+}
+
+#[test]
+fn delete_wallet_rejects_ambiguous_wallet_names() {
+  let (vault_dir, vault_path) = temp_vault("delete-wallet-ambiguous-name");
+  import_wallet_mnemonic(
+    "Duplicate".to_string(),
+    TEST_MNEMONIC.to_string(),
+    TEST_PASSWORD.to_string(),
+    vault_path.clone(),
+    None,
+  )
+  .expect("first wallet import should succeed");
+  create_wallet(
+    "Duplicate".to_string(),
+    TEST_PASSWORD.to_string(),
+    vault_path.clone(),
+    None,
+  )
+  .expect("second wallet creation should succeed");
+
+  let err = delete_wallet("Duplicate".to_string(), vault_path.clone())
+    .err()
+    .expect("ambiguous wallet name should fail");
+  assert!(err
+    .reason
+    .starts_with("Multiple wallets share the name \"Duplicate\"."));
+
+  let remaining_wallets = list_wallet(vault_path).expect("listing wallets should succeed");
+  assert_eq!(remaining_wallets.len(), 2);
+
+  let _ = fs::remove_dir_all(vault_dir);
+}
+
+#[test]
 fn sign_message_signs_ethereum_personal_messages() {
   let vault_dir = temp_vault_dir("sign-eth-message");
   let vault_path = vault_dir.to_string_lossy().into_owned();

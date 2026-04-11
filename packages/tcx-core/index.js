@@ -577,6 +577,7 @@ if (!nativeBinding) {
 
 module.exports = nativeBinding
 module.exports.createWallet = nativeBinding.createWallet
+module.exports.deleteWallet = nativeBinding.deleteWallet
 module.exports.deriveAccounts = nativeBinding.deriveAccounts
 module.exports.EthMessageSignatureType = nativeBinding.EthMessageSignatureType
 module.exports.importWalletMnemonic = nativeBinding.importWalletMnemonic

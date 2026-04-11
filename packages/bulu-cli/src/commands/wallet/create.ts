@@ -2,23 +2,10 @@ import { createWallet } from '@bulu-cli/tcx-core'
 import { defineCommand } from 'citty'
 import { resolveTCXPassphrase } from '../../core/tcx'
 import { getVaultPath } from '../../core/config'
-import { getStoredWalletPath } from '../../core/wallet-store'
+import { createOutput, resolveOutputOptions } from '../../core/output'
 
 export interface WalletCreateArgs {
   name: string
-}
-
-export async function runWalletCreate(args: WalletCreateArgs): Promise<void> {
-  const passphrase = await resolveTCXPassphrase()
-  const vaultPath = getVaultPath()
-  const wallet = createWallet(args.name, passphrase, vaultPath)
-  const path = getStoredWalletPath(vaultPath, wallet.meta.id)
-
-  console.log({
-    meta: wallet.meta,
-    accounts: wallet.accounts,
-    path,
-  })
 }
 
 export default defineCommand({
@@ -29,8 +16,24 @@ export default defineCommand({
       description: 'Wallet name',
       required: true,
     },
+    json: { type: 'boolean', default: false },
+    format: { type: 'string', default: 'table' },
   },
   async run({ args }) {
-    await runWalletCreate(args as WalletCreateArgs)
+    const passphrase = await resolveTCXPassphrase()
+    const vaultPath = getVaultPath()
+    const wallet = createWallet(args.name, passphrase, vaultPath)
+
+    const out = createOutput(resolveOutputOptions(args))
+
+    out.data({
+      name: wallet.meta.name,
+      id: wallet.meta.id,
+      accounts: wallet.accounts.map((a) => ({
+        chain: a.chainId,
+        address: a.address,
+        path: a.derivationPath,
+      })),
+    })
   },
 })
