@@ -110,3 +110,12 @@ pub fn derive_accounts(
 ) -> Result<Vec<WalletAccount>> {
   service::derive_accounts(keystore_json, password, derivations).into_napi()
 }
+
+#[napi(js_name = "exportWallet")]
+/// Exports the wallet's mnemonic or private key.
+///
+/// Returns the mnemonic phrase for HD wallets or the private key for private key wallets.
+/// Requires the wallet passphrase to decrypt the keystore.
+pub fn export_wallet(name_or_id: String, password: String, vault_path: String) -> Result<String> {
+  service::export_wallet(name_or_id, password, vault_path).into_napi()
+}

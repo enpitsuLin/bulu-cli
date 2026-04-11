@@ -580,6 +580,7 @@ module.exports.createWallet = nativeBinding.createWallet
 module.exports.deleteWallet = nativeBinding.deleteWallet
 module.exports.deriveAccounts = nativeBinding.deriveAccounts
 module.exports.EthMessageSignatureType = nativeBinding.EthMessageSignatureType
+module.exports.exportWallet = nativeBinding.exportWallet
 module.exports.getWallet = nativeBinding.getWallet
 module.exports.importWalletKeystore = nativeBinding.importWalletKeystore
 module.exports.importWalletMnemonic = nativeBinding.importWalletMnemonic

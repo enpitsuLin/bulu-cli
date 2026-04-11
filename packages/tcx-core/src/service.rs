@@ -196,6 +196,21 @@ pub(crate) fn derive_accounts(
   })
 }
 
+pub(crate) fn export_wallet(
+  name_or_id: String,
+  password: String,
+  vault_path: String,
+) -> CoreResult<String> {
+  require_non_empty(&password, "password")?;
+
+  let wallet = VaultRepository::new(vault_path)?.get_wallet(&name_or_id)?;
+  let mut keystore = stored_keystore(&wallet)?;
+
+  with_unlocked_keystore(&mut keystore, &password, move |unlocked_keystore| {
+    unlocked_keystore.export().map_core_err()
+  })
+}
+
 pub(crate) fn sign_message(
   name: String,
   chain_id: String,

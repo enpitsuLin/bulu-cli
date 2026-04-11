@@ -466,7 +466,7 @@ fn get_wallet_loads_wallets_by_name_and_unique_prefix() {
 #[test]
 fn get_wallet_rejects_ambiguous_wallet_names() {
   let (vault_dir, vault_path) = temp_vault("get-wallet-ambiguous-name");
-  import_wallet_mnemonic(
+  let wallet1 = import_wallet_mnemonic(
     "Duplicate".to_string(),
     TEST_MNEMONIC.to_string(),
     TEST_PASSWORD.to_string(),
@@ -474,13 +474,18 @@ fn get_wallet_rejects_ambiguous_wallet_names() {
     None,
   )
   .expect("first wallet import should succeed");
-  create_wallet(
-    "Duplicate".to_string(),
-    TEST_PASSWORD.to_string(),
-    vault_path.clone(),
-    None,
-  )
-  .expect("second wallet creation should succeed");
+
+  // Create a second wallet with the same name by copying the wallet file
+  let wallet2_id = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+  let wallet1_path = wallet_vault_path(&vault_dir, &wallet1.meta.id);
+  let wallet2_path = wallet_vault_path(&vault_dir, wallet2_id);
+  let wallet1_content = fs::read_to_string(&wallet1_path).expect("wallet should be readable");
+  let mut wallet2: Value = serde_json::from_str(&wallet1_content).expect("wallet should parse");
+  wallet2["meta"]["id"] = Value::String(wallet2_id.to_string());
+  wallet2["keystore"]["id"] = Value::String(wallet2_id.to_string());
+  fs::create_dir_all(wallet2_path.parent().unwrap()).expect("should create wallets dir");
+  fs::write(&wallet2_path, serde_json::to_string_pretty(&wallet2).unwrap())
+    .expect("should write second wallet");
 
   let err = get_wallet("Duplicate".to_string(), vault_path.clone())
     .expect_err("ambiguous wallet name should fail");
@@ -531,7 +536,7 @@ fn delete_wallet_deletes_wallets_by_name_and_unique_id_prefix() {
 #[test]
 fn delete_wallet_rejects_ambiguous_wallet_names() {
   let (vault_dir, vault_path) = temp_vault("delete-wallet-ambiguous-name");
-  import_wallet_mnemonic(
+  let wallet1 = import_wallet_mnemonic(
     "Duplicate".to_string(),
     TEST_MNEMONIC.to_string(),
     TEST_PASSWORD.to_string(),
@@ -539,13 +544,18 @@ fn delete_wallet_rejects_ambiguous_wallet_names() {
     None,
   )
   .expect("first wallet import should succeed");
-  create_wallet(
-    "Duplicate".to_string(),
-    TEST_PASSWORD.to_string(),
-    vault_path.clone(),
-    None,
-  )
-  .expect("second wallet creation should succeed");
+
+  // Create a second wallet with the same name by copying the wallet file
+  let wallet2_id = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+  let wallet1_path = wallet_vault_path(&vault_dir, &wallet1.meta.id);
+  let wallet2_path = wallet_vault_path(&vault_dir, wallet2_id);
+  let wallet1_content = fs::read_to_string(&wallet1_path).expect("wallet should be readable");
+  let mut wallet2: Value = serde_json::from_str(&wallet1_content).expect("wallet should parse");
+  wallet2["meta"]["id"] = Value::String(wallet2_id.to_string());
+  wallet2["keystore"]["id"] = Value::String(wallet2_id.to_string());
+  fs::create_dir_all(wallet2_path.parent().unwrap()).expect("should create wallets dir");
+  fs::write(&wallet2_path, serde_json::to_string_pretty(&wallet2).unwrap())
+    .expect("should write second wallet");
 
   let err = delete_wallet("Duplicate".to_string(), vault_path.clone())
     .expect_err("ambiguous wallet name should fail");
@@ -756,6 +766,147 @@ fn sign_transaction_signs_tron_transactions() {
         .to_string()
     ]
   );
+
+  let _ = fs::remove_dir_all(vault_dir);
+}
+
+#[test]
+fn export_wallet_returns_mnemonic_for_hd_wallet() {
+  let (vault_dir, vault_path) = temp_vault("export-wallet-mnemonic");
+  let wallet = import_wallet_mnemonic(
+    "Test mnemonic wallet".to_string(),
+    TEST_MNEMONIC.to_string(),
+    TEST_PASSWORD.to_string(),
+    vault_path.clone(),
+    None,
+  )
+  .expect("mnemonic import should succeed");
+
+  let exported = export_wallet(
+    wallet.meta.name.clone(),
+    TEST_PASSWORD.to_string(),
+    vault_path.clone(),
+  )
+  .expect("export wallet should succeed");
+
+  assert_eq!(exported, TEST_MNEMONIC);
+
+  let _ = fs::remove_dir_all(vault_dir);
+}
+
+#[test]
+fn export_wallet_returns_private_key_for_private_key_wallet() {
+  let (vault_dir, vault_path) = temp_vault("export-wallet-private-key");
+  let wallet = import_wallet_private_key(
+    "Test private key wallet".to_string(),
+    TEST_PRIVATE_KEY.to_string(),
+    TEST_PASSWORD.to_string(),
+    vault_path.clone(),
+    None,
+  )
+  .expect("private key import should succeed");
+
+  let exported = export_wallet(
+    wallet.meta.name.clone(),
+    TEST_PASSWORD.to_string(),
+    vault_path.clone(),
+  )
+  .expect("export wallet should succeed");
+
+  assert_eq!(exported, TEST_PRIVATE_KEY);
+
+  let _ = fs::remove_dir_all(vault_dir);
+}
+
+#[test]
+fn export_wallet_rejects_wrong_password() {
+  let (vault_dir, vault_path) = temp_vault("export-wallet-wrong-password");
+  let wallet = import_wallet_mnemonic(
+    "Test wallet".to_string(),
+    TEST_MNEMONIC.to_string(),
+    TEST_PASSWORD.to_string(),
+    vault_path.clone(),
+    None,
+  )
+  .expect("mnemonic import should succeed");
+
+  let err = export_wallet(
+    wallet.meta.name.clone(),
+    "wrong_password".to_string(),
+    vault_path.clone(),
+  )
+  .expect_err("export wallet with wrong password should fail");
+
+  assert_eq!(err.reason, "password_incorrect");
+
+  let _ = fs::remove_dir_all(vault_dir);
+}
+
+#[test]
+fn export_wallet_rejects_empty_password() {
+  let (vault_dir, vault_path) = temp_vault("export-wallet-empty-password");
+  let wallet = import_wallet_mnemonic(
+    "Test wallet".to_string(),
+    TEST_MNEMONIC.to_string(),
+    TEST_PASSWORD.to_string(),
+    vault_path.clone(),
+    None,
+  )
+  .expect("mnemonic import should succeed");
+
+  let err = export_wallet(wallet.meta.name.clone(), "".to_string(), vault_path.clone())
+    .expect_err("export wallet with empty password should fail");
+
+  assert_eq!(err.reason, "password must not be empty");
+
+  let _ = fs::remove_dir_all(vault_dir);
+}
+
+#[test]
+fn export_wallet_rejects_nonexistent_wallet() {
+  let (vault_dir, vault_path) = temp_vault("export-wallet-nonexistent");
+
+  let err = export_wallet(
+    "NonExistentWallet".to_string(),
+    TEST_PASSWORD.to_string(),
+    vault_path.clone(),
+  )
+  .expect_err("export nonexistent wallet should fail");
+
+  // Check that error message indicates wallet not found
+  // The exact message may vary, but should contain "not found" or indicate the wallet doesn't exist
+  assert!(
+    err.reason.to_lowercase().contains("not found") || err.reason.to_lowercase().contains("no wallets"),
+    "expected 'not found' error, got: {}",
+    err.reason
+  );
+
+  let _ = fs::remove_dir_all(vault_dir);
+}
+
+#[test]
+fn export_wallet_works_with_wallet_id_prefix() {
+  let (vault_dir, vault_path) = temp_vault("export-wallet-by-prefix");
+  let wallet = import_wallet_mnemonic(
+    "Test wallet".to_string(),
+    TEST_MNEMONIC.to_string(),
+    TEST_PASSWORD.to_string(),
+    vault_path.clone(),
+    None,
+  )
+  .expect("mnemonic import should succeed");
+
+  // Use the first 8 characters of the wallet ID
+  let id_prefix = &wallet.meta.id[..8];
+
+  let exported = export_wallet(
+    id_prefix.to_string(),
+    TEST_PASSWORD.to_string(),
+    vault_path.clone(),
+  )
+  .expect("export wallet by id prefix should succeed");
+
+  assert_eq!(exported, TEST_MNEMONIC);
 
   let _ = fs::remove_dir_all(vault_dir);
 }

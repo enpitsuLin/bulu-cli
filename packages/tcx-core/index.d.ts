@@ -107,6 +107,14 @@ export interface EthTransactionInput {
   accessList: Array<EthAccessListItem>
 }
 
+/**
+ * Exports the wallet's mnemonic or private key.
+ *
+ * Returns the mnemonic phrase for HD wallets or the private key for private key wallets.
+ * Requires the wallet passphrase to decrypt the keystore.
+ */
+export declare function exportWallet(nameOrId: string, password: string, vaultPath: string): string
+
 /** Loads a persisted wallet from the vault by wallet id, exact name, or unique id prefix. */
 export declare function getWallet(nameOrId: string, vaultPath: string): WalletInfo
 
