@@ -1,34 +1,14 @@
-use tcx_common::{random_u8_16, FromHex};
-use tcx_eth::transaction::{
-  EthMessageInput as TcxEthMessageInput, EthMessageOutput as TcxEthMessageOutput,
-  EthTxOutput as TcxEthTxOutput,
-};
-use tcx_keystore::keystore::IdentityNetwork;
-use tcx_keystore::{
-  Keystore as TcxKeystore, KeystoreGuard, MessageSigner, Metadata, Source, TransactionSigner,
-};
-use tcx_primitive::mnemonic_from_entropy;
-use tcx_tron::transaction::{
-  TronMessageInput as TcxTronMessageInput, TronMessageOutput as TcxTronMessageOutput,
-  TronTxInput as TcxTronTxInput, TronTxOutput as TcxTronTxOutput,
-};
-
-use crate::derivation::{derive_accounts_for_wallet, resolve_derivation, Chain};
+use crate::chain::{get_chain_signer, SignedTransaction};
+use crate::derivation::{derive_accounts_for_wallet, resolve_derivation};
 use crate::error::{require_non_empty, require_trimmed, CoreError, CoreResult, ResultExt};
-use crate::ethereum::parse_eth_transaction_hex;
-use crate::strings::{sanitize_optional_text, strip_hex_prefix};
-use crate::types::{
-  DerivationInput, EthMessageInput, EthMessageSignatureType, EthSignedTransaction, SignedMessage,
-  TronMessageInput, TronSignedTransaction, WalletAccount, WalletInfo,
-};
+use crate::strings::sanitize_optional_text;
+use crate::types::{DerivationInput, SignedMessage, WalletInfo};
 use crate::vault::VaultRepository;
+use tcx_common::FromHex;
+use tcx_keystore::keystore::IdentityNetwork;
+use tcx_keystore::{Keystore as TcxKeystore, KeystoreGuard, Metadata, Source};
 
-pub(crate) enum SignedTransaction {
-  Ethereum(EthSignedTransaction),
-  Tron(TronSignedTransaction),
-}
-
-pub(crate) fn list_wallets(vault_path: String) -> CoreResult<Vec<WalletInfo>> {
+pub(crate) fn list_wallets(vault_path: String) -> CoreResult<Vec<crate::types::WalletInfo>> {
   VaultRepository::new(vault_path)?.list_wallets()
 }
 
@@ -185,7 +165,7 @@ pub(crate) fn derive_accounts(
   keystore_json: String,
   password: String,
   derivations: Option<Vec<DerivationInput>>,
-) -> CoreResult<Vec<WalletAccount>> {
+) -> CoreResult<Vec<crate::types::WalletAccount>> {
   require_non_empty(&password, "password")?;
 
   let mut keystore = load_tcx_keystore(keystore_json)?;
@@ -224,9 +204,9 @@ pub(crate) fn sign_message(
 
   let wallet = VaultRepository::new(vault_path)?.get_wallet(&name)?;
   let mut keystore = stored_keystore(&wallet)?;
-  let network = keystore.store().meta.network;
 
   with_unlocked_keystore(&mut keystore, &password, move |unlocked_keystore| {
+    let network = unlocked_keystore.store().meta.network;
     let request = resolve_derivation(
       DerivationInput {
         chain_id,
@@ -236,39 +216,14 @@ pub(crate) fn sign_message(
       network,
       unlocked_keystore.derivable(),
     )?;
-    let params = request.signature_parameters();
 
-    match request.resolved.chain {
-      Chain::Ethereum => {
-        let signed: TcxEthMessageOutput = unlocked_keystore
-          .sign_message(
-            &params,
-            &TcxEthMessageInput::from(EthMessageInput {
-              message,
-              signature_type: Some(EthMessageSignatureType::PersonalSign),
-            }),
-          )
-          .map_core_err()?;
-        Ok(SignedMessage {
-          signature: signed.signature,
-        })
-      }
-      Chain::Tron => {
-        let signed: TcxTronMessageOutput = unlocked_keystore
-          .sign_message(
-            &params,
-            &TcxTronMessageInput::from(TronMessageInput {
-              value: message,
-              header: Some("TRON".to_string()),
-              version: Some(1),
-            }),
-          )
-          .map_core_err()?;
-        Ok(SignedMessage {
-          signature: signed.signature,
-        })
-      }
-    }
+    let signer = get_chain_signer(request.resolved.chain);
+    signer.sign_message(
+      unlocked_keystore,
+      &request.resolved,
+      &request.derivation_path,
+      &message,
+    )
   })
 }
 
@@ -285,45 +240,27 @@ pub(crate) fn sign_transaction(
 
   let wallet = VaultRepository::new(vault_path)?.get_wallet(&name)?;
   let mut keystore = stored_keystore(&wallet)?;
-  let network = keystore.store().meta.network;
 
   with_unlocked_keystore(&mut keystore, &password, move |unlocked_keystore| {
+    let network = unlocked_keystore.store().meta.network;
     let request = resolve_derivation(
       DerivationInput {
-        chain_id,
+        chain_id: chain_id.clone(),
         derivation_path: None,
         network: None,
       },
       network,
       unlocked_keystore.derivable(),
     )?;
-    let params = request.signature_parameters();
 
-    match request.resolved.chain {
-      Chain::Ethereum => {
-        let tx = parse_eth_transaction_hex(&normalized_tx_hex, &request.resolved.chain_id)?;
-        let signed: TcxEthTxOutput = unlocked_keystore
-          .sign_transaction(&params, &tx)
-          .map_core_err()?;
-        Ok(SignedTransaction::Ethereum(EthSignedTransaction {
-          signature: signed.signature,
-          tx_hash: signed.tx_hash,
-        }))
-      }
-      Chain::Tron => {
-        let signed: TcxTronTxOutput = unlocked_keystore
-          .sign_transaction(
-            &params,
-            &TcxTronTxInput {
-              raw_data: strip_hex_prefix(&normalized_tx_hex).to_string(),
-            },
-          )
-          .map_core_err()?;
-        Ok(SignedTransaction::Tron(TronSignedTransaction {
-          signatures: signed.signatures,
-        }))
-      }
-    }
+    let signer = get_chain_signer(request.resolved.chain);
+    let tx_data = signer.prepare_transaction(&normalized_tx_hex, &request.resolved.chain_id)?;
+    signer.sign_transaction(
+      unlocked_keystore,
+      &request.resolved,
+      &request.derivation_path,
+      tx_data,
+    )
   })
 }
 
@@ -367,9 +304,9 @@ fn create_mnemonic(entropy: Option<String>) -> CoreResult<String> {
   match entropy {
     Some(entropy_hex) => {
       let entropy = Vec::from_hex_auto(entropy_hex.trim()).map_core_err()?;
-      mnemonic_from_entropy(&entropy).map_core_err()
+      tcx_primitive::mnemonic_from_entropy(&entropy).map_core_err()
     }
-    None => mnemonic_from_entropy(&random_u8_16()).map_core_err(),
+    None => tcx_primitive::mnemonic_from_entropy(&tcx_common::random_u8_16()).map_core_err(),
   }
 }
 
