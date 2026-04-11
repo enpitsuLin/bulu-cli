@@ -1,9 +1,9 @@
 #![deny(clippy::all)]
 
+mod chain;
 mod constants;
 mod derivation;
 mod error;
-mod ethereum;
 mod service;
 mod signing;
 mod strings;

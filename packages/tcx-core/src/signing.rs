@@ -1,8 +1,9 @@
 use napi::{Either, Result};
 use napi_derive::napi;
 
+use crate::chain::SignedTransaction;
 use crate::error::CoreResultExt;
-use crate::service::{self, SignedTransaction};
+use crate::service;
 use crate::types::{EthSignedTransaction, SignedMessage, TronSignedTransaction};
 
 #[napi(js_name = "signMessage")]
