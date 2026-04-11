@@ -6,8 +6,6 @@ import { join } from 'node:path'
 import {
   type WalletInfo,
   type KeystoreData,
-  WalletNetwork,
-  WalletSource,
   createWallet,
   deriveAccounts,
   importWalletMnemonic,
@@ -170,8 +168,8 @@ test('createWallet returns keystore json and default accounts', () => {
     const wallet = createWallet('Created', PASSWORD, tempDir)
 
     expect(wallet).not.toHaveProperty('mnemonic')
-    expect(wallet.meta.source).toBe(WalletSource.NewMnemonic)
-    expect(wallet.meta.network).toBe(WalletNetwork.Mainnet)
+    expect(wallet.meta.source).toBe('NEW_MNEMONIC')
+    expect(wallet.meta.network).toBe('MAINNET')
     expect(wallet.meta.derivable).toBe(true)
     expect(wallet.accounts).toHaveLength(2)
     expect(wallet.accounts.map((account) => account.chainId)).toEqual([ETH_MAINNET_CHAIN_ID, TRON_MAINNET_CHAIN_ID])
@@ -205,7 +203,7 @@ test('importWalletMnemonic returns default accounts', () => {
     const wallet = importWalletMnemonic('Imported Mnemonic', MNEMONIC, PASSWORD, tempDir)
 
     expect(wallet).not.toHaveProperty('mnemonic')
-    expect(wallet.meta.source).toBe(WalletSource.Mnemonic)
+    expect(wallet.meta.source).toBe('MNEMONIC')
     expect(wallet.accounts).toHaveLength(2)
     expect(wallet.accounts.map((account) => account.chainId)).toEqual([ETH_MAINNET_CHAIN_ID, TRON_MAINNET_CHAIN_ID])
   })
@@ -236,7 +234,7 @@ test('importWalletPrivateKey returns a non-derivable wallet', () => {
     const wallet = importWalletPrivateKey('Imported Private Key', PRIVATE_KEY, PASSWORD, tempDir)
 
     expect(wallet).not.toHaveProperty('mnemonic')
-    expect(wallet.meta.source).toBe(WalletSource.Private)
+    expect(wallet.meta.source).toBe('PRIVATE')
     expect(wallet.meta.derivable).toBe(false)
     expect(wallet.accounts).toHaveLength(2)
     expect(wallet.accounts.map((account) => account.chainId)).toEqual([ETH_MAINNET_CHAIN_ID, TRON_MAINNET_CHAIN_ID])
@@ -277,7 +275,7 @@ test('loadWallet restores keystore json and derives requested accounts', () => {
     ])
 
     expect(wallet).not.toHaveProperty('mnemonic')
-    expect(wallet.meta.source).toBe(WalletSource.Mnemonic)
+    expect(wallet.meta.source).toBe('MNEMONIC')
     expect(wallet.accounts).toHaveLength(1)
     expect(wallet.accounts[0]?.derivationPath).toBe("m/44'/60'/0'/0/1")
   })

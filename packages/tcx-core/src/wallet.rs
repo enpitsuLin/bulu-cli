@@ -47,8 +47,12 @@ pub(crate) fn parse_wallet_info(content: &str) -> Result<WalletInfo> {
       .and_then(|v| v.as_str())
       .unwrap_or("")
       .to_string(),
-    source: parse_wallet_source(meta_obj.get("source"))?,
-    network: parse_wallet_network(meta_obj.get("network"))?,
+    source: parse_wallet_source(meta_obj.get("source"))?
+      .as_str()
+      .to_string(),
+    network: parse_wallet_network(meta_obj.get("network"))?
+      .as_str()
+      .to_string(),
     name: meta_obj
       .get("name")
       .and_then(|v| v.as_str())
@@ -337,17 +341,8 @@ fn parse_wallet_source(value: Option<&Value>) -> Result<WalletSource> {
     .and_then(|v| v.as_str())
     .ok_or_else(|| napi::Error::from_reason("missing or invalid source field"))?;
 
-  match source_str {
-    "WIF" => Ok(WalletSource::Wif),
-    "PRIVATE" => Ok(WalletSource::Private),
-    "KEYSTORE_V3" => Ok(WalletSource::KeystoreV3),
-    "SUBSTRATE_KEYSTORE" => Ok(WalletSource::SubstrateKeystore),
-    "MNEMONIC" => Ok(WalletSource::Mnemonic),
-    "NEW_MNEMONIC" => Ok(WalletSource::NewMnemonic),
-    _ => Err(napi::Error::from_reason(format!(
-      "unknown source: {source_str}"
-    ))),
-  }
+  WalletSource::from_str(source_str)
+    .ok_or_else(|| napi::Error::from_reason(format!("unknown source: {source_str}")))
 }
 
 fn parse_wallet_network(value: Option<&Value>) -> Result<WalletNetwork> {
@@ -355,13 +350,8 @@ fn parse_wallet_network(value: Option<&Value>) -> Result<WalletNetwork> {
     .and_then(|v| v.as_str())
     .ok_or_else(|| napi::Error::from_reason("missing or invalid network field"))?;
 
-  match network_str {
-    "MAINNET" => Ok(WalletNetwork::Mainnet),
-    "TESTNET" => Ok(WalletNetwork::Testnet),
-    _ => Err(napi::Error::from_reason(format!(
-      "unknown network: {network_str}"
-    ))),
-  }
+  WalletNetwork::from_str(network_str)
+    .ok_or_else(|| napi::Error::from_reason(format!("unknown network: {network_str}")))
 }
 
 fn parse_wallet_account(value: &Value) -> Result<WalletAccount> {
@@ -737,14 +727,8 @@ pub(crate) fn wallet_meta_to_json(meta: &WalletMeta) -> Value {
     "sourceFingerprint".to_string(),
     json!(meta.source_fingerprint),
   );
-  value.insert(
-    "source".to_string(),
-    json!(wallet_source_to_json(meta.source)),
-  );
-  value.insert(
-    "network".to_string(),
-    json!(wallet_network_to_json(meta.network)),
-  );
+  value.insert("source".to_string(), json!(meta.source));
+  value.insert("network".to_string(), json!(meta.network));
   value.insert("name".to_string(), json!(meta.name));
   value.insert("timestamp".to_string(), json!(meta.timestamp));
   value.insert("derivable".to_string(), json!(meta.derivable));
@@ -764,25 +748,6 @@ pub(crate) fn wallet_meta_to_json(meta: &WalletMeta) -> Value {
 
   Value::Object(value)
 }
-
-pub(crate) fn wallet_network_to_json(network: WalletNetwork) -> &'static str {
-  match network {
-    WalletNetwork::Mainnet => "MAINNET",
-    WalletNetwork::Testnet => "TESTNET",
-  }
-}
-
-pub(crate) fn wallet_source_to_json(source: WalletSource) -> &'static str {
-  match source {
-    WalletSource::Wif => "WIF",
-    WalletSource::Private => "PRIVATE",
-    WalletSource::KeystoreV3 => "KEYSTORE_V3",
-    WalletSource::SubstrateKeystore => "SUBSTRATE_KEYSTORE",
-    WalletSource::Mnemonic => "MNEMONIC",
-    WalletSource::NewMnemonic => "NEW_MNEMONIC",
-  }
-}
-
 fn build_wallet_meta(keystore: &TcxKeystore) -> WalletMeta {
   let store = keystore.store();
   let meta = &store.meta;
@@ -791,8 +756,8 @@ fn build_wallet_meta(keystore: &TcxKeystore) -> WalletMeta {
     id: store.id.clone(),
     version: store.version,
     source_fingerprint: store.source_fingerprint.clone(),
-    source: meta.source.into(),
-    network: meta.network.into(),
+    source: WalletSource::from(meta.source).as_str().to_string(),
+    network: WalletNetwork::from(meta.network).as_str().to_string(),
     name: meta.name.clone(),
     password_hint: meta.password_hint.clone(),
     timestamp: meta.timestamp,

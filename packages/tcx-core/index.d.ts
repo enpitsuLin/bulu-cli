@@ -46,7 +46,7 @@ export interface DerivationInput {
   /** Derivation path to use for derivable wallets. */
   derivationPath?: string
   /** Network to use for this derivation. Defaults to the wallet network. */
-  network?: WalletNetwork
+  network?: 'MAINNET' | 'TESTNET'
 }
 
 /**
@@ -195,9 +195,9 @@ export interface KeystoreMetadata {
   /** Timestamp of keystore creation. */
   timestamp: number
   /** Source of the wallet (e.g., "MNEMONIC", "PRIVATE"). */
-  source: string
+  source: 'WIF' | 'PRIVATE' | 'KEYSTORE_V3' | 'SUBSTRATE_KEYSTORE' | 'MNEMONIC' | 'NEW_MNEMONIC'
   /** Network type ("MAINNET" or "TESTNET"). */
-  network: string
+  network: 'MAINNET' | 'TESTNET'
   /** Optional identified chain types. */
   identifiedChainTypes?: Array<string>
 }
@@ -290,9 +290,9 @@ export interface WalletMeta {
   /** Fingerprint of the original wallet source. */
   sourceFingerprint: string
   /** Source used to create or import the wallet. */
-  source: WalletSource
+  source: 'WIF' | 'PRIVATE' | 'KEYSTORE_V3' | 'SUBSTRATE_KEYSTORE' | 'MNEMONIC' | 'NEW_MNEMONIC'
   /** Wallet network stored in metadata. */
-  network: WalletNetwork
+  network: 'MAINNET' | 'TESTNET'
   /** Wallet name stored in metadata. */
   name: string
   /** Optional password hint stored in metadata. */
@@ -305,28 +305,4 @@ export interface WalletMeta {
   curve?: string
   /** Optional chain types identified by the underlying keystore. */
   identifiedChainTypes?: Array<string>
-}
-
-/** Wallet network used for metadata and default account derivations. */
-export declare const enum WalletNetwork {
-  /** Production network defaults. */
-  Mainnet = 'MAINNET',
-  /** Test network defaults. */
-  Testnet = 'TESTNET'
-}
-
-/** Source used to create or import the wallet. */
-export declare const enum WalletSource {
-  /** Imported from WIF. */
-  Wif = 'WIF',
-  /** Imported from a raw private key. */
-  Private = 'PRIVATE',
-  /** Imported from a V3 keystore JSON payload. */
-  KeystoreV3 = 'KEYSTORE_V3',
-  /** Imported from a Substrate keystore payload. */
-  SubstrateKeystore = 'SUBSTRATE_KEYSTORE',
-  /** Imported from an existing mnemonic phrase. */
-  Mnemonic = 'MNEMONIC',
-  /** Created from a newly generated mnemonic phrase. */
-  NewMnemonic = 'NEW_MNEMONIC'
 }

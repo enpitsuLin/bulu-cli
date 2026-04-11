@@ -69,8 +69,8 @@ fn create_wallet_returns_keystore_json_and_default_accounts() {
   )
   .expect("create wallet should succeed");
 
-  assert_eq!(wallet.meta.source, WalletSource::NewMnemonic);
-  assert_eq!(wallet.meta.network, WalletNetwork::Mainnet);
+  assert_eq!(wallet.meta.source, "NEW_MNEMONIC");
+  assert_eq!(wallet.meta.network, "MAINNET");
   assert_eq!(wallet.accounts.len(), 2);
   assert_eq!(wallet.accounts[0].chain_id, DEFAULT_ETH_MAINNET_CHAIN_ID);
   assert_eq!(wallet.accounts[1].chain_id, DEFAULT_TRON_MAINNET_CHAIN_ID);
@@ -122,8 +122,8 @@ fn import_wallet_mnemonic_returns_default_accounts() {
   )
   .expect("mnemonic import should succeed");
 
-  assert_eq!(wallet.meta.source, WalletSource::Mnemonic);
-  assert_eq!(wallet.meta.network, WalletNetwork::Mainnet);
+  assert_eq!(wallet.meta.source, "MNEMONIC");
+  assert_eq!(wallet.meta.network, "MAINNET");
   assert_eq!(wallet.accounts.len(), 2);
   assert_eq!(wallet.accounts[0].chain_id, DEFAULT_ETH_MAINNET_CHAIN_ID);
   assert_eq!(wallet.accounts[1].chain_id, DEFAULT_TRON_MAINNET_CHAIN_ID);
@@ -192,8 +192,8 @@ fn import_wallet_private_key_returns_non_derivable_accounts() {
   )
   .expect("private key import should succeed");
 
-  assert_eq!(wallet.meta.source, WalletSource::Private);
-  assert_eq!(wallet.meta.network, WalletNetwork::Mainnet);
+  assert_eq!(wallet.meta.source, "PRIVATE");
+  assert_eq!(wallet.meta.network, "MAINNET");
   assert_eq!(wallet.accounts.len(), 2);
   assert_eq!(wallet.accounts[0].chain_id, DEFAULT_ETH_MAINNET_CHAIN_ID);
   assert_eq!(wallet.accounts[1].chain_id, DEFAULT_TRON_MAINNET_CHAIN_ID);
@@ -253,8 +253,8 @@ fn load_wallet_restores_wallet_from_keystore_json() {
   )
   .expect("load wallet should succeed");
 
-  assert_eq!(wallet.meta.source, WalletSource::Mnemonic);
-  assert_eq!(wallet.meta.network, WalletNetwork::Mainnet);
+  assert_eq!(wallet.meta.source, "MNEMONIC");
+  assert_eq!(wallet.meta.network, "MAINNET");
   assert_eq!(wallet.accounts.len(), 1);
   assert_eq!(
     wallet.accounts[0].derivation_path.as_deref(),

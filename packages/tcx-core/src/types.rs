@@ -9,7 +9,6 @@ use tcx_tron::transaction::{
   TronMessageInput as TcxTronMessageInput, TronTxInput as TcxTronTxInput,
 };
 
-#[napi(string_enum = "UPPERCASE")]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 /// Wallet network used for metadata and default account derivations.
 pub enum WalletNetwork {
@@ -17,6 +16,23 @@ pub enum WalletNetwork {
   Mainnet,
   /// Test network defaults.
   Testnet,
+}
+
+impl WalletNetwork {
+  pub fn from_str(value: &str) -> Option<Self> {
+    match value {
+      "MAINNET" => Some(Self::Mainnet),
+      "TESTNET" => Some(Self::Testnet),
+      _ => None,
+    }
+  }
+
+  pub const fn as_str(self) -> &'static str {
+    match self {
+      Self::Mainnet => "MAINNET",
+      Self::Testnet => "TESTNET",
+    }
+  }
 }
 
 impl From<WalletNetwork> for IdentityNetwork {
@@ -37,28 +53,46 @@ impl From<IdentityNetwork> for WalletNetwork {
   }
 }
 
-#[napi(string_enum = "UPPERCASE")]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 /// Source used to create or import the wallet.
 pub enum WalletSource {
   /// Imported from WIF.
-  #[napi(value = "WIF")]
   Wif,
   /// Imported from a raw private key.
-  #[napi(value = "PRIVATE")]
   Private,
   /// Imported from a V3 keystore JSON payload.
-  #[napi(value = "KEYSTORE_V3")]
   KeystoreV3,
   /// Imported from a Substrate keystore payload.
-  #[napi(value = "SUBSTRATE_KEYSTORE")]
   SubstrateKeystore,
   /// Imported from an existing mnemonic phrase.
-  #[napi(value = "MNEMONIC")]
   Mnemonic,
   /// Created from a newly generated mnemonic phrase.
-  #[napi(value = "NEW_MNEMONIC")]
   NewMnemonic,
+}
+
+impl WalletSource {
+  pub fn from_str(value: &str) -> Option<Self> {
+    match value {
+      "WIF" => Some(Self::Wif),
+      "PRIVATE" => Some(Self::Private),
+      "KEYSTORE_V3" => Some(Self::KeystoreV3),
+      "SUBSTRATE_KEYSTORE" => Some(Self::SubstrateKeystore),
+      "MNEMONIC" => Some(Self::Mnemonic),
+      "NEW_MNEMONIC" => Some(Self::NewMnemonic),
+      _ => None,
+    }
+  }
+
+  pub const fn as_str(self) -> &'static str {
+    match self {
+      Self::Wif => "WIF",
+      Self::Private => "PRIVATE",
+      Self::KeystoreV3 => "KEYSTORE_V3",
+      Self::SubstrateKeystore => "SUBSTRATE_KEYSTORE",
+      Self::Mnemonic => "MNEMONIC",
+      Self::NewMnemonic => "NEW_MNEMONIC",
+    }
+  }
 }
 
 impl From<Source> for WalletSource {
@@ -84,7 +118,8 @@ pub struct DerivationInput {
   #[napi(js_name = "derivationPath")]
   pub derivation_path: Option<String>,
   /// Network to use for this derivation. Defaults to the wallet network.
-  pub network: Option<WalletNetwork>,
+  #[napi(ts_type = "'MAINNET' | 'TESTNET'")]
+  pub network: Option<String>,
 }
 
 #[napi(object)]
@@ -117,9 +152,13 @@ pub struct WalletMeta {
   #[napi(js_name = "sourceFingerprint")]
   pub source_fingerprint: String,
   /// Source used to create or import the wallet.
-  pub source: WalletSource,
+  #[napi(
+    ts_type = "'WIF' | 'PRIVATE' | 'KEYSTORE_V3' | 'SUBSTRATE_KEYSTORE' | 'MNEMONIC' | 'NEW_MNEMONIC'"
+  )]
+  pub source: String,
   /// Wallet network stored in metadata.
-  pub network: WalletNetwork,
+  #[napi(ts_type = "'MAINNET' | 'TESTNET'")]
+  pub network: String,
   /// Wallet name stored in metadata.
   pub name: String,
   /// Optional password hint stored in metadata.
@@ -260,8 +299,12 @@ pub struct KeystoreMetadata {
   /// Timestamp of keystore creation.
   pub timestamp: i64,
   /// Source of the wallet (e.g., "MNEMONIC", "PRIVATE").
+  #[napi(
+    ts_type = "'WIF' | 'PRIVATE' | 'KEYSTORE_V3' | 'SUBSTRATE_KEYSTORE' | 'MNEMONIC' | 'NEW_MNEMONIC'"
+  )]
   pub source: String,
   /// Network type ("MAINNET" or "TESTNET").
+  #[napi(ts_type = "'MAINNET' | 'TESTNET'")]
   pub network: String,
   /// Optional identified chain types.
   #[napi(js_name = "identifiedChainTypes")]

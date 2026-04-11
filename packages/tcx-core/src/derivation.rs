@@ -82,7 +82,7 @@ pub(crate) fn resolve_derivation(
   let chain_id = normalize_chain_id(derivation.chain_id)?;
   let resolved = ResolvedDerivation {
     chain_kind: chain_kind_from_chain_id(&chain_id)?,
-    network: resolve_derivation_network(wallet_network, derivation.network),
+    network: resolve_derivation_network(wallet_network, derivation.network)?,
     chain_id,
   };
   let derivation_path = if derivable {
@@ -237,9 +237,14 @@ fn encode_public_key(public_key: &TypedPublicKey) -> String {
 
 fn resolve_derivation_network(
   fallback_network: IdentityNetwork,
-  network: Option<WalletNetwork>,
-) -> IdentityNetwork {
-  network.map(Into::into).unwrap_or(fallback_network)
+  network: Option<String>,
+) -> Result<IdentityNetwork> {
+  match network {
+    Some(network) => WalletNetwork::from_str(&network)
+      .map(Into::into)
+      .ok_or_else(|| Error::from_reason(format!("unknown network: {network}"))),
+    None => Ok(fallback_network),
+  }
 }
 
 pub(crate) fn ethereum_chain_reference(chain_id: &str) -> Result<String> {
