@@ -18,10 +18,6 @@ function getWalletPath(vaultPath: string, walletId: string): string {
   return join(getWalletsDir(vaultPath), `${walletId}.json`)
 }
 
-export function getStoredWalletPath(vaultPath: string, walletId: string): string {
-  return getWalletPath(vaultPath, walletId)
-}
-
 export function resolveStoredWallet(identifier: string, vaultPath: string): StoredWallet {
   const wallet = getWallet(identifier, vaultPath)
   const path = getWalletPath(vaultPath, wallet.meta.id)

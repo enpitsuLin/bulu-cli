@@ -4,7 +4,8 @@ import { defineCommand } from 'citty'
 import { readFileSync } from 'node:fs'
 import { getVaultPath } from '../../core/config'
 import { resolveTCXPassphrase } from '../../core/tcx'
-import { renderWalletDetail } from './shared'
+import { createOutput, resolveOutputOptions } from '../../core/output'
+import { withDefaultArgs } from '../../core/args-def'
 
 export interface WalletImportArgs {
   name: string
@@ -56,34 +57,9 @@ function importFromKeystore(name: string, keystoreFile: string, passphrase: stri
   return importWalletKeystore(name, keystoreJson, passphrase, vaultPath)
 }
 
-export async function runWalletImport(args: WalletImportArgs): Promise<void> {
-  const name = args.name.trim()
-  if (!name) {
-    throw new Error('Wallet name is required')
-  }
-
-  const index = parseIndex(args.index)
-  const { mnemonic, privateKey, keystoreFile, source } = resolveImportSource(args)
-  if (source === 'keystoreFile' && index !== undefined) {
-    throw new Error('--index is not supported with --keystoreFile')
-  }
-
-  const passphrase = await resolveTCXPassphrase()
-  const vaultPath = getVaultPath()
-
-  const wallet =
-    source === 'mnemonic' && mnemonic
-      ? importWalletMnemonic(name, mnemonic, passphrase, vaultPath, index)
-      : source === 'privateKey' && privateKey
-        ? importWalletPrivateKey(name, privateKey, passphrase, vaultPath, index)
-        : importFromKeystore(name, keystoreFile!, passphrase, vaultPath)
-
-  renderWalletDetail(wallet, args)
-}
-
 export default defineCommand({
   meta: { name: 'import', description: 'Import a wallet from mnemonic, private key, or keystore JSON' },
-  args: {
+  args: withDefaultArgs({
     name: {
       type: 'positional',
       description: 'Wallet name',
@@ -105,13 +81,46 @@ export default defineCommand({
       type: 'string',
       description: 'Default derivation account index for mnemonic imports',
     },
-    json: {
-      type: 'boolean',
-      description: 'Output in JSON format',
-      default: false,
-    },
-  },
+  }),
   async run({ args }) {
-    await runWalletImport(args as WalletImportArgs)
+    const name = args.name.trim()
+    if (!name) {
+      throw new Error('Wallet name is required')
+    }
+
+    const index = parseIndex(args.index)
+    const { mnemonic, privateKey, keystoreFile, source } = resolveImportSource(args)
+    if (source === 'keystoreFile' && index !== undefined) {
+      throw new Error('--index is not supported with --keystoreFile')
+    }
+
+    const passphrase = await resolveTCXPassphrase()
+    const vaultPath = getVaultPath()
+
+    const out = createOutput(resolveOutputOptions(args))
+
+    let wallet: WalletInfo
+    try {
+      wallet =
+        source === 'mnemonic' && mnemonic
+          ? importWalletMnemonic(name, mnemonic, passphrase, vaultPath, index)
+          : source === 'privateKey' && privateKey
+            ? importWalletPrivateKey(name, privateKey, passphrase, vaultPath, index)
+            : importFromKeystore(name, keystoreFile!, passphrase, vaultPath)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      out.warn(`Error: ${message}`)
+      process.exit(1)
+    }
+
+    out.data({
+      name: wallet.meta.name,
+      id: wallet.meta.id,
+      accounts: wallet.accounts.map((a) => ({
+        chain: a.chainId,
+        address: a.address,
+        path: a.derivationPath,
+      })),
+    })
   },
 })

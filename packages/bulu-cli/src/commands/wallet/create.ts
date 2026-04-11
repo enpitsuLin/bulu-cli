@@ -3,6 +3,7 @@ import { defineCommand } from 'citty'
 import { resolveTCXPassphrase } from '../../core/tcx'
 import { getVaultPath } from '../../core/config'
 import { createOutput, resolveOutputOptions } from '../../core/output'
+import { withDefaultArgs } from '../../core/args-def'
 
 export interface WalletCreateArgs {
   name: string
@@ -10,21 +11,27 @@ export interface WalletCreateArgs {
 
 export default defineCommand({
   meta: { name: 'create', description: 'Create a new wallet' },
-  args: {
+  args: withDefaultArgs({
     name: {
       type: 'positional',
       description: 'Wallet name',
       required: true,
     },
-    json: { type: 'boolean', default: false },
-    format: { type: 'string', default: 'table' },
-  },
+  }),
   async run({ args }) {
     const passphrase = await resolveTCXPassphrase()
     const vaultPath = getVaultPath()
-    const wallet = createWallet(args.name, passphrase, vaultPath)
 
     const out = createOutput(resolveOutputOptions(args))
+
+    let wallet
+    try {
+      wallet = createWallet(args.name, passphrase, vaultPath)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      out.warn(`Error: ${message}`)
+      process.exit(1)
+    }
 
     out.data({
       name: wallet.meta.name,

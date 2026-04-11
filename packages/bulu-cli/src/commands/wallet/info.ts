@@ -1,37 +1,32 @@
 import { defineCommand } from 'citty'
 import { getVaultPath } from '../../core/config'
-import { resolveStoredWallet } from '../../core/wallet-store'
-import { renderWalletDetail } from './shared'
-
-export interface WalletInfoArgs {
-  wallet: string
-  json?: boolean
-}
-
-export async function runWalletInfo(args: WalletInfoArgs): Promise<void> {
-  const vaultPath = getVaultPath()
-  const storedWallet = resolveStoredWallet(args.wallet, vaultPath)
-  renderWalletDetail(storedWallet.data, args, {
-    includeAccountKeys: false,
-    includeCurve: false,
-  })
-}
+import { createOutput, resolveOutputOptions } from '../../core/output'
+import { getWallet } from '@bulu-cli/tcx-core'
+import { withDefaultArgs } from '../../core/args-def'
 
 export default defineCommand({
   meta: { name: 'info', description: 'Show detailed information for a wallet' },
-  args: {
+  args: withDefaultArgs({
     wallet: {
       type: 'positional',
       description: 'Wallet name or id',
       required: true,
     },
-    json: {
-      type: 'boolean',
-      description: 'Output in JSON format',
-      default: false,
-    },
-  },
+  }),
   async run({ args }) {
-    await runWalletInfo(args as WalletInfoArgs)
+    const vaultPath = getVaultPath()
+    const wallet = getWallet(args.wallet, vaultPath)
+
+    const out = createOutput(resolveOutputOptions(args))
+
+    out.data({
+      name: wallet.meta.name,
+      id: wallet.meta.id,
+      accounts: wallet.accounts.map((a) => ({
+        chain: a.chainId,
+        address: a.address,
+        path: a.derivationPath,
+      })),
+    })
   },
 })
