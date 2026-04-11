@@ -6,6 +6,8 @@ const BULU_CONFIG_DIR_ENV = 'BULU_CONFIG_DIR'
 const BULU_CONFIG_DEFAULT_DIR = 'bulu'
 const BULU_CONFIG_FILENAME = 'bulu.config.json'
 
+export type UserConfig = Record<string, unknown>
+
 export interface BuluConfig {
   default?: {
     chain?: string
@@ -30,6 +32,12 @@ export const CONFIG_DEFAULTS: BuluConfig = {
   },
 }
 
+export interface InitBuluConfigResult {
+  action: 'created' | 'overwritten' | 'unchanged'
+  config: BuluConfig
+  path: string
+}
+
 export function getConfigDir(): string {
   return process.env[BULU_CONFIG_DIR_ENV] || join(homedir(), '.config', BULU_CONFIG_DEFAULT_DIR)
 }
@@ -52,6 +60,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+function cloneConfig<T>(value: T): T {
+  return structuredClone(value)
+}
+
 function mergeConfig<T extends Record<string, unknown>>(defaults: T, overrides: Record<string, unknown>): T {
   const result: Record<string, unknown> = { ...defaults }
 
@@ -67,17 +79,59 @@ function mergeConfig<T extends Record<string, unknown>>(defaults: T, overrides: 
   return result as T
 }
 
-function loadUserConfigSync(cwd = getConfigDir()): Record<string, unknown> {
+function parseConfigKeyPath(keyPath: string): string[] {
+  const normalized = keyPath.trim()
+  if (!normalized) {
+    throw new Error('Config key is required')
+  }
+
+  const segments = normalized.split('.').map((segment) => segment.trim())
+  if (segments.some((segment) => segment.length === 0)) {
+    throw new Error(`Invalid config key "${keyPath}"`)
+  }
+
+  return segments
+}
+
+export function loadUserConfigSync(cwd = getConfigDir()): UserConfig {
   const configPath = getConfigPath(cwd)
   if (!existsSync(configPath)) {
     return {}
   }
 
   try {
-    return JSON.parse(readFileSync(configPath, 'utf-8')) as Record<string, unknown>
+    return JSON.parse(readFileSync(configPath, 'utf-8')) as UserConfig
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     throw new Error(`Invalid config file at ${configPath}: ${message}`)
+  }
+}
+
+export function saveUserConfigSync(config: UserConfig, cwd = getConfigDir()): void {
+  ensureConfigDir(cwd)
+  writeFileSync(getConfigPath(cwd), JSON.stringify(config, null, 2))
+}
+
+export function initBuluConfigSync(options?: { cwd?: string; force?: boolean }): InitBuluConfigResult {
+  const cwd = options?.cwd ?? getConfigDir()
+  const configPath = getConfigPath(cwd)
+  const existed = existsSync(configPath)
+
+  if (existed && !options?.force) {
+    return {
+      action: 'unchanged',
+      config: loadBuluConfigSync(cwd),
+      path: configPath,
+    }
+  }
+
+  const config = cloneConfig(CONFIG_DEFAULTS)
+  saveUserConfigSync(config as UserConfig, cwd)
+
+  return {
+    action: existed ? 'overwritten' : 'created',
+    config,
+    path: configPath,
   }
 }
 
@@ -88,6 +142,34 @@ export function loadBuluConfigSync(cwd?: string): BuluConfig {
 
 export async function loadBuluConfig(cwd?: string): Promise<BuluConfig> {
   return loadBuluConfigSync(cwd)
+}
+
+export function getConfigValueByPath(config: unknown, keyPath: string): unknown {
+  let current = config
+
+  for (const segment of parseConfigKeyPath(keyPath)) {
+    if (!isRecord(current)) {
+      return undefined
+    }
+    current = current[segment]
+  }
+
+  return current
+}
+
+export function setConfigValueByPath(config: UserConfig, keyPath: string, value: unknown): void {
+  const segments = parseConfigKeyPath(keyPath)
+  let current = config
+
+  for (const segment of segments.slice(0, -1)) {
+    const next = current[segment]
+    if (!isRecord(next)) {
+      current[segment] = {}
+    }
+    current = current[segment] as UserConfig
+  }
+
+  current[segments[segments.length - 1]] = value
 }
 
 export function setDefaultWalletIfMissing(
@@ -130,7 +212,7 @@ export function setDefaultWalletIfMissing(
   nextDefault.wallet = walletName
   config.default = nextDefault
 
-  writeFileSync(getConfigPath(cwd), JSON.stringify(config, null, 2))
+  saveUserConfigSync(config, cwd)
 }
 
 export function clearDefaultWalletIfMatches(walletName: string, cwd = getConfigDir()): void {
@@ -161,5 +243,5 @@ export function clearDefaultWalletIfMatches(walletName: string, cwd = getConfigD
   }
 
   ensureConfigDir(cwd)
-  writeFileSync(getConfigPath(cwd), JSON.stringify(config, null, 2))
+  saveUserConfigSync(config, cwd)
 }
