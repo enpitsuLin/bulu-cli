@@ -109,9 +109,9 @@ jobs:
         run: |
           if [ "$NPM_TAG" = "latest" ];
           then
-            pnpm -r publish --access public --no-git-checks --ignore-scripts
+            pnpm -r publish --access public --no-git-checks
           else
-            pnpm -r publish --tag next --access public --no-git-checks --ignore-scripts
+            pnpm -r publish --tag next --access public --no-git-checks
           fi
 
       - name: Create GitHub release with generated changelog
