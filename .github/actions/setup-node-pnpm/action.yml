@@ -27,6 +27,7 @@ runs:
       with:
         node-version: ${{ inputs.node-version }}
         cache: pnpm
+        registry-url: 'https://registry.npmjs.org/'
 
     - name: Setup node with architecture
       if: ${{ inputs.architecture != '' }}
@@ -34,4 +35,5 @@ runs:
       with:
         node-version: ${{ inputs.node-version }}
         cache: pnpm
+        registry-url: 'https://registry.npmjs.org/'
         architecture: ${{ inputs.architecture }}

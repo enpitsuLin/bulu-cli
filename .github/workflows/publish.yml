@@ -120,9 +120,9 @@ jobs:
         run: |
           if [ "$NPM_TAG" = "latest" ];
           then
-            pnpm -r publish --access public --no-git-checks
+            pnpm -r publish --provenance --access public --no-git-checks
           else
-            pnpm -r publish --tag "$NPM_TAG" --access public --no-git-checks
+            pnpm -r publish --provenance --tag "$NPM_TAG" --access public --no-git-checks
           fi
 
       - name: Create GitHub release with generated changelog
