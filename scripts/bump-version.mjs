@@ -29,11 +29,7 @@ const managedSources = [
 ]
 
 // napi-rs build artifacts that need to be committed
-const napiArtifacts = [
-  'packages/tcx-core/index.js',
-  'packages/tcx-core/index.d.ts',
-  'packages/tcx-core/browser.js',
-]
+const napiArtifacts = ['packages/tcx-core/index.js', 'packages/tcx-core/index.d.ts', 'packages/tcx-core/browser.js']
 const helpText = `
 Usage:
   node scripts/bump-version.mjs [version] [--yes] [--dry-run] [--no-commit] [--no-tag] [--no-push]
@@ -134,12 +130,12 @@ async function run(options, sources, currentVersion, providedVersion) {
     }
 
     writeUpdates(updates)
-    
+
     // Build and stage napi artifacts before commit
     if (options.commit) {
       buildAndStageArtifacts(options.dryRun)
     }
-    
+
     runGitWorkflow(commands)
 
     console.log(`\nReleased ${nextVersion}.`)
