@@ -4,12 +4,13 @@ import { dirname, resolve } from 'node:path'
 import { getVaultPath } from '../../core/config'
 import { createOutput, resolveOutputOptions } from '../../core/output'
 import { getWallet } from '@bulu-cli/tcx-core'
+import { withDefaultArgs } from '../../core/args-def'
 
 const EXPORT_FILE_MODE = 0o600
 
 export default defineCommand({
   meta: { name: 'export', description: 'Export wallet keystore JSON' },
-  args: {
+  args: withDefaultArgs({
     wallet: {
       type: 'positional',
       description: 'Wallet name or id',
@@ -19,9 +20,7 @@ export default defineCommand({
       type: 'string',
       description: 'Write the exported keystore JSON to a file',
     },
-    json: { type: 'boolean', default: false },
-    format: { type: 'string', default: 'table' },
-  },
+  }),
   async run({ args }) {
     const vaultPath = getVaultPath()
     const wallet = getWallet(args.wallet, vaultPath)

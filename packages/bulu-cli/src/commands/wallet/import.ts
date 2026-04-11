@@ -8,44 +8,12 @@ import { createOutput, resolveOutputOptions } from '../../core/output'
 import { withDefaultArgs } from '../../core/args-def'
 
 function parseIndex(indexValue?: string): number | undefined {
-  if (indexValue === undefined || indexValue === '') {
-    return undefined
-  }
-
+  if (!indexValue) return undefined
   const index = Number(indexValue)
   if (!Number.isInteger(index) || index < 0) {
     throw new Error('--index must be a non-negative integer')
   }
-
   return index
-}
-
-function resolveImportSource(args: WalletImportArgs) {
-  const mnemonic = args.mnemonic?.trim()
-  const privateKey = args.privateKey?.trim()
-  const keystoreFile = args.keystoreFile?.trim()
-
-  const providedSources = [
-    mnemonic ? 'mnemonic' : null,
-    privateKey ? 'privateKey' : null,
-    keystoreFile ? 'keystoreFile' : null,
-  ].filter((source): source is 'mnemonic' | 'privateKey' | 'keystoreFile' => source !== null)
-
-  if (providedSources.length !== 1) {
-    throw new Error('Provide exactly one of --mnemonic, --privateKey, or --keystoreFile')
-  }
-
-  return {
-    mnemonic,
-    privateKey,
-    keystoreFile,
-    source: providedSources[0],
-  }
-}
-
-function importFromKeystore(name: string, keystoreFile: string, passphrase: string, vaultPath: string): WalletInfo {
-  const keystoreJson = readFileSync(keystoreFile, 'utf-8')
-  return importWalletKeystore(name, keystoreJson, passphrase, vaultPath)
 }
 
 export default defineCommand({
@@ -80,24 +48,32 @@ export default defineCommand({
     }
 
     const index = parseIndex(args.index)
-    const { mnemonic, privateKey, keystoreFile, source } = resolveImportSource(args)
-    if (source === 'keystoreFile' && index !== undefined) {
+    const mnemonic = args.mnemonic?.trim()
+    const privateKey = args.privateKey?.trim()
+    const keystoreFile = args.keystoreFile?.trim()
+
+    const sourceCount = (mnemonic ? 1 : 0) + (privateKey ? 1 : 0) + (keystoreFile ? 1 : 0)
+    if (sourceCount !== 1) {
+      throw new Error('Provide exactly one of --mnemonic, --privateKey, or --keystoreFile')
+    }
+    if (keystoreFile && index !== undefined) {
       throw new Error('--index is not supported with --keystoreFile')
     }
 
     const passphrase = await resolveTCXPassphrase()
     const vaultPath = getVaultPath()
-
     const out = createOutput(resolveOutputOptions(args))
 
     let wallet: WalletInfo
     try {
-      wallet =
-        source === 'mnemonic' && mnemonic
-          ? importWalletMnemonic(name, mnemonic, passphrase, vaultPath, index)
-          : source === 'privateKey' && privateKey
-            ? importWalletPrivateKey(name, privateKey, passphrase, vaultPath, index)
-            : importFromKeystore(name, keystoreFile!, passphrase, vaultPath)
+      if (mnemonic) {
+        wallet = importWalletMnemonic(name, mnemonic, passphrase, vaultPath, index)
+      } else if (privateKey) {
+        wallet = importWalletPrivateKey(name, privateKey, passphrase, vaultPath, index)
+      } else {
+        const keystoreJson = readFileSync(keystoreFile!, 'utf-8')
+        wallet = importWalletKeystore(name, keystoreJson, passphrase, vaultPath)
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       out.warn(`Error: ${message}`)
