@@ -12,6 +12,7 @@
     "lint:oxlint": "oxlint .",
     "lint:rs": "cargo clippy -p bulu_cli_tcx_core --all-targets",
     "test": "pnpm --filter \"./packages/*\" run test",
+    "bump": "node scripts/bump-version.mjs",
     "prepare": "simple-git-hooks"
   },
   "devDependencies": {
