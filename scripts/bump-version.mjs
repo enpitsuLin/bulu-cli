@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { execFileSync } from 'node:child_process'
+import { execFileSync, execSync } from 'node:child_process'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { createInterface } from 'node:readline/promises'
@@ -26,6 +26,13 @@ const managedSources = [
     path: 'Cargo.lock',
     kind: 'cargo-lock',
   },
+]
+
+// napi-rs build artifacts that need to be committed
+const napiArtifacts = [
+  'packages/tcx-core/index.js',
+  'packages/tcx-core/index.d.ts',
+  'packages/tcx-core/browser.js',
 ]
 const helpText = `
 Usage:
@@ -127,6 +134,12 @@ async function run(options, sources, currentVersion, providedVersion) {
     }
 
     writeUpdates(updates)
+    
+    // Build and stage napi artifacts before commit
+    if (options.commit) {
+      buildAndStageArtifacts(options.dryRun)
+    }
+    
     runGitWorkflow(commands)
 
     console.log(`\nReleased ${nextVersion}.`)
@@ -753,6 +766,11 @@ function printSummary({ currentVersion, nextVersion, updates, commands, options,
     return
   }
 
+  if (options.commit) {
+    console.log(`  - Build project: pnpm build`)
+    console.log(`  - Stage napi artifacts: ${napiArtifacts.join(', ')}`)
+  }
+
   for (const command of commands) {
     console.log(`  - ${command.label}: ${formatCommand(command.command)}`)
   }
@@ -806,6 +824,41 @@ function formatCommand(parts) {
       return JSON.stringify(part)
     })
     .join(' ')
+}
+
+function buildAndStageArtifacts(dryRun) {
+  // Run pnpm build to generate napi artifacts
+  console.log('\nBuilding project...')
+  if (dryRun) {
+    console.log(`  [dry-run] Would run: pnpm build`)
+  } else {
+    try {
+      execSync('pnpm build', {
+        cwd: rootDir,
+        encoding: 'utf8',
+        stdio: 'inherit',
+      })
+      console.log('Build completed.')
+    } catch (error) {
+      throw new Error(`build failed: ${error.message}`)
+    }
+  }
+
+  // Stage napi artifact files
+  console.log('Staging napi artifacts...')
+  for (const artifact of napiArtifacts) {
+    if (dryRun) {
+      console.log(`  [dry-run] Would stage: ${artifact}`)
+    } else {
+      try {
+        runGit(['add', artifact])
+        console.log(`  Staged: ${artifact}`)
+      } catch {
+        // File may not exist, skip
+        console.log(`  Skipped (not found): ${artifact}`)
+      }
+    }
+  }
 }
 
 await main()
