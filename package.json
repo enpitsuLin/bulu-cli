@@ -10,7 +10,7 @@
     "format:rs": "cargo fmt",
     "lint": "pnpm run \"/^lint:.*/\"",
     "lint:oxlint": "oxlint .",
-    "lint:rs": "cargo clippy -p tcx_core --all-targets",
+    "lint:rs": "cargo clippy -p bulu_cli_tcx_core --all-targets",
     "test": "pnpm --filter \"./packages/*\" run test",
     "prepare": "simple-git-hooks"
   },
