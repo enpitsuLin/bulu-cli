@@ -77,6 +77,10 @@ jobs:
           if [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "npm_tag=latest" >> "$GITHUB_OUTPUT"
             echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          elif [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-([a-zA-Z]+) ]]; then
+            tag="${BASH_REMATCH[1]}"
+            echo "npm_tag=$tag" >> "$GITHUB_OUTPUT"
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
           else
             echo "npm_tag=next" >> "$GITHUB_OUTPUT"
             echo "prerelease=true" >> "$GITHUB_OUTPUT"
@@ -111,7 +115,7 @@ jobs:
           then
             pnpm -r publish --access public --no-git-checks
           else
-            pnpm -r publish --tag next --access public --no-git-checks
+            pnpm -r publish --tag "$NPM_TAG" --access public --no-git-checks
           fi
 
       - name: Create GitHub release with generated changelog
