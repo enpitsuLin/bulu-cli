@@ -1,9 +1,10 @@
 import type { WalletInfo } from '@bulu-cli/tcx-core'
-import { importWalletMnemonic, listWallet, loadWallet } from '@bulu-cli/tcx-core'
+import { createWallet, importWalletMnemonic, listWallet, loadWallet } from '@bulu-cli/tcx-core'
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import { runWalletCreate } from '../src/commands/wallet/create'
 import { runWalletDelete } from '../src/commands/wallet/delete'
 import { runWalletExport } from '../src/commands/wallet/export'
 import { runWalletImport } from '../src/commands/wallet/import'
@@ -11,6 +12,7 @@ import { runWalletInfo } from '../src/commands/wallet/info'
 import { resolveStoredWallet } from '../src/core/wallet-store'
 
 vi.mock('@bulu-cli/tcx-core', () => ({
+  createWallet: vi.fn(),
   listWallet: vi.fn(),
   importWalletMnemonic: vi.fn(),
   importWalletPrivateKey: vi.fn(),
@@ -176,6 +178,23 @@ describe('wallet commands', () => {
     })
   })
 
+  test('wallet create prints the persisted wallet file path', async () => {
+    const wallet = createWalletFixture({ id: 'wallet-create', name: 'Created' })
+    vi.mocked(createWallet).mockReturnValue(wallet)
+    const consoleLog = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+    await runWalletCreate({
+      name: 'Created',
+    })
+
+    expect(createWallet).toHaveBeenCalledWith('Created', 'secret', join(configDir, 'vault'))
+    expect(consoleLog).toHaveBeenCalledWith({
+      meta: wallet.meta,
+      accounts: wallet.accounts,
+      path: join(configDir, 'vault', 'wallets', 'wallet-create.json'),
+    })
+  })
+
   test('wallet info omits curve and account keys from json output', async () => {
     const wallet = createWalletFixture({ id: 'wallet-info', name: 'Info Wallet', derivable: false })
     writeStoredWallet(configDir, wallet)
@@ -259,7 +278,7 @@ describe('wallet commands', () => {
     const stdout = captureStdout()
     await runWalletDelete({
       wallet: 'Delete Wallet',
-      force: true,
+      confirm: true,
       json: true,
     })
     stdout.restore()

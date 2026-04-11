@@ -1,19 +1,21 @@
 import { listWallet } from '@bulu-cli/tcx-core'
 import { defineCommand } from 'citty'
 import { dirname } from 'node:path'
+import { styleText } from 'node:util'
 import { clearDefaultWalletIfMatches, getVaultPath } from '../../core/config'
 import { removeStoredWallet, resolveStoredWallet } from '../../core/wallet-store'
 import { createWalletCommandOutput } from './shared'
 
 export interface WalletDeleteArgs {
   wallet: string
-  force?: boolean
+  confirm?: boolean
   json?: boolean
 }
 
 export async function runWalletDelete(args: WalletDeleteArgs): Promise<void> {
-  if (!args.force) {
-    throw new Error('Refusing to delete wallet without --force')
+  if (!args.confirm) {
+    console.error(styleText('yellow', 'Refusing to delete wallet without --confirm'))
+    return
   }
 
   const vaultPath = getVaultPath()
@@ -39,9 +41,9 @@ export default defineCommand({
       description: 'Wallet name or id',
       required: true,
     },
-    force: {
+    confirm: {
       type: 'boolean',
-      description: 'Delete without an additional safeguard prompt',
+      description: 'Confirm wallet deletion',
       default: false,
     },
     json: {

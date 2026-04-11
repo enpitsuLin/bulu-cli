@@ -21,6 +21,10 @@ function getWalletPath(vaultPath: string, walletId: string): string {
   return join(getWalletsDir(vaultPath), `${walletId}.json`)
 }
 
+export function getStoredWalletPath(vaultPath: string, walletId: string): string {
+  return getWalletPath(vaultPath, walletId)
+}
+
 function ensureWalletsDir(vaultPath: string): string {
   const walletsDir = getWalletsDir(vaultPath)
   if (!existsSync(walletsDir)) {
