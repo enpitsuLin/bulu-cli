@@ -2,8 +2,8 @@ use std::any::Any;
 
 use tcx_keystore::{Keystore as TcxKeystore, MessageSigner, TransactionSigner};
 use tcx_tron::transaction::{
-  TronMessageInput as TcxTronMessageInput, TronMessageOutput as TcxTronMessageOutput,
-  TronTxInput, TronTxOutput as TcxTronTxOutput,
+  TronMessageInput as TcxTronMessageInput, TronMessageOutput as TcxTronMessageOutput, TronTxInput,
+  TronTxOutput as TcxTronTxOutput,
 };
 
 use crate::derivation::ResolvedDerivation;

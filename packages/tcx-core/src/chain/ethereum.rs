@@ -4,7 +4,8 @@ use rlp::Rlp;
 use tcx_common::{parse_u64, FromHex, ToHex};
 use tcx_eth::transaction::{
   AccessList as TcxEthAccessList, EthMessageInput as TcxEthMessageInput,
-  EthMessageOutput as TcxEthMessageOutput, EthTxInput as TcxEthTxInput, EthTxOutput as TcxEthTxOutput,
+  EthMessageOutput as TcxEthMessageOutput, EthTxInput as TcxEthTxInput,
+  EthTxOutput as TcxEthTxOutput,
 };
 use tcx_keystore::{Keystore as TcxKeystore, MessageSigner, TransactionSigner};
 

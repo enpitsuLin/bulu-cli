@@ -1,14 +1,12 @@
-use tcx_common::FromHex;
-use tcx_keystore::keystore::IdentityNetwork;
-use tcx_keystore::{
-  Keystore as TcxKeystore, KeystoreGuard, Metadata, Source,
-};
 use crate::chain::{get_chain_signer, SignedTransaction};
 use crate::derivation::{derive_accounts_for_wallet, resolve_derivation};
 use crate::error::{require_non_empty, require_trimmed, CoreError, CoreResult, ResultExt};
 use crate::strings::sanitize_optional_text;
 use crate::types::{DerivationInput, SignedMessage, WalletInfo};
 use crate::vault::VaultRepository;
+use tcx_common::FromHex;
+use tcx_keystore::keystore::IdentityNetwork;
+use tcx_keystore::{Keystore as TcxKeystore, KeystoreGuard, Metadata, Source};
 
 pub(crate) fn list_wallets(vault_path: String) -> CoreResult<Vec<crate::types::WalletInfo>> {
   VaultRepository::new(vault_path)?.list_wallets()
@@ -220,7 +218,12 @@ pub(crate) fn sign_message(
     )?;
 
     let signer = get_chain_signer(request.resolved.chain);
-    signer.sign_message(unlocked_keystore, &request.resolved, &request.derivation_path, &message)
+    signer.sign_message(
+      unlocked_keystore,
+      &request.resolved,
+      &request.derivation_path,
+      &message,
+    )
   })
 }
 
@@ -252,7 +255,12 @@ pub(crate) fn sign_transaction(
 
     let signer = get_chain_signer(request.resolved.chain);
     let tx_data = signer.parse_transaction(&normalized_tx_hex, &request.resolved.chain_id)?;
-    signer.sign_transaction(unlocked_keystore, &request.resolved, &request.derivation_path, tx_data)
+    signer.sign_transaction(
+      unlocked_keystore,
+      &request.resolved,
+      &request.derivation_path,
+      tx_data,
+    )
   })
 }
 
