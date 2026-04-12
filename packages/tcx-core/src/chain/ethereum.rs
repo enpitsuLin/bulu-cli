@@ -1,5 +1,3 @@
-use std::any::Any;
-
 use rlp::Rlp;
 use tcx_common::{parse_u64, FromHex, ToHex};
 use tcx_constants::CurveType;
@@ -12,74 +10,17 @@ use tcx_keystore::{
   Keystore as TcxKeystore, MessageSigner, SignatureParameters, TransactionSigner,
 };
 
-use crate::derivation::{ethereum_chain_reference, Chain, ResolvedDerivation};
+use crate::chain::Caip2ChainId;
+use crate::derivation::ResolvedDerivation;
 use crate::error::{CoreError, CoreResult, ResultExt};
 use crate::types::{EthMessageInput, EthMessageSignatureType, EthSignedTransaction, SignedMessage};
 
-use super::{ChainSigner, SignedTransaction};
+use super::SignedTransaction;
 
-pub(crate) struct EthereumSigner;
-
-impl ChainSigner for EthereumSigner {
-  fn prepare_transaction(&self, tx_hex: &str, chain_id: &str) -> CoreResult<Box<dyn Any>> {
-    let tx = prepare_eth_transaction(tx_hex, chain_id)?;
-    Ok(Box::new(tx))
-  }
-
-  fn sign_message(
-    &self,
-    keystore: &mut TcxKeystore,
-    resolved: &ResolvedDerivation,
-    derivation_path: &str,
-    message: &str,
-  ) -> CoreResult<SignedMessage> {
-    let params = SignatureParameters {
-      curve: CurveType::SECP256k1,
-      derivation_path: derivation_path.to_string(),
-      chain_type: Chain::Ethereum.coin_name().to_string(),
-      network: resolved.network.to_string(),
-      seg_wit: String::new(),
-    };
-    let signed: TcxEthMessageOutput = keystore
-      .sign_message(
-        &params,
-        &TcxEthMessageInput::from(EthMessageInput {
-          message: message.to_string(),
-          signature_type: Some(EthMessageSignatureType::PersonalSign),
-        }),
-      )
-      .map_core_err()?;
-    Ok(SignedMessage {
-      signature: signed.signature,
-    })
-  }
-
-  fn sign_transaction(
-    &self,
-    keystore: &mut TcxKeystore,
-    resolved: &ResolvedDerivation,
-    derivation_path: &str,
-    tx_data: Box<dyn Any>,
-  ) -> CoreResult<SignedTransaction> {
-    let tx = tx_data
-      .downcast::<TcxEthTxInput>()
-      .map_err(|_| CoreError::new("invalid Ethereum transaction data"))?;
-    let params = SignatureParameters {
-      curve: CurveType::SECP256k1,
-      derivation_path: derivation_path.to_string(),
-      chain_type: Chain::Ethereum.coin_name().to_string(),
-      network: resolved.network.to_string(),
-      seg_wit: String::new(),
-    };
-    let signed: TcxEthTxOutput = keystore.sign_transaction(&params, &*tx).map_core_err()?;
-    Ok(SignedTransaction::Ethereum(EthSignedTransaction {
-      signature: signed.signature,
-      tx_hash: signed.tx_hash,
-    }))
-  }
-}
-
-fn prepare_eth_transaction(tx_hex: &str, request_chain_id: &str) -> CoreResult<TcxEthTxInput> {
+pub(crate) fn prepare_transaction(
+  tx_hex: &str,
+  request_chain_id: &Caip2ChainId,
+) -> CoreResult<TcxEthTxInput> {
   let tx_bytes = Vec::from_hex_auto(tx_hex).map_core_err()?;
   if tx_bytes.is_empty() {
     return Err(CoreError::new("txHex must not be empty"));
@@ -92,7 +33,57 @@ fn prepare_eth_transaction(tx_hex: &str, request_chain_id: &str) -> CoreResult<T
   }
 }
 
-fn parse_legacy_transaction(tx_bytes: &[u8], request_chain_id: &str) -> CoreResult<TcxEthTxInput> {
+pub(crate) fn sign_message(
+  keystore: &mut TcxKeystore,
+  resolved: &ResolvedDerivation,
+  derivation_path: &str,
+  message: &str,
+) -> CoreResult<SignedMessage> {
+  let params = SignatureParameters {
+    curve: CurveType::SECP256k1,
+    derivation_path: derivation_path.to_string(),
+    chain_type: resolved.chain.coin_name().to_string(),
+    network: resolved.network.to_string(),
+    seg_wit: String::new(),
+  };
+  let signed: TcxEthMessageOutput = keystore
+    .sign_message(
+      &params,
+      &TcxEthMessageInput::from(EthMessageInput {
+        message: message.to_string(),
+        signature_type: Some(EthMessageSignatureType::PersonalSign),
+      }),
+    )
+    .map_core_err()?;
+  Ok(SignedMessage {
+    signature: signed.signature,
+  })
+}
+
+pub(crate) fn sign_transaction(
+  keystore: &mut TcxKeystore,
+  resolved: &ResolvedDerivation,
+  derivation_path: &str,
+  tx: TcxEthTxInput,
+) -> CoreResult<SignedTransaction> {
+  let params = SignatureParameters {
+    curve: CurveType::SECP256k1,
+    derivation_path: derivation_path.to_string(),
+    chain_type: resolved.chain.coin_name().to_string(),
+    network: resolved.network.to_string(),
+    seg_wit: String::new(),
+  };
+  let signed: TcxEthTxOutput = keystore.sign_transaction(&params, &tx).map_core_err()?;
+  Ok(SignedTransaction::Ethereum(EthSignedTransaction {
+    signature: signed.signature,
+    tx_hash: signed.tx_hash,
+  }))
+}
+
+fn parse_legacy_transaction(
+  tx_bytes: &[u8],
+  request_chain_id: &Caip2ChainId,
+) -> CoreResult<TcxEthTxInput> {
   let tx = Rlp::new(tx_bytes);
   if !tx.is_list() {
     return Err(CoreError::new("txHex must encode an RLP list"));
@@ -100,22 +91,22 @@ fn parse_legacy_transaction(tx_bytes: &[u8], request_chain_id: &str) -> CoreResu
   let item_count = tx.item_count().map_core_err()?;
 
   let chain_id = match item_count {
-    6 => ethereum_chain_reference(request_chain_id)?,
+    6 => request_chain_id.ethereum_reference()?,
     9 => {
       // Verify unsigned transaction (no signature placeholders)
       let r = tx
         .at(7)
         .map_core_err()?
         .data()
-        .map(|b| b.to_vec())
+        .map(|bytes| bytes.to_vec())
         .map_core_err()?;
       let s = tx
         .at(8)
         .map_core_err()?
         .data()
-        .map(|b| b.to_vec())
+        .map(|bytes| bytes.to_vec())
         .map_core_err()?;
-      if !r.iter().all(|v| *v == 0) || !s.iter().all(|v| *v == 0) {
+      if !r.iter().all(|value| *value == 0) || !s.iter().all(|value| *value == 0) {
         return Err(CoreError::new(
           "txHex must be an unsigned Ethereum legacy transaction",
         ));
@@ -127,7 +118,7 @@ fn parse_legacy_transaction(tx_bytes: &[u8], request_chain_id: &str) -> CoreResu
     _ => {
       return Err(CoreError::new(
         "txHex must be an unsigned Ethereum legacy transaction",
-      ));
+      ))
     }
   };
 
@@ -146,7 +137,10 @@ fn parse_legacy_transaction(tx_bytes: &[u8], request_chain_id: &str) -> CoreResu
   })
 }
 
-fn parse_eip2930_transaction(tx_bytes: &[u8], request_chain_id: &str) -> CoreResult<TcxEthTxInput> {
+fn parse_eip2930_transaction(
+  tx_bytes: &[u8],
+  request_chain_id: &Caip2ChainId,
+) -> CoreResult<TcxEthTxInput> {
   let tx = Rlp::new(tx_bytes);
   if !tx.is_list() {
     return Err(CoreError::new("txHex must encode an RLP list"));
@@ -175,7 +169,10 @@ fn parse_eip2930_transaction(tx_bytes: &[u8], request_chain_id: &str) -> CoreRes
   })
 }
 
-fn parse_eip1559_transaction(tx_bytes: &[u8], request_chain_id: &str) -> CoreResult<TcxEthTxInput> {
+fn parse_eip1559_transaction(
+  tx_bytes: &[u8],
+  request_chain_id: &Caip2ChainId,
+) -> CoreResult<TcxEthTxInput> {
   let tx = Rlp::new(tx_bytes);
   if !tx.is_list() {
     return Err(CoreError::new("txHex must encode an RLP list"));
@@ -211,7 +208,7 @@ fn rlp_bytes_to_hex(rlp: &Rlp, index: usize, is_uint: bool) -> CoreResult<String
     .at(index)
     .map_core_err()?
     .data()
-    .map(|b| b.to_vec())
+    .map(|value| value.to_vec())
     .map_core_err()?;
   Ok(if bytes.is_empty() {
     if is_uint {
@@ -252,7 +249,7 @@ fn parse_eth_access_list(access_list: &Rlp) -> CoreResult<Vec<TcxEthAccessList>>
         .at(storage_index)
         .map_core_err()?
         .data()
-        .map(|b| b.to_vec())
+        .map(|bytes| bytes.to_vec())
         .map_core_err()?;
       storage_keys.push(format!("0x{}", key_bytes.to_hex()));
     }
@@ -266,8 +263,8 @@ fn parse_eth_access_list(access_list: &Rlp) -> CoreResult<Vec<TcxEthAccessList>>
   Ok(parsed)
 }
 
-fn validate_eth_chain_id(request_chain_id: &str, tx_chain_id: &str) -> CoreResult<()> {
-  let expected = parse_u64(&ethereum_chain_reference(request_chain_id)?).map_core_err()?;
+fn validate_eth_chain_id(request_chain_id: &Caip2ChainId, tx_chain_id: &str) -> CoreResult<()> {
+  let expected = parse_u64(&request_chain_id.ethereum_reference()?).map_core_err()?;
   let actual = parse_u64(tx_chain_id).map_core_err()?;
 
   if expected != actual {

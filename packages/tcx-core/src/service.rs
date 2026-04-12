@@ -1,4 +1,7 @@
-use crate::chain::{get_chain_signer, SignedTransaction};
+use crate::chain::{
+  prepare_transaction, sign_message as sign_chain_message,
+  sign_transaction as sign_chain_transaction, SignedTransaction,
+};
 use crate::derivation::{derive_accounts_for_wallet, resolve_derivation};
 use crate::error::{require_non_empty, require_trimmed, CoreError, CoreResult, ResultExt};
 use crate::strings::sanitize_optional_text;
@@ -200,31 +203,21 @@ pub(crate) fn sign_message(
 ) -> CoreResult<SignedMessage> {
   require_non_empty(&password, "password")?;
   require_non_empty(&message, "message")?;
-  require_non_empty(&name, "name")?;
 
-  let wallet = VaultRepository::new(vault_path)?.get_wallet(&name)?;
-  let mut keystore = stored_keystore(&wallet)?;
-
-  with_unlocked_keystore(&mut keystore, &password, move |unlocked_keystore| {
-    let network = unlocked_keystore.store().meta.network;
-    let request = resolve_derivation(
-      DerivationInput {
-        chain_id,
-        derivation_path: None,
-        network: None,
-      },
-      network,
-      unlocked_keystore.derivable(),
-    )?;
-
-    let signer = get_chain_signer(request.resolved.chain);
-    signer.sign_message(
-      unlocked_keystore,
-      &request.resolved,
-      &request.derivation_path,
-      &message,
-    )
-  })
+  with_signing_request(
+    name,
+    chain_id,
+    password,
+    vault_path,
+    move |unlocked_keystore, request| {
+      sign_chain_message(
+        unlocked_keystore,
+        &request.resolved,
+        &request.derivation_path,
+        &message,
+      )
+    },
+  )
 }
 
 pub(crate) fn sign_transaction(
@@ -235,33 +228,23 @@ pub(crate) fn sign_transaction(
   vault_path: String,
 ) -> CoreResult<SignedTransaction> {
   require_non_empty(&password, "password")?;
-  require_non_empty(&name, "name")?;
   let normalized_tx_hex = require_trimmed(tx_hex, "txHex")?;
 
-  let wallet = VaultRepository::new(vault_path)?.get_wallet(&name)?;
-  let mut keystore = stored_keystore(&wallet)?;
-
-  with_unlocked_keystore(&mut keystore, &password, move |unlocked_keystore| {
-    let network = unlocked_keystore.store().meta.network;
-    let request = resolve_derivation(
-      DerivationInput {
-        chain_id: chain_id.clone(),
-        derivation_path: None,
-        network: None,
-      },
-      network,
-      unlocked_keystore.derivable(),
-    )?;
-
-    let signer = get_chain_signer(request.resolved.chain);
-    let tx_data = signer.prepare_transaction(&normalized_tx_hex, &request.resolved.chain_id)?;
-    signer.sign_transaction(
-      unlocked_keystore,
-      &request.resolved,
-      &request.derivation_path,
-      tx_data,
-    )
-  })
+  with_signing_request(
+    name,
+    chain_id,
+    password,
+    vault_path,
+    move |unlocked_keystore, request| {
+      let tx_data = prepare_transaction(&request.resolved, &normalized_tx_hex)?;
+      sign_chain_transaction(
+        unlocked_keystore,
+        &request.resolved,
+        &request.derivation_path,
+        tx_data,
+      )
+    },
+  )
 }
 
 fn build_wallet_info(
@@ -285,6 +268,34 @@ fn with_unlocked_keystore<T>(
 ) -> CoreResult<T> {
   let mut guard = KeystoreGuard::unlock_by_password(keystore, password).map_core_err()?;
   f(guard.keystore_mut())
+}
+
+fn with_signing_request<T>(
+  name: String,
+  chain_id: String,
+  password: String,
+  vault_path: String,
+  f: impl FnOnce(&mut TcxKeystore, crate::derivation::DerivationRequest) -> CoreResult<T>,
+) -> CoreResult<T> {
+  require_non_empty(&name, "name")?;
+
+  let wallet = VaultRepository::new(vault_path)?.get_wallet(&name)?;
+  let mut keystore = stored_keystore(&wallet)?;
+
+  with_unlocked_keystore(&mut keystore, &password, move |unlocked_keystore| {
+    let network = unlocked_keystore.store().meta.network;
+    let request = resolve_derivation(
+      DerivationInput {
+        chain_id,
+        derivation_path: None,
+        network: None,
+      },
+      network,
+      unlocked_keystore.derivable(),
+    )?;
+
+    f(unlocked_keystore, request)
+  })
 }
 
 fn load_tcx_keystore(keystore_json: String) -> CoreResult<TcxKeystore> {
