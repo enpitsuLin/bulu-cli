@@ -4,6 +4,7 @@ import { resolveTCXPassphrase } from '../../core/tcx'
 import { getVaultPath, setActiveWallet } from '../../core/config'
 import { createOutput, resolveOutputOptions } from '../../core/output'
 import { withDefaultArgs } from '../../core/args-def'
+import { styleText } from 'node:util'
 
 export interface WalletCreateArgs {
   name: string
@@ -34,14 +35,18 @@ export default defineCommand({
       process.exit(1)
     }
 
-    out.data({
-      name: wallet.meta.name,
-      id: wallet.meta.id,
-      accounts: wallet.accounts.map((a) => ({
-        chain: a.chainId,
-        address: a.address,
-        path: a.derivationPath,
-      })),
+    out.data(`ID: ${wallet.meta.id}`)
+    out.data(styleText('bold', 'Accounts'))
+
+    // Print accounts table
+    const accounts = wallet.accounts.map((a) => ({
+      chain: a.chainId,
+      address: a.address,
+      path: a.derivationPath,
+    }))
+
+    out.table(accounts, {
+      columns: ['chain', 'address', 'path'],
     })
   },
 })
