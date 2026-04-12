@@ -16,10 +16,14 @@ serde         = { version = "1", features = ["derive"] }
 serde_json    = "1"
 tcx-common    = { git = "https://github.com/consenlabs/token-core-monorepo", branch = "feat/keyless" }
 tcx-constants = { git = "https://github.com/consenlabs/token-core-monorepo", branch = "feat/keyless" }
+tcx-crypto    = { git = "https://github.com/consenlabs/token-core-monorepo", branch = "feat/keyless" }
 tcx-eth       = { git = "https://github.com/consenlabs/token-core-monorepo", branch = "feat/keyless", default-features = false }
 tcx-keystore  = { git = "https://github.com/consenlabs/token-core-monorepo", branch = "feat/keyless", default-features = false }
 tcx-primitive = { git = "https://github.com/consenlabs/token-core-monorepo", branch = "feat/keyless", default-features = false }
+tcx-ton       = { git = "https://github.com/consenlabs/token-core-monorepo", branch = "feat/keyless" }
 tcx-tron      = { git = "https://github.com/consenlabs/token-core-monorepo", branch = "feat/keyless" }
+tonlib-core   = { git = "https://github.com/consenlabs/token-core-monorepo", branch = "feat/keyless" }
+uuid          = { version = "1", features = ["v4"] }
 
 [build-dependencies]
 napi-build = "2"

@@ -1,6 +1,6 @@
 {
   "name": "@bulu-cli/core",
-  "description": "CLI for managing local Ethereum and Tron wallets",
+  "description": "CLI for managing local Ethereum, Tron, and TON wallets",
   "type": "module",
   "version": "0.0.2",
   "repository": {
