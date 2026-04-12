@@ -275,12 +275,8 @@ export interface WalletAccount {
   accountId: string
   /** Chain-specific account address. */
   address: string
-  /** Hex-encoded public key. */
-  publicKey: string
-  /** Derivation path used for this account when available. */
-  derivationPath?: string
-  /** Extended public key when supported by the wallet source. */
-  extPubKey?: string
+  /** Derivation path used for this account, or an empty string when unavailable. */
+  derivationPath: string
 }
 
 /** Wallet payload returned by create, import, and load operations. */

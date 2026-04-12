@@ -1,9 +1,8 @@
-use tcx_common::{parse_u64, ToHex};
+use tcx_common::parse_u64;
 use tcx_constants::{CoinInfo, CurveType};
 use tcx_eth::address::EthAddress;
 use tcx_keystore::keystore::IdentityNetwork;
 use tcx_keystore::Keystore as TcxKeystore;
-use tcx_primitive::TypedPublicKey;
 use tcx_tron::TronAddress;
 
 use crate::constants::{
@@ -11,7 +10,7 @@ use crate::constants::{
   DEFAULT_TRON_DERIVATION_PATH, DEFAULT_TRON_MAINNET_CHAIN_ID, DEFAULT_TRON_TESTNET_CHAIN_ID,
 };
 use crate::error::{require_trimmed, CoreError, CoreResult, ResultExt};
-use crate::strings::{empty_to_none, sanitize_optional_text};
+use crate::strings::sanitize_optional_text;
 use crate::types::{DerivationInput, WalletAccount};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -181,14 +180,8 @@ fn derive_account(
     account_id: format!("{chain_id}:{address}"),
     chain_id,
     address,
-    public_key: encode_public_key(&account.public_key),
-    derivation_path: empty_to_none(account.derivation_path),
-    ext_pub_key: empty_to_none(account.ext_pub_key),
+    derivation_path: account.derivation_path,
   })
-}
-
-fn encode_public_key(public_key: &TypedPublicKey) -> String {
-  public_key.to_bytes().to_hex()
 }
 
 fn resolve_derivation_network(

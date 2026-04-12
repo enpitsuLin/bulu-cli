@@ -207,8 +207,10 @@ test('importWalletPrivateKey returns a non-derivable wallet', () => {
     expect(wallet.meta.derivable).toBe(false)
     expect(wallet.accounts).toHaveLength(2)
     expect(wallet.accounts.map((account) => account.chainId)).toEqual([ETH_MAINNET_CHAIN_ID, TRON_MAINNET_CHAIN_ID])
-    expect(wallet.accounts[0]?.derivationPath).toBeUndefined()
-    expect(wallet.accounts[0]?.extPubKey).toBeUndefined()
+    expect(wallet.accounts[0]?.derivationPath).toBe('')
+    expect(wallet.accounts[1]?.derivationPath).toBe('')
+    expect(wallet.accounts[0]).not.toHaveProperty('extPubKey')
+    expect(wallet.accounts[0]).not.toHaveProperty('publicKey')
     expect(wallet.meta.curve).toBe('secp256k1')
   })
 })
@@ -221,12 +223,16 @@ test('importWalletPrivateKey persists WalletInfo and ignores index for non-deriv
     const persisted = JSON.parse(readFileSync(walletPath, 'utf-8')) as WalletInfo
 
     expect(wallet.meta.derivable).toBe(false)
-    expect(wallet.accounts[0]?.derivationPath).toBeUndefined()
-    expect(wallet.accounts[0]?.extPubKey).toBeUndefined()
+    expect(wallet.accounts[0]?.derivationPath).toBe('')
+    expect(wallet.accounts[1]?.derivationPath).toBe('')
+    expect(wallet.accounts[0]).not.toHaveProperty('extPubKey')
+    expect(wallet.accounts[0]).not.toHaveProperty('publicKey')
     expect(persisted.keystore.id).toBe(wallet.keystore.id)
     expect(persisted.keystore.version).toBe(wallet.keystore.version)
-    expect(persisted.accounts[0]?.derivationPath).toBeUndefined()
-    expect(persisted.accounts[0]?.extPubKey).toBeUndefined()
+    expect(persisted.accounts[0]?.derivationPath).toBe('')
+    expect(persisted.accounts[1]?.derivationPath).toBe('')
+    expect(persisted.accounts[0]).not.toHaveProperty('extPubKey')
+    expect(persisted.accounts[0]).not.toHaveProperty('publicKey')
   } finally {
     rmSync(tempDir, { recursive: true, force: true })
   }
