@@ -103,8 +103,18 @@ fn parse_legacy_transaction(tx_bytes: &[u8], request_chain_id: &str) -> CoreResu
     6 => ethereum_chain_reference(request_chain_id)?,
     9 => {
       // Verify unsigned transaction (no signature placeholders)
-      let r = tx.at(7).map_core_err()?.data().map(|b| b.to_vec()).map_core_err()?;
-      let s = tx.at(8).map_core_err()?.data().map(|b| b.to_vec()).map_core_err()?;
+      let r = tx
+        .at(7)
+        .map_core_err()?
+        .data()
+        .map(|b| b.to_vec())
+        .map_core_err()?;
+      let s = tx
+        .at(8)
+        .map_core_err()?
+        .data()
+        .map(|b| b.to_vec())
+        .map_core_err()?;
       if !r.iter().all(|v| *v == 0) || !s.iter().all(|v| *v == 0) {
         return Err(CoreError::new(
           "txHex must be an unsigned Ethereum legacy transaction",
@@ -197,9 +207,18 @@ fn parse_eip1559_transaction(tx_bytes: &[u8], request_chain_id: &str) -> CoreRes
 /// Convert RLP item at index to hex string.
 /// If `is_uint` is true, empty bytes become "0x0", otherwise empty string.
 fn rlp_bytes_to_hex(rlp: &Rlp, index: usize, is_uint: bool) -> CoreResult<String> {
-  let bytes = rlp.at(index).map_core_err()?.data().map(|b| b.to_vec()).map_core_err()?;
+  let bytes = rlp
+    .at(index)
+    .map_core_err()?
+    .data()
+    .map(|b| b.to_vec())
+    .map_core_err()?;
   Ok(if bytes.is_empty() {
-    if is_uint { "0x0".to_string() } else { String::new() }
+    if is_uint {
+      "0x0".to_string()
+    } else {
+      String::new()
+    }
   } else {
     format!("0x{}", bytes.to_hex())
   })
@@ -229,7 +248,12 @@ fn parse_eth_access_list(access_list: &Rlp) -> CoreResult<Vec<TcxEthAccessList>>
     let storage_key_count = storage_keys_rlp.item_count().map_core_err()?;
     let mut storage_keys = Vec::with_capacity(storage_key_count);
     for storage_index in 0..storage_key_count {
-      let key_bytes = storage_keys_rlp.at(storage_index).map_core_err()?.data().map(|b| b.to_vec()).map_core_err()?;
+      let key_bytes = storage_keys_rlp
+        .at(storage_index)
+        .map_core_err()?
+        .data()
+        .map(|b| b.to_vec())
+        .map_core_err()?;
       storage_keys.push(format!("0x{}", key_bytes.to_hex()));
     }
 

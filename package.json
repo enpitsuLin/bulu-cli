@@ -35,6 +35,9 @@
     ],
     "*.toml": [
       "taplo format"
+    ],
+    "*.rs": [
+      "rustfmt"
     ]
   },
   "prettier": {
