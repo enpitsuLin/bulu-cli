@@ -249,22 +249,10 @@ export declare function signMessage(name: string, chainId: string, message: stri
  */
 export declare function signTransaction(name: string, chainId: string, txHex: string, password: string, vaultPath: string): EthSignedTransaction | TronSignedTransaction
 
-/** Tron message signing payload. */
-export interface TronMessageInput {
-  /** UTF-8 text or a hex string prefixed with `0x`. */
-  value: string
-}
-
 /** Tron signed transaction result. */
 export interface TronSignedTransaction {
   /** Array of hex-encoded signatures. */
   signatures: Array<string>
-}
-
-/** Tron transaction signing payload. */
-export interface TronTransactionInput {
-  /** Hex-encoded raw transaction bytes. */
-  rawData: string
 }
 
 /** A derived account returned to JavaScript. */

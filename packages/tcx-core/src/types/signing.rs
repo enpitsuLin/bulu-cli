@@ -30,17 +30,14 @@ pub struct EthMessageInput {
   pub signature_type: Option<EthMessageSignatureType>,
 }
 
-#[napi(object)]
 #[derive(Clone, Debug, PartialEq, Eq)]
-/// Tron message signing payload.
+/// Tron message signing payload (internal use only, not exposed to JS).
 pub struct TronMessageInput {
   /// UTF-8 text or a hex string prefixed with `0x`.
   pub value: String,
   /// Header mode, for example `TRON`, `ETH`, or `NONE`. Defaults to `TRON`.
-  #[napi(skip_typescript)]
   pub header: Option<String>,
   /// Message signing version. Defaults to `1`.
-  #[napi(skip_typescript)]
   pub version: Option<u32>,
 }
 
@@ -87,12 +84,10 @@ pub struct EthTransactionInput {
   pub access_list: Vec<EthAccessListItem>,
 }
 
-#[napi(object)]
 #[derive(Clone, Debug, PartialEq, Eq)]
-/// Tron transaction signing payload.
+/// Tron transaction signing payload (internal use only, not exposed to JS).
 pub struct TronTransactionInput {
   /// Hex-encoded raw transaction bytes.
-  #[napi(js_name = "rawData")]
   pub raw_data: String,
 }
 
