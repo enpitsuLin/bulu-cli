@@ -132,7 +132,7 @@ impl VaultRepository {
   }
 
   pub(crate) fn get_api_key(&self, identifier: &str) -> CoreResult<ApiKeyInfo> {
-    Ok(self.get_stored_api_key(identifier)?.into_public()?)
+    self.get_stored_api_key(identifier)?.into_public()
   }
 
   pub(crate) fn get_stored_api_key(&self, identifier: &str) -> CoreResult<StoredApiKey> {
