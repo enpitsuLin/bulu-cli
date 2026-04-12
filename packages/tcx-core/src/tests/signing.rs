@@ -113,6 +113,50 @@ fn sign_transaction_signs_ethereum_transactions() {
 }
 
 #[test]
+fn sign_transaction_rejects_mismatched_ethereum_chain_id() {
+  let vault_dir = temp_vault_dir("sign-eth-chain-mismatch");
+  let vault_path = vault_dir.to_string_lossy().into_owned();
+  let wallet = import_wallet_private_key(
+    "Imported private key".to_string(),
+    TEST_PRIVATE_KEY.to_string(),
+    TEST_PASSWORD.to_string(),
+    vault_path.clone(),
+    None,
+  )
+  .expect("private key import should succeed");
+
+  let tx_hex = encode_unsigned_eth_transaction(EthTransactionInput {
+    nonce: "8".to_string(),
+    gas_price: "20000000008".to_string(),
+    gas_limit: "189000".to_string(),
+    to: "0x3535353535353535353535353535353535353535".to_string(),
+    value: "512".to_string(),
+    data: String::new(),
+    chain_id: "0x38".to_string(),
+    tx_type: String::new(),
+    max_fee_per_gas: "1076634600920".to_string(),
+    max_priority_fee_per_gas: "226".to_string(),
+    access_list: vec![],
+  });
+
+  let err = sign_transaction(
+    wallet.meta.name,
+    default_eth_mainnet_chain_id().to_string(),
+    tx_hex,
+    TEST_PASSWORD.to_string(),
+    vault_path,
+  )
+  .expect_err("mismatched chain id should fail");
+
+  assert_eq!(
+    err.reason,
+    "txHex chain id `0x38` does not match chainId `eip155:1`"
+  );
+
+  let _ = fs::remove_dir_all(vault_dir);
+}
+
+#[test]
 fn sign_transaction_signs_ethereum_eip1559_transaction_hex() {
   let vault_dir = temp_vault_dir("sign-eth-eip1559-transaction");
   let vault_path = vault_dir.to_string_lossy().into_owned();

@@ -71,3 +71,74 @@ fn derive_accounts_rejects_unsupported_chain_id_namespace() {
 
   let _ = fs::remove_dir_all(vault_dir);
 }
+
+#[test]
+fn caip2_chain_id_normalizes_namespace_to_lowercase() {
+  let chain_id = Caip2ChainId::parse("EIP155:1").expect("chain id should parse");
+
+  assert_eq!(chain_id.to_string(), "eip155:1");
+}
+
+#[test]
+fn caip2_chain_id_rejects_invalid_reference_shapes() {
+  let err = Caip2ChainId::parse("eip155:1:extra").expect_err("multiple separators should fail");
+  assert_eq!(
+    err.to_string(),
+    "chainId must be a valid CAIP-2 chain id, received `eip155:1:extra`"
+  );
+
+  let err = Caip2ChainId::parse("eip155:bad/reference")
+    .expect_err("invalid reference characters should fail");
+  assert_eq!(
+    err.to_string(),
+    "chainId must be a valid CAIP-2 chain id, received `eip155:bad/reference`"
+  );
+}
+
+#[test]
+fn caip2_chain_id_rejects_non_numeric_eip155_reference() {
+  let err = Caip2ChainId::parse("eip155:sepolia")
+    .expect("chain id should parse structurally")
+    .ethereum_reference()
+    .expect_err("non-numeric eip155 reference should fail");
+
+  assert_eq!(
+    err.to_string(),
+    "chainId must use a numeric eip155 reference, received `eip155:sepolia`"
+  );
+}
+
+#[test]
+fn resolve_network_uses_override_or_wallet_network() {
+  let fallback = resolve_network(IdentityNetwork::Mainnet, None)
+    .expect("missing override should use wallet network");
+  assert_eq!(fallback, IdentityNetwork::Mainnet);
+
+  let testnet = resolve_network(IdentityNetwork::Mainnet, Some("TESTNET".to_string()))
+    .expect("override should win");
+  assert_eq!(testnet, IdentityNetwork::Testnet);
+}
+
+#[test]
+fn resolve_derivation_rejects_unknown_network_override() {
+  let err = resolve_derivation(
+    DerivationInput {
+      chain_id: default_eth_mainnet_chain_id().to_string(),
+      derivation_path: None,
+      network: Some("DEVNET".to_string()),
+    },
+    IdentityNetwork::Mainnet,
+    true,
+  )
+  .expect_err("unknown network should fail");
+
+  assert_eq!(err.to_string(), "unknown network: DEVNET");
+}
+
+#[test]
+fn default_derivation_paths_follow_chain_spec() {
+  assert_eq!(default_eth_derivation_path(0), "m/44'/60'/0'/0/0");
+  assert_eq!(default_eth_derivation_path(1), "m/44'/60'/0'/0/1");
+  assert_eq!(default_tron_derivation_path(0), "m/44'/195'/0'/0/0");
+  assert_eq!(default_tron_derivation_path(1), "m/44'/195'/0'/0/1");
+}
