@@ -1,15 +1,21 @@
 use crate::chain::{
   prepare_transaction, sign_message as sign_chain_message,
-  sign_transaction as sign_chain_transaction, SignedTransaction,
+  sign_transaction as sign_chain_transaction,
 };
 use crate::derivation::{derive_accounts_for_wallet, resolve_derivation};
 use crate::error::{require_non_empty, require_trimmed, CoreError, CoreResult, ResultExt};
 use crate::strings::sanitize_optional_text;
-use crate::types::{DerivationInput, SignedMessage, WalletInfo};
+use crate::types::{DerivationInput, SignedMessage, SignedTransaction, WalletInfo};
 use crate::vault::VaultRepository;
-use tcx_common::FromHex;
+use tcx_common::{ripemd160, sha256, FromHex, ToHex};
+use tcx_constants::CurveType;
+use tcx_crypto::{Crypto, Key};
+use tcx_keystore::identity::Identity;
 use tcx_keystore::keystore::IdentityNetwork;
-use tcx_keystore::{Keystore as TcxKeystore, KeystoreGuard, Metadata, Source};
+use tcx_keystore::keystore::Store;
+use tcx_keystore::{Keystore as TcxKeystore, KeystoreGuard, Metadata, PrivateKeystore, Source};
+use tcx_primitive::TypedPrivateKey;
+use uuid::Uuid;
 
 pub(crate) fn list_wallets(vault_path: String) -> CoreResult<Vec<crate::types::WalletInfo>> {
   VaultRepository::new(vault_path)?.list_wallets()
@@ -92,11 +98,12 @@ pub(crate) fn import_wallet_private_key(
   private_key: String,
   passphrase: String,
   vault_path: String,
-  _index: Option<u32>,
+  curve: Option<CurveType>,
 ) -> CoreResult<WalletInfo> {
   require_non_empty(&passphrase, "passphrase")?;
 
   let normalized_private_key = require_trimmed(private_key, "privateKey")?;
+  let curve = curve.unwrap_or(CurveType::SECP256k1);
 
   let vault = VaultRepository::new(vault_path)?;
   if vault.wallet_name_exists(&name)? {
@@ -113,14 +120,8 @@ pub(crate) fn import_wallet_private_key(
     Source::Private,
     "Imported Private Key",
   );
-  let keystore = TcxKeystore::from_private_key(
-    &normalized_private_key,
-    &passphrase,
-    tcx_constants::CurveType::SECP256k1,
-    metadata,
-    None,
-  )
-  .map_core_err()?;
+  let keystore =
+    create_private_key_keystore(&normalized_private_key, &passphrase, curve, metadata)?;
   let wallet_info = build_wallet_info(keystore, &passphrase, None, None)?;
   vault.save_wallet(&wallet_info)?;
   Ok(wallet_info)
@@ -335,4 +336,53 @@ fn build_metadata(
     network,
     ..Metadata::default()
   }
+}
+
+fn create_private_key_keystore(
+  private_key: &str,
+  password: &str,
+  curve: CurveType,
+  mut metadata: Metadata,
+) -> CoreResult<TcxKeystore> {
+  if curve == CurveType::ED25519 {
+    metadata.identified_chain_types = Some(vec!["TON".to_string()]);
+    return create_ed25519_private_key_keystore(private_key, password, metadata);
+  }
+
+  TcxKeystore::from_private_key(private_key, password, curve, metadata, None).map_core_err()
+}
+
+fn create_ed25519_private_key_keystore(
+  private_key: &str,
+  password: &str,
+  metadata: Metadata,
+) -> CoreResult<TcxKeystore> {
+  let key_data = Vec::from_hex_auto(private_key).map_core_err()?;
+  let typed_private_key =
+    TypedPrivateKey::from_slice(CurveType::ED25519, &key_data).map_core_err()?;
+  let source_fingerprint =
+    ripemd160(&sha256(&typed_private_key.public_key().to_bytes())).to_0x_hex();
+
+  let crypto = Crypto::new(password, &key_data);
+  let unlocker = crypto
+    .use_key(&Key::Password(password.to_string()))
+    .map_core_err()?;
+  let identity =
+    Identity::from_private_key(private_key, &unlocker, &metadata.network).map_core_err()?;
+  let enc_original = unlocker
+    .encrypt_with_random_iv(private_key.as_bytes())
+    .map_core_err()?;
+
+  Ok(TcxKeystore::PrivateKey(PrivateKeystore::from_store(
+    Store {
+      id: Uuid::new_v4().hyphenated().to_string(),
+      version: PrivateKeystore::VERSION,
+      source_fingerprint,
+      crypto,
+      identity,
+      curve: Some(CurveType::ED25519),
+      enc_original,
+      meta: metadata,
+    },
+  )))
 }

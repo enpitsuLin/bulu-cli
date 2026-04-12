@@ -2,6 +2,7 @@ use tcx_constants::{CoinInfo, CurveType};
 use tcx_eth::address::EthAddress;
 use tcx_keystore::keystore::IdentityNetwork;
 use tcx_keystore::Keystore as TcxKeystore;
+use tcx_ton::address::TonAddress as TcxTonAddress;
 use tcx_tron::TronAddress;
 
 use crate::chain::{resolve_network, Caip2ChainId, Chain};
@@ -28,7 +29,13 @@ pub(crate) fn derive_accounts_for_wallet(
   derivations: Option<Vec<DerivationInput>>,
   index: Option<u32>,
 ) -> CoreResult<Vec<WalletAccount>> {
-  let requests = resolve_derivations(derivations, network, keystore.derivable(), index)?;
+  let requests = resolve_derivations(
+    derivations,
+    network,
+    keystore.derivable(),
+    keystore.get_curve(),
+    index,
+  )?;
 
   requests
     .iter()
@@ -40,6 +47,7 @@ fn resolve_derivations(
   derivations: Option<Vec<DerivationInput>>,
   network: IdentityNetwork,
   derivable: bool,
+  wallet_curve: Option<CurveType>,
   index: Option<u32>,
 ) -> CoreResult<Vec<DerivationRequest>> {
   match derivations.filter(|items| !items.is_empty()) {
@@ -47,7 +55,7 @@ fn resolve_derivations(
       .into_iter()
       .map(|item| resolve_derivation(item, network, derivable))
       .collect(),
-    None => default_derivations(network, derivable, index.unwrap_or(0)),
+    None => default_derivations(network, derivable, wallet_curve, index.unwrap_or(0)),
   }
 }
 
@@ -58,6 +66,7 @@ pub(crate) fn resolve_derivation(
 ) -> CoreResult<DerivationRequest> {
   let chain_id = Caip2ChainId::parse_input(derivation.chain_id)?;
   let chain = Chain::from_caip2(&chain_id)?;
+
   let derivation_path = if derivable {
     sanitize_optional_text(derivation.derivation_path)
       .unwrap_or_else(|| chain.default_derivation_path(0))
@@ -78,9 +87,10 @@ pub(crate) fn resolve_derivation(
 fn default_derivations(
   network: IdentityNetwork,
   derivable: bool,
+  wallet_curve: Option<CurveType>,
   index: u32,
 ) -> CoreResult<Vec<DerivationRequest>> {
-  Chain::ALL
+  default_chains(derivable, wallet_curve)
     .into_iter()
     .map(|chain| {
       Ok(DerivationRequest {
@@ -99,6 +109,18 @@ fn default_derivations(
     .collect()
 }
 
+fn default_chains(derivable: bool, wallet_curve: Option<CurveType>) -> Vec<Chain> {
+  if derivable {
+    return Chain::ALL.into_iter().collect();
+  }
+
+  match wallet_curve {
+    Some(CurveType::SECP256k1) => vec![Chain::Ethereum, Chain::Tron],
+    Some(CurveType::ED25519) => vec![Chain::Ton],
+    _ => Vec::new(),
+  }
+}
+
 fn derive_account(
   keystore: &mut TcxKeystore,
   request: &DerivationRequest,
@@ -108,15 +130,16 @@ fn derive_account(
     chain_id: chain_id.clone(),
     coin: request.resolved.chain.coin_name().to_string(),
     derivation_path: request.derivation_path.clone(),
-    curve: CurveType::SECP256k1,
+    curve: request.resolved.chain.curve(),
     network: request.resolved.network.to_string(),
     seg_wit: String::new(),
-    contract_code: String::new(),
+    contract_code: request.resolved.chain.contract_code(),
   };
 
   let account = match request.resolved.chain {
     Chain::Ethereum => keystore.derive_coin::<EthAddress>(&coin_info),
     Chain::Tron => keystore.derive_coin::<TronAddress>(&coin_info),
+    Chain::Ton => keystore.derive_coin::<TcxTonAddress>(&coin_info),
   }
   .map_core_err()?;
   let address = account.address;
