@@ -128,8 +128,22 @@ fn create_wallet_persists_wallet_info_when_vault_path_is_provided() {
     DEFAULT_ETH_MAINNET_CHAIN_ID
   );
   assert_eq!(
+    persisted["accounts"][0]["accountId"],
+    format!(
+      "{}:{}",
+      DEFAULT_ETH_MAINNET_CHAIN_ID, wallet.accounts[0].address
+    )
+  );
+  assert_eq!(
     persisted["accounts"][1]["chainId"],
     DEFAULT_TRON_MAINNET_CHAIN_ID
+  );
+  assert_eq!(
+    persisted["accounts"][1]["accountId"],
+    format!(
+      "{}:{}",
+      DEFAULT_TRON_MAINNET_CHAIN_ID, wallet.accounts[1].address
+    )
   );
 
   let _ = fs::remove_dir_all(vault_dir);
@@ -151,7 +165,21 @@ fn import_wallet_mnemonic_returns_default_accounts() {
   assert_eq!(wallet.meta.network, "MAINNET");
   assert_eq!(wallet.accounts.len(), 2);
   assert_eq!(wallet.accounts[0].chain_id, DEFAULT_ETH_MAINNET_CHAIN_ID);
+  assert_eq!(
+    wallet.accounts[0].account_id,
+    format!(
+      "{}:{}",
+      DEFAULT_ETH_MAINNET_CHAIN_ID, wallet.accounts[0].address
+    )
+  );
   assert_eq!(wallet.accounts[1].chain_id, DEFAULT_TRON_MAINNET_CHAIN_ID);
+  assert_eq!(
+    wallet.accounts[1].account_id,
+    format!(
+      "{}:{}",
+      DEFAULT_TRON_MAINNET_CHAIN_ID, wallet.accounts[1].address
+    )
+  );
 
   let _ = fs::remove_dir_all(vault_dir);
 }
@@ -222,6 +250,20 @@ fn import_wallet_private_key_returns_non_derivable_accounts() {
   assert_eq!(wallet.accounts.len(), 2);
   assert_eq!(wallet.accounts[0].chain_id, DEFAULT_ETH_MAINNET_CHAIN_ID);
   assert_eq!(wallet.accounts[1].chain_id, DEFAULT_TRON_MAINNET_CHAIN_ID);
+  assert_eq!(
+    wallet.accounts[0].account_id,
+    format!(
+      "{}:{}",
+      DEFAULT_ETH_MAINNET_CHAIN_ID, wallet.accounts[0].address
+    )
+  );
+  assert_eq!(
+    wallet.accounts[1].account_id,
+    format!(
+      "{}:{}",
+      DEFAULT_TRON_MAINNET_CHAIN_ID, wallet.accounts[1].address
+    )
+  );
   assert!(wallet.accounts[0].derivation_path.is_none());
   assert!(wallet.accounts[0].ext_pub_key.is_none());
   assert_eq!(wallet.meta.version, 12001);
@@ -249,6 +291,13 @@ fn import_wallet_private_key_persists_wallet_info_and_ignores_index() {
   assert!(wallet.accounts[0].derivation_path.is_none());
   assert!(wallet.accounts[0].ext_pub_key.is_none());
   assert_eq!(persisted["keystore"], keystore_json_value(&wallet));
+  assert_eq!(
+    persisted["accounts"][0]["accountId"],
+    format!(
+      "{}:{}",
+      wallet.accounts[0].chain_id, wallet.accounts[0].address
+    )
+  );
   assert!(persisted["accounts"][0].get("derivationPath").is_none());
   assert!(persisted["accounts"][0].get("extPubKey").is_none());
 

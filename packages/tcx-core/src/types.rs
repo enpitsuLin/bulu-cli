@@ -34,6 +34,9 @@ pub struct WalletAccount {
   /// CAIP-2 chain id of the derived account.
   #[napi(js_name = "chainId")]
   pub chain_id: String,
+  /// Stable account identifier in the form `<chain_id>:<address>`.
+  #[napi(js_name = "accountId")]
+  pub account_id: String,
   /// Chain-specific account address.
   pub address: String,
   /// Hex-encoded public key.

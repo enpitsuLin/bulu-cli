@@ -271,6 +271,8 @@ export interface TronTransactionInput {
 export interface WalletAccount {
   /** CAIP-2 chain id of the derived account. */
   chainId: string
+  /** Stable account identifier in the form `<chain_id>:<address>`. */
+  accountId: string
   /** Chain-specific account address. */
   address: string
   /** Hex-encoded public key. */

@@ -174,10 +174,13 @@ fn derive_account(
     Chain::Tron => keystore.derive_coin::<TronAddress>(&coin_info),
   }
   .map_core_err()?;
+  let chain_id = request.resolved.chain_id.clone();
+  let address = account.address;
 
   Ok(WalletAccount {
-    chain_id: request.resolved.chain_id.clone(),
-    address: account.address,
+    account_id: format!("{chain_id}:{address}"),
+    chain_id,
+    address,
     public_key: encode_public_key(&account.public_key),
     derivation_path: empty_to_none(account.derivation_path),
     ext_pub_key: empty_to_none(account.ext_pub_key),
