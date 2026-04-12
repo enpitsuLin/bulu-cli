@@ -7,20 +7,6 @@ use super::EncPairData;
 #[napi(object)]
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-/// Input used to create an API key bound to a wallet and policies.
-pub struct ApiKeyCreateInput {
-  /// Human-friendly key name.
-  pub name: String,
-  /// Wallet name, id, or unique id prefix to bind.
-  pub wallet: String,
-  /// Attached policy identifiers resolved during creation.
-  #[napi(js_name = "policyIds")]
-  pub policy_ids: Vec<String>,
-}
-
-#[napi(object)]
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
 /// Public API key metadata exposed to JavaScript.
 pub struct ApiKeyInfo {
   /// Stable API key identifier.
@@ -32,12 +18,16 @@ pub struct ApiKeyInfo {
   /// Creation time in Unix seconds.
   #[napi(js_name = "createdAt")]
   pub created_at: i64,
-  /// Bound wallet id.
-  #[napi(js_name = "walletId")]
-  pub wallet_id: String,
+  /// Bound wallet ids.
+  #[napi(js_name = "walletIds")]
+  pub wallet_ids: Vec<String>,
   /// Attached policy ids evaluated during agent-mode signing.
   #[napi(js_name = "policyIds")]
   pub policy_ids: Vec<String>,
+  /// Optional RFC 3339 UTC expiry time for the key itself.
+  #[napi(js_name = "expiresAt")]
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub expires_at: Option<String>,
 }
 
 #[napi(object)]
@@ -57,5 +47,12 @@ pub(crate) struct StoredApiKey {
   #[serde(flatten)]
   pub info: ApiKeyInfo,
   pub token_hash: String,
+  pub encrypted_wallet_keys: Vec<StoredEncryptedWalletKey>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct StoredEncryptedWalletKey {
+  pub wallet_id: String,
   pub encrypted_derived_key: EncPairData,
 }

@@ -5,12 +5,13 @@ use crate::chain::{
 use crate::derivation::{derive_accounts_for_wallet, resolve_derivation};
 use crate::error::{require_non_empty, require_trimmed, CoreError, CoreResult, ResultExt};
 use crate::policy_engine::{
-  evaluate_policy, validate_policy_rules, PolicyEvaluationContext, PolicyOperation,
+  evaluate_policy, normalize_timestamp, timestamp_is_expired, validate_policy_rules,
+  PolicyEvaluationContext, PolicyOperation,
 };
 use crate::strings::sanitize_optional_text;
 use crate::types::{
-  ApiKeyCreateInput, ApiKeyInfo, CreatedApiKey, DerivationInput, EncPairData, PolicyCreateInput,
-  PolicyInfo, SignedMessage, StoredApiKey, WalletInfo,
+  ApiKeyInfo, CreatedApiKey, DerivationInput, EncPairData, PolicyCreateInput, PolicyInfo,
+  SignedMessage, StoredApiKey, StoredEncryptedWalletKey, WalletInfo,
 };
 use crate::vault::VaultRepository;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -33,11 +34,13 @@ pub(crate) fn delete_wallet(name_or_id: String, vault_path: String) -> CoreResul
   let vault = VaultRepository::new(vault_path)?;
   let wallet = vault.get_wallet(&name_or_id)?;
 
-  if vault
-    .list_stored_api_keys()?
-    .iter()
-    .any(|api_key| api_key.info.wallet_id == wallet.meta.id)
-  {
+  if vault.list_stored_api_keys()?.iter().any(|api_key| {
+    api_key
+      .info
+      .wallet_ids
+      .iter()
+      .any(|wallet_id| wallet_id == &wallet.meta.id)
+  }) {
     return Err(CoreError::new(format!(
       "Wallet \"{}\" is still referenced by an API key",
       wallet.meta.name
@@ -115,13 +118,17 @@ pub(crate) fn revoke_api_key(name_or_id: String, vault_path: String) -> CoreResu
 }
 
 pub(crate) fn create_api_key(
-  input: ApiKeyCreateInput,
-  owner_password: String,
-  vault_path: String,
+  name: String,
+  wallet_ids: Vec<String>,
+  policy_ids: Vec<String>,
+  passphrase: String,
+  expires_at: Option<String>,
+  vault_path_opt: Option<String>,
 ) -> CoreResult<CreatedApiKey> {
-  require_non_empty(&owner_password, "ownerPassword")?;
+  require_non_empty(&passphrase, "passphrase")?;
 
-  let normalized_name = require_trimmed(input.name, "name")?;
+  let normalized_name = require_trimmed(name, "name")?;
+  let vault_path = resolve_optional_vault_path(vault_path_opt);
   let vault = VaultRepository::new(vault_path)?;
   if vault.api_key_name_exists(&normalized_name)? {
     return Err(CoreError::new(format!(
@@ -130,15 +137,36 @@ pub(crate) fn create_api_key(
     )));
   }
 
-  let wallet = vault.get_wallet(&input.wallet)?;
-  let policy_ids = resolve_policy_ids(&vault, input.policy_ids)?;
-  let mut keystore = stored_keystore(&wallet)?;
-  let derived_key = keystore.get_derived_key(&owner_password).map_core_err()?;
+  let resolved_wallets = resolve_wallets(&vault, wallet_ids)?;
+  let wallet_ids = resolved_wallets
+    .iter()
+    .map(|wallet| wallet.meta.id.clone())
+    .collect::<Vec<_>>();
+  let policy_ids = resolve_policy_ids(&vault, policy_ids)?;
+  let normalized_expires_at = match expires_at {
+    Some(timestamp) => Some(normalize_timestamp(&timestamp)?),
+    None => None,
+  };
 
   let secret = tcx_common::random_u8_32();
   let nonce = tcx_common::random_u8_16();
-  let encrypted_derived_key =
-    ctr256::encrypt_nopadding(derived_key.as_bytes(), &secret, &nonce).map_core_err()?;
+  let encrypted_wallet_keys = resolved_wallets
+    .iter()
+    .map(|wallet| {
+      let mut keystore = stored_keystore(wallet)?;
+      let derived_key = keystore.get_derived_key(&passphrase).map_core_err()?;
+      let encrypted_derived_key =
+        ctr256::encrypt_nopadding(derived_key.as_bytes(), &secret, &nonce).map_core_err()?;
+
+      Ok(StoredEncryptedWalletKey {
+        wallet_id: wallet.meta.id.clone(),
+        encrypted_derived_key: EncPairData {
+          enc_str: encrypted_derived_key.to_hex(),
+          nonce: nonce.to_hex(),
+        },
+      })
+    })
+    .collect::<CoreResult<Vec<_>>>()?;
 
   let api_key = StoredApiKey {
     info: ApiKeyInfo {
@@ -146,14 +174,12 @@ pub(crate) fn create_api_key(
       name: normalized_name,
       version: 1,
       created_at: now_timestamp(),
-      wallet_id: wallet.meta.id,
+      wallet_ids,
       policy_ids,
+      expires_at: normalized_expires_at,
     },
     token_hash: hash_secret(&secret),
-    encrypted_derived_key: EncPairData {
-      enc_str: encrypted_derived_key.to_hex(),
-      nonce: nonce.to_hex(),
-    },
+    encrypted_wallet_keys,
   };
   vault.save_api_key(&api_key)?;
 
@@ -440,7 +466,12 @@ fn with_signing_request<T>(
       .get_stored_api_key_by_id(&token.api_key_id)
       .map_err(|_| invalid_credential_error())?;
 
-    if api_key.info.wallet_id != wallet.meta.id {
+    if !api_key
+      .info
+      .wallet_ids
+      .iter()
+      .any(|wallet_id| wallet_id == &wallet.meta.id)
+    {
       return Err(CoreError::new(format!(
         "API key \"{}\" is not authorized for wallet \"{}\"",
         api_key.info.name, wallet.meta.name
@@ -458,6 +489,15 @@ fn with_signing_request<T>(
       now_timestamp: now_timestamp(),
     };
 
+    if let Some(expires_at) = api_key.info.expires_at.as_deref() {
+      if timestamp_is_expired(expires_at, policy_context.now_timestamp)? {
+        return Err(CoreError::new(format!(
+          "API key \"{}\" expired at {}",
+          api_key.info.name, expires_at
+        )));
+      }
+    }
+
     for policy_id in &api_key.info.policy_ids {
       let policy = vault
         .get_policy_by_id(policy_id)
@@ -465,7 +505,7 @@ fn with_signing_request<T>(
       evaluate_policy(&policy, &policy_context)?;
     }
 
-    let derived_key = decrypt_derived_key(&api_key, &token.secret)?;
+    let derived_key = decrypt_derived_key(&api_key, &wallet.meta.id, &token.secret)?;
     return with_unlocked_keystore_by_derived_key(
       &mut keystore,
       &derived_key,
@@ -524,6 +564,32 @@ fn resolve_policy_ids(vault: &VaultRepository, policy_ids: Vec<String>) -> CoreR
   Ok(resolved)
 }
 
+fn resolve_wallets(
+  vault: &VaultRepository,
+  wallet_ids: Vec<String>,
+) -> CoreResult<Vec<WalletInfo>> {
+  if wallet_ids.is_empty() {
+    return Err(CoreError::new("walletIds must not be empty"));
+  }
+
+  let mut resolved = Vec::new();
+  for wallet_id in wallet_ids {
+    let wallet = vault.get_wallet(&wallet_id)?;
+    if !resolved
+      .iter()
+      .any(|existing: &WalletInfo| existing.meta.id == wallet.meta.id)
+    {
+      resolved.push(wallet);
+    }
+  }
+
+  Ok(resolved)
+}
+
+fn resolve_optional_vault_path(vault_path_opt: Option<String>) -> String {
+  sanitize_optional_text(vault_path_opt).unwrap_or_else(|| ".bulu".to_string())
+}
+
 fn parse_api_token(credential: &str) -> CoreResult<ParsedApiToken> {
   let payload = credential
     .strip_prefix(API_KEY_TOKEN_PREFIX)
@@ -544,10 +610,19 @@ fn parse_api_token(credential: &str) -> CoreResult<ParsedApiToken> {
   })
 }
 
-fn decrypt_derived_key(api_key: &StoredApiKey, secret: &[u8]) -> CoreResult<String> {
-  let encrypted = Vec::from_hex_auto(&api_key.encrypted_derived_key.enc_str)
+fn decrypt_derived_key(
+  api_key: &StoredApiKey,
+  wallet_id: &str,
+  secret: &[u8],
+) -> CoreResult<String> {
+  let encrypted_wallet_key = api_key
+    .encrypted_wallet_keys
+    .iter()
+    .find(|encrypted_wallet_key| encrypted_wallet_key.wallet_id == wallet_id)
+    .ok_or_else(invalid_credential_error)?;
+  let encrypted = Vec::from_hex_auto(&encrypted_wallet_key.encrypted_derived_key.enc_str)
     .map_err(|_| invalid_credential_error())?;
-  let nonce = Vec::from_hex_auto(&api_key.encrypted_derived_key.nonce)
+  let nonce = Vec::from_hex_auto(&encrypted_wallet_key.encrypted_derived_key.nonce)
     .map_err(|_| invalid_credential_error())?;
   let decrypted = ctr256::decrypt_nopadding(&encrypted, secret, &nonce)
     .map_err(|_| invalid_credential_error())?;

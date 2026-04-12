@@ -140,6 +140,10 @@ pub(crate) fn normalize_timestamp(timestamp: &str) -> CoreResult<String> {
   Ok(parsed.to_rfc3339_opts(SecondsFormat::Secs, true))
 }
 
+pub(crate) fn timestamp_is_expired(timestamp: &str, now_timestamp: i64) -> CoreResult<bool> {
+  Ok(now_timestamp >= parse_rfc3339_utc(timestamp)?.timestamp())
+}
+
 fn parse_rfc3339_utc(timestamp: &str) -> CoreResult<DateTime<Utc>> {
   let normalized = timestamp.trim();
   require_non_empty(normalized, "timestamp")?;

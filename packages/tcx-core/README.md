@@ -40,15 +40,7 @@ const policy = createPolicy(
   '.bulu',
 )
 
-const created = createApiKey(
-  {
-    name: 'agent',
-    wallet: 'main',
-    policyIds: [policy.id],
-  },
-  'wallet-passphrase',
-  '.bulu',
-)
+const created = createApiKey('agent', ['main'], [policy.id], 'wallet-passphrase', undefined, '.bulu')
 
 const signed = signTransaction('main', 'eip155:56', '<unsigned-tx-hex>', created.token, '.bulu')
 ```

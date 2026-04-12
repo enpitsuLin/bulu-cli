@@ -81,13 +81,12 @@ fn create_api_key_persists_without_storing_plaintext_token() {
   .expect("policy creation should succeed");
 
   let created = create_api_key(
-    ApiKeyCreateInput {
-      name: "Claude".to_string(),
-      wallet: wallet.meta.id.clone(),
-      policy_ids: vec![policy.id.clone()],
-    },
+    "Claude".to_string(),
+    vec![wallet.meta.id.clone()],
+    vec![policy.id.clone()],
     TEST_PASSWORD.to_string(),
-    vault_path.clone(),
+    None,
+    Some(vault_path.clone()),
   )
   .expect("API key creation should succeed");
 
@@ -129,13 +128,12 @@ fn sign_transaction_accepts_api_key_and_revoke_immediately_invalidates_it() {
   )
   .expect("policy creation should succeed");
   let created = create_api_key(
-    ApiKeyCreateInput {
-      name: "bsc-agent".to_string(),
-      wallet: wallet.meta.name.clone(),
-      policy_ids: vec![policy.id],
-    },
+    "bsc-agent".to_string(),
+    vec![wallet.meta.name.clone()],
+    vec![policy.id],
     TEST_PASSWORD.to_string(),
-    vault_path.clone(),
+    None,
+    Some(vault_path.clone()),
   )
   .expect("API key creation should succeed");
 
@@ -182,6 +180,59 @@ fn sign_transaction_accepts_api_key_and_revoke_immediately_invalidates_it() {
 }
 
 #[test]
+fn sign_message_accepts_api_key_for_any_bound_wallet_id() {
+  let (vault_dir, vault_path) = temp_vault("api-key-multi-wallets");
+  let first_wallet = import_wallet_mnemonic(
+    "First".to_string(),
+    TEST_MNEMONIC.to_string(),
+    TEST_PASSWORD.to_string(),
+    vault_path.clone(),
+    None,
+  )
+  .expect("first wallet import should succeed");
+  let second_wallet = import_wallet_private_key(
+    "Second".to_string(),
+    TEST_PRIVATE_KEY.to_string(),
+    TEST_PASSWORD.to_string(),
+    vault_path.clone(),
+    None,
+  )
+  .expect("second wallet import should succeed");
+  let policy = create_policy(
+    PolicyCreateInput {
+      name: "ETH only".to_string(),
+      rules: vec![allowed_chain_rule(default_eth_mainnet_chain_id())],
+    },
+    vault_path.clone(),
+  )
+  .expect("policy creation should succeed");
+  let created = create_api_key(
+    "multi-wallet-agent".to_string(),
+    vec![first_wallet.meta.id, second_wallet.meta.id.clone()],
+    vec![policy.id],
+    TEST_PASSWORD.to_string(),
+    None,
+    Some(vault_path.clone()),
+  )
+  .expect("API key creation should succeed");
+
+  let signed = sign_message(
+    second_wallet.meta.name,
+    default_eth_mainnet_chain_id().to_string(),
+    "hello".to_string(),
+    created.token,
+    vault_path.clone(),
+  )
+  .expect("message signing should succeed");
+  assert_eq!(
+    signed.signature,
+    "0xbfdd222665dc2e4ff14cb38201fe7da601928a9fd73db3c58781efdd04aec9552cf45eab05e8c1d307511763289d851c8684fc00fbfa045bf8b37b7543bf56881b"
+  );
+
+  let _ = fs::remove_dir_all(vault_dir);
+}
+
+#[test]
 fn sign_message_rejects_wallet_mismatch_and_disallowed_chain_for_api_key() {
   let (vault_dir, vault_path) = temp_vault("api-key-wallet-mismatch");
   let bound_wallet = import_wallet_mnemonic(
@@ -209,13 +260,12 @@ fn sign_message_rejects_wallet_mismatch_and_disallowed_chain_for_api_key() {
   )
   .expect("policy creation should succeed");
   let created = create_api_key(
-    ApiKeyCreateInput {
-      name: "eth-agent".to_string(),
-      wallet: bound_wallet.meta.id.clone(),
-      policy_ids: vec![policy.id],
-    },
+    "eth-agent".to_string(),
+    vec![bound_wallet.meta.id.clone()],
+    vec![policy.id],
     TEST_PASSWORD.to_string(),
-    vault_path.clone(),
+    None,
+    Some(vault_path.clone()),
   )
   .expect("API key creation should succeed");
 
@@ -271,13 +321,12 @@ fn sign_message_rejects_expired_or_missing_policies() {
   )
   .expect("expired policy creation should succeed");
   let created = create_api_key(
-    ApiKeyCreateInput {
-      name: "expired-agent".to_string(),
-      wallet: wallet.meta.name.clone(),
-      policy_ids: vec![expired_policy.id.clone()],
-    },
+    "expired-agent".to_string(),
+    vec![wallet.meta.name.clone()],
+    vec![expired_policy.id.clone()],
     TEST_PASSWORD.to_string(),
-    vault_path.clone(),
+    None,
+    Some(vault_path.clone()),
   )
   .expect("API key creation should succeed");
 
@@ -312,6 +361,43 @@ fn sign_message_rejects_expired_or_missing_policies() {
 }
 
 #[test]
+fn sign_message_rejects_expired_api_key() {
+  let (vault_dir, vault_path) = temp_vault("api-key-expired");
+  let wallet = import_wallet_mnemonic(
+    "Signer".to_string(),
+    TEST_MNEMONIC.to_string(),
+    TEST_PASSWORD.to_string(),
+    vault_path.clone(),
+    None,
+  )
+  .expect("wallet import should succeed");
+  let created = create_api_key(
+    "expired-key".to_string(),
+    vec![wallet.meta.id.clone()],
+    vec![],
+    TEST_PASSWORD.to_string(),
+    Some("2000-01-01T00:00:00Z".to_string()),
+    Some(vault_path.clone()),
+  )
+  .expect("API key creation should succeed");
+
+  let err = sign_message(
+    wallet.meta.name,
+    default_eth_mainnet_chain_id().to_string(),
+    "hello".to_string(),
+    created.token,
+    vault_path.clone(),
+  )
+  .expect_err("expired API key should fail");
+  assert_eq!(
+    err.reason,
+    "API key \"expired-key\" expired at 2000-01-01T00:00:00Z"
+  );
+
+  let _ = fs::remove_dir_all(vault_dir);
+}
+
+#[test]
 fn delete_policy_and_wallet_reject_when_api_key_still_references_them() {
   let (vault_dir, vault_path) = temp_vault("api-key-reference-guards");
   let wallet = import_wallet_mnemonic(
@@ -331,13 +417,12 @@ fn delete_policy_and_wallet_reject_when_api_key_still_references_them() {
   )
   .expect("policy creation should succeed");
   let api_key = create_api_key(
-    ApiKeyCreateInput {
-      name: "guard".to_string(),
-      wallet: wallet.meta.id.clone(),
-      policy_ids: vec![policy.id.clone()],
-    },
+    "guard".to_string(),
+    vec![wallet.meta.id.clone()],
+    vec![policy.id.clone()],
     TEST_PASSWORD.to_string(),
-    vault_path.clone(),
+    None,
+    Some(vault_path.clone()),
   )
   .expect("API key creation should succeed");
 

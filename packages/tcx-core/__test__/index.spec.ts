@@ -524,15 +524,7 @@ test('createApiKey and signTransaction reuse the original signing entrypoints', 
       tempDir,
     )
 
-    const created = createApiKey(
-      {
-        name: 'agent',
-        wallet: 'Agent Signer',
-        policyIds: [policy.id],
-      },
-      PASSWORD,
-      tempDir,
-    )
+    const created = createApiKey('agent', ['Agent Signer'], [policy.id], PASSWORD, undefined, tempDir)
 
     expect(created.token.startsWith(`bulu_key_${created.apiKey.id}_`)).toBe(true)
     expect(readFileSync(join(tempDir, 'keys', `${created.apiKey.id}.json`), 'utf-8')).not.toContain(created.token)
