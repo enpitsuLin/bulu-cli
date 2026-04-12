@@ -587,5 +587,6 @@ module.exports.importWalletMnemonic = nativeBinding.importWalletMnemonic
 module.exports.importWalletPrivateKey = nativeBinding.importWalletPrivateKey
 module.exports.listWallet = nativeBinding.listWallet
 module.exports.loadWallet = nativeBinding.loadWallet
+module.exports.PrivateKeyImportCurve = nativeBinding.PrivateKeyImportCurve
 module.exports.signMessage = nativeBinding.signMessage
 module.exports.signTransaction = nativeBinding.signTransaction

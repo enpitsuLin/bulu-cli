@@ -47,8 +47,8 @@ export interface DerivationInput {
 /**
  * Derives accounts from a serialized keystore JSON in a single unlock flow.
  *
- * If `derivations` is omitted, default Ethereum and Tron accounts are derived
- * for the wallet network stored in the keystore.
+ * If `derivations` is omitted, default accounts are derived for the wallet
+ * based on the stored network and supported curves.
  */
 export declare function deriveAccounts(keystoreJson: string, password: string, derivations?: Array<DerivationInput> | undefined | null): Array<WalletAccount>
 
@@ -151,10 +151,11 @@ export declare function importWalletMnemonic(name: string, mnemonic: string, pas
  * Imports a private key as a non-derivable wallet.
  *
  * The returned WalletInfo is also persisted under
- * `<vaultPath>/wallets/<wallet id>.json`. `index` is accepted for API parity
- * but ignored because private-key wallets are non-derivable.
+ * `<vaultPath>/wallets/<wallet id>.json`. A numeric fifth argument is still
+ * accepted for API parity and ignored. Pass `{ curve: 'ED25519' }` to import a
+ * raw TON private key.
  */
-export declare function importWalletPrivateKey(name: string, privateKey: string, passphrase: string, vaultPath: string, index?: number | undefined | null): WalletInfo
+export declare function importWalletPrivateKey(name: string, privateKey: string, passphrase: string, vaultPath: string, indexOrOptions?: number | PrivateKeyImportOptions | undefined | null): WalletInfo
 
 /**
  * KDF parameters union type - can be either PBKDF2 or SCrypt.
@@ -221,10 +222,22 @@ export declare function listWallet(vaultPath: string): Array<WalletInfo>
 /**
  * Loads a serialized keystore JSON and derives accounts from it.
  *
- * If `derivations` is omitted, default Ethereum and Tron accounts are derived
- * for the wallet network stored in the keystore.
+ * If `derivations` is omitted, default accounts are derived for the wallet
+ * based on the stored network and supported curves.
  */
 export declare function loadWallet(keystoreJson: string, password: string, derivations?: Array<DerivationInput> | undefined | null): WalletInfo
+
+/** Curve to use when importing a raw private key. */
+export declare const enum PrivateKeyImportCurve {
+  Secp256k1 = 'SECP256K1',
+  Ed25519 = 'ED25519'
+}
+
+/** Additional options accepted by private-key imports. */
+export interface PrivateKeyImportOptions {
+  /** Explicitly choose the private-key curve. Required for raw ED25519 keys. */
+  curve?: PrivateKeyImportCurve
+}
 
 /** Message signature returned to JavaScript. */
 export interface SignedMessage {
@@ -232,11 +245,22 @@ export interface SignedMessage {
   signature: string
 }
 
+/** Chain-agnostic signed transaction result returned to JavaScript. */
+export interface SignedTransaction {
+  /** Primary signature string for the signed payload. */
+  signature: string
+  /** Ethereum transaction hash when available. */
+  txHash?: string
+  /** Chain-specific signature array when available. */
+  signatures?: Array<string>
+}
+
 /**
  * Signs a plain chain-specific message using the default chain conventions.
  *
  * `chain_id` selects the signer implementation. Ethereum uses personal-sign
- * semantics, while Tron uses the default TRON message header and version.
+ * semantics, Tron uses the default TRON message header and version, and TON is
+ * intentionally unsupported.
  */
 export declare function signMessage(name: string, chainId: string, message: string, password: string, vaultPath: string): SignedMessage
 
@@ -245,9 +269,10 @@ export declare function signMessage(name: string, chainId: string, message: stri
  * conventions.
  *
  * `chain_id` selects the signer implementation. Ethereum expects an unsigned
- * RLP-encoded transaction hex, while Tron expects raw transaction bytes hex.
+ * RLP-encoded transaction hex, Tron expects raw transaction bytes hex, and TON
+ * expects a hex-encoded 32-byte signing hash.
  */
-export declare function signTransaction(name: string, chainId: string, txHex: string, password: string, vaultPath: string): EthSignedTransaction | TronSignedTransaction
+export declare function signTransaction(name: string, chainId: string, txHex: string, password: string, vaultPath: string): SignedTransaction
 
 /** Tron signed transaction result. */
 export interface TronSignedTransaction {
