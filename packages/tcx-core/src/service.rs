@@ -185,6 +185,7 @@ pub(crate) fn create_api_key(
 
   let secret_hex = secret.to_hex();
   Ok(CreatedApiKey {
+    id: api_key.info.id.clone(),
     api_key: api_key.info.clone(),
     token: format!("{API_KEY_TOKEN_PREFIX}{}_{}", api_key.info.id, secret_hex),
   })

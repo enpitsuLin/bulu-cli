@@ -29,6 +29,8 @@ export declare function createApiKey(name: string, walletIds: Array<string>, pol
 
 /** Result returned when an API key is created. */
 export interface CreatedApiKey {
+  /** Key file id for marking the API key file. */
+  id: string
   /** Public API key metadata. */
   apiKey: ApiKeyInfo
   /** Token returned once at creation time. */

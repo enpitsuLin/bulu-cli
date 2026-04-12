@@ -34,6 +34,8 @@ pub struct ApiKeyInfo {
 #[derive(Clone, Debug, PartialEq, Eq)]
 /// Result returned when an API key is created.
 pub struct CreatedApiKey {
+  /// Key file id for marking the API key file.
+  pub id: String,
   /// Public API key metadata.
   #[napi(js_name = "apiKey")]
   pub api_key: ApiKeyInfo,
