@@ -128,8 +128,22 @@ fn create_wallet_persists_wallet_info_when_vault_path_is_provided() {
     DEFAULT_ETH_MAINNET_CHAIN_ID
   );
   assert_eq!(
+    persisted["accounts"][0]["accountId"],
+    format!(
+      "{}:{}",
+      DEFAULT_ETH_MAINNET_CHAIN_ID, wallet.accounts[0].address
+    )
+  );
+  assert_eq!(
     persisted["accounts"][1]["chainId"],
     DEFAULT_TRON_MAINNET_CHAIN_ID
+  );
+  assert_eq!(
+    persisted["accounts"][1]["accountId"],
+    format!(
+      "{}:{}",
+      DEFAULT_TRON_MAINNET_CHAIN_ID, wallet.accounts[1].address
+    )
   );
 
   let _ = fs::remove_dir_all(vault_dir);
@@ -151,7 +165,21 @@ fn import_wallet_mnemonic_returns_default_accounts() {
   assert_eq!(wallet.meta.network, "MAINNET");
   assert_eq!(wallet.accounts.len(), 2);
   assert_eq!(wallet.accounts[0].chain_id, DEFAULT_ETH_MAINNET_CHAIN_ID);
+  assert_eq!(
+    wallet.accounts[0].account_id,
+    format!(
+      "{}:{}",
+      DEFAULT_ETH_MAINNET_CHAIN_ID, wallet.accounts[0].address
+    )
+  );
   assert_eq!(wallet.accounts[1].chain_id, DEFAULT_TRON_MAINNET_CHAIN_ID);
+  assert_eq!(
+    wallet.accounts[1].account_id,
+    format!(
+      "{}:{}",
+      DEFAULT_TRON_MAINNET_CHAIN_ID, wallet.accounts[1].address
+    )
+  );
 
   let _ = fs::remove_dir_all(vault_dir);
 }
@@ -180,12 +208,12 @@ fn import_wallet_mnemonic_uses_index_for_default_derivations_and_persists_wallet
   let persisted = read_vault_json(&wallet_path);
 
   assert_eq!(
-    indexed_wallet.accounts[0].derivation_path.as_deref(),
-    Some(ETH_ACCOUNT_1_DERIVATION_PATH)
+    indexed_wallet.accounts[0].derivation_path,
+    ETH_ACCOUNT_1_DERIVATION_PATH
   );
   assert_eq!(
-    indexed_wallet.accounts[1].derivation_path.as_deref(),
-    Some(TRON_ACCOUNT_1_DERIVATION_PATH)
+    indexed_wallet.accounts[1].derivation_path,
+    TRON_ACCOUNT_1_DERIVATION_PATH
   );
   assert_ne!(
     indexed_wallet.accounts[0].address,
@@ -222,8 +250,22 @@ fn import_wallet_private_key_returns_non_derivable_accounts() {
   assert_eq!(wallet.accounts.len(), 2);
   assert_eq!(wallet.accounts[0].chain_id, DEFAULT_ETH_MAINNET_CHAIN_ID);
   assert_eq!(wallet.accounts[1].chain_id, DEFAULT_TRON_MAINNET_CHAIN_ID);
-  assert!(wallet.accounts[0].derivation_path.is_none());
-  assert!(wallet.accounts[0].ext_pub_key.is_none());
+  assert_eq!(
+    wallet.accounts[0].account_id,
+    format!(
+      "{}:{}",
+      DEFAULT_ETH_MAINNET_CHAIN_ID, wallet.accounts[0].address
+    )
+  );
+  assert_eq!(
+    wallet.accounts[1].account_id,
+    format!(
+      "{}:{}",
+      DEFAULT_TRON_MAINNET_CHAIN_ID, wallet.accounts[1].address
+    )
+  );
+  assert_eq!(wallet.accounts[0].derivation_path, "");
+  assert_eq!(wallet.accounts[1].derivation_path, "");
   assert_eq!(wallet.meta.version, 12001);
   assert_eq!(wallet.meta.curve.as_deref(), Some("secp256k1"));
   assert!(!wallet.meta.derivable);
@@ -246,11 +288,19 @@ fn import_wallet_private_key_persists_wallet_info_and_ignores_index() {
   let persisted = read_vault_json(&wallet_path);
 
   assert!(!wallet.meta.derivable);
-  assert!(wallet.accounts[0].derivation_path.is_none());
-  assert!(wallet.accounts[0].ext_pub_key.is_none());
+  assert_eq!(wallet.accounts[0].derivation_path, "");
+  assert_eq!(wallet.accounts[1].derivation_path, "");
   assert_eq!(persisted["keystore"], keystore_json_value(&wallet));
-  assert!(persisted["accounts"][0].get("derivationPath").is_none());
+  assert_eq!(
+    persisted["accounts"][0]["accountId"],
+    format!(
+      "{}:{}",
+      wallet.accounts[0].chain_id, wallet.accounts[0].address
+    )
+  );
+  assert_eq!(persisted["accounts"][0]["derivationPath"], "");
   assert!(persisted["accounts"][0].get("extPubKey").is_none());
+  assert!(persisted["accounts"][0].get("publicKey").is_none());
 
   let _ = fs::remove_dir_all(vault_dir);
 }
@@ -281,10 +331,7 @@ fn load_wallet_restores_wallet_from_keystore_json() {
   assert_eq!(wallet.meta.source, "MNEMONIC");
   assert_eq!(wallet.meta.network, "MAINNET");
   assert_eq!(wallet.accounts.len(), 1);
-  assert_eq!(
-    wallet.accounts[0].derivation_path.as_deref(),
-    Some("m/44'/60'/0'/0/1")
-  );
+  assert_eq!(wallet.accounts[0].derivation_path, "m/44'/60'/0'/0/1");
 
   let _ = fs::remove_dir_all(vault_dir);
 }
@@ -322,14 +369,8 @@ fn derive_accounts_returns_requested_accounts() {
   assert_eq!(accounts.len(), 2);
   assert_eq!(accounts[0].chain_id, DEFAULT_ETH_MAINNET_CHAIN_ID);
   assert_eq!(accounts[1].chain_id, DEFAULT_ETH_MAINNET_CHAIN_ID);
-  assert_eq!(
-    accounts[0].derivation_path.as_deref(),
-    Some(DEFAULT_ETH_DERIVATION_PATH)
-  );
-  assert_eq!(
-    accounts[1].derivation_path.as_deref(),
-    Some("m/44'/60'/0'/0/1")
-  );
+  assert_eq!(accounts[0].derivation_path, DEFAULT_ETH_DERIVATION_PATH);
+  assert_eq!(accounts[1].derivation_path, "m/44'/60'/0'/0/1");
   assert_ne!(accounts[0].address, accounts[1].address);
 
   let _ = fs::remove_dir_all(vault_dir);

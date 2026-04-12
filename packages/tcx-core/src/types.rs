@@ -34,19 +34,14 @@ pub struct WalletAccount {
   /// CAIP-2 chain id of the derived account.
   #[napi(js_name = "chainId")]
   pub chain_id: String,
+  /// Stable account identifier in the form `<chain_id>:<address>`.
+  #[napi(js_name = "accountId")]
+  pub account_id: String,
   /// Chain-specific account address.
   pub address: String,
-  /// Hex-encoded public key.
-  #[napi(js_name = "publicKey")]
-  pub public_key: String,
-  /// Derivation path used for this account when available.
+  /// Derivation path used for this account, or an empty string when unavailable.
   #[napi(js_name = "derivationPath")]
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub derivation_path: Option<String>,
-  /// Extended public key when supported by the wallet source.
-  #[napi(js_name = "extPubKey")]
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub ext_pub_key: Option<String>,
+  pub derivation_path: String,
 }
 
 #[napi(object)]
