@@ -1,4 +1,4 @@
-import type { WalletInfo } from '@bulu-cli/tcx-core'
+import type { PrivateKeyImportOptions, WalletInfo } from '@bulu-cli/tcx-core'
 import { importWalletKeystore, importWalletMnemonic, importWalletPrivateKey } from '@bulu-cli/tcx-core'
 import { defineCommand } from 'citty'
 import { styleText } from 'node:util'
@@ -31,6 +31,19 @@ function formatWalletOutput(wallet: WalletInfo) {
 
 function detectIsMnemonic(secret: string): boolean {
   return secret.split(/\s+/).length >= 12
+}
+
+export type ImportCurve = NonNullable<PrivateKeyImportOptions['curve']>
+
+export function parseImportCurve(curveValue?: string): ImportCurve | undefined {
+  if (!curveValue) return undefined
+
+  const normalized = curveValue.trim().toUpperCase()
+  if (normalized === 'SECP256K1' || normalized === 'ED25519') {
+    return normalized as ImportCurve
+  }
+
+  throw new Error('--curve must be one of: secp256k1, ed25519')
 }
 
 async function readSecretFromStdin(): Promise<string> {
@@ -75,6 +88,10 @@ export default defineCommand({
       type: 'string',
       description: 'Default derivation account index for mnemonic imports',
     },
+    curve: {
+      type: 'string',
+      description: 'Private key curve: secp256k1 or ed25519',
+    },
   }),
   async run({ args }) {
     const name = args.name.trim()
@@ -94,10 +111,16 @@ export default defineCommand({
     }
 
     const index = parseIndex(args.index)
+    const curve = parseImportCurve(args.curve)
 
     // Keystore import doesn't work with index
     if (args.keystore && index !== undefined) {
       out.warn('--index is not supported with --keystore')
+      process.exit(1)
+    }
+
+    if (curve && (args.mnemonic || args.keystore)) {
+      out.warn('--curve is only supported for raw private key imports')
       process.exit(1)
     }
 
@@ -160,9 +183,15 @@ export default defineCommand({
         const isMnemonic = detectIsMnemonic(secret)
 
         if (isMnemonic) {
+          if (curve) {
+            out.warn('--curve is only supported for raw private key imports')
+            process.exit(1)
+          }
           wallet = importWalletMnemonic(name, secret, passphrase, vaultPath, index)
         } else {
-          wallet = importWalletPrivateKey(name, secret, passphrase, vaultPath)
+          wallet = curve
+            ? importWalletPrivateKey(name, secret, passphrase, vaultPath, { curve })
+            : importWalletPrivateKey(name, secret, passphrase, vaultPath)
         }
       }
 
