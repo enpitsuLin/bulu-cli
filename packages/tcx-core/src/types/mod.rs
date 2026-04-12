@@ -3,10 +3,11 @@ mod wallet;
 
 pub use signing::{
   EthAccessListItem, EthMessageInput, EthMessageSignatureType, EthSignedTransaction,
-  EthTransactionInput, SignedMessage, TronMessageInput, TronSignedTransaction,
+  EthTransactionInput, SignedMessage, SignedTransaction, TronMessageInput, TronSignedTransaction,
   TronTransactionInput,
 };
 pub use wallet::{
   CipherParams, CryptoData, DerivationInput, EncPairData, IdentityData, KdfParams, KeystoreData,
-  KeystoreMetadata, WalletAccount, WalletInfo, WalletMeta,
+  KeystoreMetadata, PrivateKeyImportCurve, PrivateKeyImportOptions, WalletAccount, WalletInfo,
+  WalletMeta,
 };

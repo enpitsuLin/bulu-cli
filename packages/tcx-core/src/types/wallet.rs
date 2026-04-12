@@ -4,6 +4,24 @@ use tcx_keystore::Keystore as TcxKeystore;
 
 use crate::error::{CoreResult, ResultExt};
 
+#[napi(string_enum)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+/// Curve to use when importing a raw private key.
+pub enum PrivateKeyImportCurve {
+  #[napi(value = "SECP256K1")]
+  Secp256k1,
+  #[napi(value = "ED25519")]
+  Ed25519,
+}
+
+#[napi(object)]
+#[derive(Clone, Debug, PartialEq, Eq)]
+/// Additional options accepted by private-key imports.
+pub struct PrivateKeyImportOptions {
+  /// Explicitly choose the private-key curve. Required for raw ED25519 keys.
+  pub curve: Option<PrivateKeyImportCurve>,
+}
+
 #[napi(object)]
 #[derive(Clone, Debug, PartialEq, Eq)]
 /// A requested account derivation.

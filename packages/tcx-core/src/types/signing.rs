@@ -51,6 +51,19 @@ pub struct SignedMessage {
 
 #[napi(object)]
 #[derive(Clone, Debug, PartialEq, Eq)]
+/// Chain-agnostic signed transaction result returned to JavaScript.
+pub struct SignedTransaction {
+  /// Primary signature string for the signed payload.
+  pub signature: String,
+  /// Ethereum transaction hash when available.
+  #[napi(js_name = "txHash")]
+  pub tx_hash: Option<String>,
+  /// Chain-specific signature array when available.
+  pub signatures: Option<Vec<String>>,
+}
+
+#[napi(object)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 /// Ethereum access list item used for EIP-2930/EIP-1559 transactions.
 pub struct EthAccessListItem {
   /// Accessed contract address.
