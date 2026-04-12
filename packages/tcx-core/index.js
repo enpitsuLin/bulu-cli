@@ -576,16 +576,24 @@ if (!nativeBinding) {
 }
 
 module.exports = nativeBinding
+module.exports.createApiKey = nativeBinding.createApiKey
+module.exports.createPolicy = nativeBinding.createPolicy
 module.exports.createWallet = nativeBinding.createWallet
+module.exports.deletePolicy = nativeBinding.deletePolicy
 module.exports.deleteWallet = nativeBinding.deleteWallet
 module.exports.deriveAccounts = nativeBinding.deriveAccounts
 module.exports.EthMessageSignatureType = nativeBinding.EthMessageSignatureType
 module.exports.exportWallet = nativeBinding.exportWallet
+module.exports.getApiKey = nativeBinding.getApiKey
+module.exports.getPolicy = nativeBinding.getPolicy
 module.exports.getWallet = nativeBinding.getWallet
 module.exports.importWalletKeystore = nativeBinding.importWalletKeystore
 module.exports.importWalletMnemonic = nativeBinding.importWalletMnemonic
 module.exports.importWalletPrivateKey = nativeBinding.importWalletPrivateKey
+module.exports.listApiKey = nativeBinding.listApiKey
+module.exports.listPolicy = nativeBinding.listPolicy
 module.exports.listWallet = nativeBinding.listWallet
 module.exports.loadWallet = nativeBinding.loadWallet
+module.exports.revokeApiKey = nativeBinding.revokeApiKey
 module.exports.signMessage = nativeBinding.signMessage
 module.exports.signTransaction = nativeBinding.signTransaction

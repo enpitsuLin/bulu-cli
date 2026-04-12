@@ -1,11 +1,16 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use serde::de::DeserializeOwned;
+use serde::Serialize;
+
 use crate::error::{require_trimmed, CoreError, CoreResult, ResultExt};
-use crate::types::WalletInfo;
+use crate::types::{ApiKeyInfo, PolicyInfo, StoredApiKey, WalletInfo};
 
 const WALLETS_DIR: &str = "wallets";
-const WALLET_FILE_EXTENSION: &str = "json";
+const POLICIES_DIR: &str = "policies";
+const KEYS_DIR: &str = "keys";
+const JSON_FILE_EXTENSION: &str = "json";
 
 #[cfg(unix)]
 const DIR_PERMISSIONS: u32 = 0o700;
@@ -16,16 +21,18 @@ const FILE_PERMISSIONS: u32 = 0o600;
 pub(crate) struct VaultRepository {
   vault_path: String,
   wallets_dir: PathBuf,
+  policies_dir: PathBuf,
+  keys_dir: PathBuf,
 }
 
 impl VaultRepository {
   pub(crate) fn new(vault_path: String) -> CoreResult<Self> {
     let vault_path = require_trimmed(vault_path, "vaultPath")?;
-    let wallets_dir = Path::new(&vault_path).join(WALLETS_DIR);
-
     Ok(Self {
+      wallets_dir: Path::new(&vault_path).join(WALLETS_DIR),
+      policies_dir: Path::new(&vault_path).join(POLICIES_DIR),
+      keys_dir: Path::new(&vault_path).join(KEYS_DIR),
       vault_path,
-      wallets_dir,
     })
   }
 
@@ -34,157 +41,352 @@ impl VaultRepository {
     Ok(wallets.iter().any(|wallet| wallet.meta.name == name))
   }
 
+  pub(crate) fn policy_name_exists(&self, name: &str) -> CoreResult<bool> {
+    let policies = self.list_policies()?;
+    Ok(policies.iter().any(|policy| policy.name == name))
+  }
+
+  pub(crate) fn api_key_name_exists(&self, name: &str) -> CoreResult<bool> {
+    let api_keys = self.list_stored_api_keys()?;
+    Ok(api_keys.iter().any(|api_key| api_key.info.name == name))
+  }
+
   pub(crate) fn save_wallet(&self, wallet_info: &WalletInfo) -> CoreResult<()> {
-    self.ensure_wallets_dir()?;
+    self.save_json_record(
+      &self.wallets_dir,
+      &wallet_info.meta.id,
+      "wallet vault",
+      wallet_info,
+    )
+  }
 
-    let path = self.wallet_file_path(&wallet_info.meta.id);
-    let payload = serde_json::to_string_pretty(wallet_info).map_core_err()?;
+  pub(crate) fn save_policy(&self, policy_info: &PolicyInfo) -> CoreResult<()> {
+    self.save_json_record(
+      &self.policies_dir,
+      &policy_info.id,
+      "policy vault",
+      policy_info,
+    )
+  }
 
-    fs::write(&path, payload)
-      .core_context(format!("failed to write wallet vault `{}`", path.display()))?;
-
-    set_file_permissions(&path);
-    Ok(())
+  pub(crate) fn save_api_key(&self, api_key: &StoredApiKey) -> CoreResult<()> {
+    self.save_json_record(&self.keys_dir, &api_key.info.id, "API key vault", api_key)
   }
 
   pub(crate) fn list_wallets(&self) -> CoreResult<Vec<WalletInfo>> {
-    if !self.wallets_dir.exists() {
-      return Ok(Vec::new());
-    }
+    self.list_json_records_lossy(&self.wallets_dir)
+  }
 
-    check_vault_permissions(&self.wallets_dir);
+  pub(crate) fn list_policies(&self) -> CoreResult<Vec<PolicyInfo>> {
+    self.list_json_records_strict(&self.policies_dir)
+  }
 
-    let entries = fs::read_dir(&self.wallets_dir).core_context(format!(
-      "failed to read vault directory `{}`",
-      self.wallets_dir.display()
-    ))?;
+  pub(crate) fn list_api_keys(&self) -> CoreResult<Vec<ApiKeyInfo>> {
+    self
+      .list_stored_api_keys()?
+      .into_iter()
+      .map(|api_key| api_key.into_public())
+      .collect()
+  }
 
-    let mut wallet_infos = Vec::new();
-    for entry in entries {
-      let entry = entry.core_context(format!(
-        "failed to read entry in vault directory `{}`",
-        self.wallets_dir.display()
-      ))?;
-
-      let path = entry.path();
-      if path.extension().and_then(|ext| ext.to_str()) != Some(WALLET_FILE_EXTENSION) {
-        continue;
-      }
-
-      let content = match fs::read_to_string(&path) {
-        Ok(content) => content,
-        Err(_) => continue,
-      };
-
-      let wallet_info = match serde_json::from_str::<WalletInfo>(&content) {
-        Ok(info) => info,
-        Err(_) => continue,
-      };
-
-      wallet_infos.push(wallet_info);
-    }
-
-    Ok(wallet_infos)
+  pub(crate) fn list_stored_api_keys(&self) -> CoreResult<Vec<StoredApiKey>> {
+    self.list_json_records_strict(&self.keys_dir)
   }
 
   pub(crate) fn get_wallet(&self, identifier: &str) -> CoreResult<WalletInfo> {
     let normalized_identifier = require_trimmed(identifier.to_string(), "nameOrId")?;
     let wallets = self.list_wallets()?;
-    let wallet = resolve_wallet(&normalized_identifier, &wallets, &self.vault_path)?;
+    let wallet = resolve_named_record(
+      &normalized_identifier,
+      &wallets,
+      &self.vault_path,
+      "Wallet",
+      "wallets",
+      |wallet| &wallet.meta.id,
+      |wallet| &wallet.meta.name,
+    )?;
     Ok(wallet.clone())
+  }
+
+  pub(crate) fn get_policy(&self, identifier: &str) -> CoreResult<PolicyInfo> {
+    let normalized_identifier = require_trimmed(identifier.to_string(), "nameOrId")?;
+    let policies = self.list_policies()?;
+    let policy = resolve_named_record(
+      &normalized_identifier,
+      &policies,
+      &self.vault_path,
+      "Policy",
+      "policies",
+      |policy| &policy.id,
+      |policy| &policy.name,
+    )?;
+    Ok(policy.clone())
+  }
+
+  pub(crate) fn get_policy_by_id(&self, policy_id: &str) -> CoreResult<PolicyInfo> {
+    let normalized_policy_id = require_trimmed(policy_id.to_string(), "policyId")?;
+    self.read_json_record(
+      &self.json_file_path(&self.policies_dir, &normalized_policy_id),
+      "policy vault",
+    )
+  }
+
+  pub(crate) fn get_api_key(&self, identifier: &str) -> CoreResult<ApiKeyInfo> {
+    Ok(self.get_stored_api_key(identifier)?.into_public()?)
+  }
+
+  pub(crate) fn get_stored_api_key(&self, identifier: &str) -> CoreResult<StoredApiKey> {
+    let normalized_identifier = require_trimmed(identifier.to_string(), "nameOrId")?;
+    let api_keys = self.list_stored_api_keys()?;
+    let api_key = resolve_named_record(
+      &normalized_identifier,
+      &api_keys,
+      &self.vault_path,
+      "API key",
+      "API keys",
+      |api_key| &api_key.info.id,
+      |api_key| &api_key.info.name,
+    )?;
+    Ok(api_key.clone())
+  }
+
+  pub(crate) fn get_stored_api_key_by_id(&self, api_key_id: &str) -> CoreResult<StoredApiKey> {
+    let normalized_api_key_id = require_trimmed(api_key_id.to_string(), "apiKeyId")?;
+    self.read_json_record(
+      &self.json_file_path(&self.keys_dir, &normalized_api_key_id),
+      "API key vault",
+    )
   }
 
   pub(crate) fn delete_wallet(&self, identifier: &str) -> CoreResult<()> {
     let normalized_identifier = require_trimmed(identifier.to_string(), "nameOrId")?;
     let wallets = self.list_wallets()?;
-    let wallet = resolve_wallet(&normalized_identifier, &wallets, &self.vault_path)?;
-    let path = self.wallet_file_path(&wallet.meta.id);
+    let wallet = resolve_named_record(
+      &normalized_identifier,
+      &wallets,
+      &self.vault_path,
+      "Wallet",
+      "wallets",
+      |wallet| &wallet.meta.id,
+      |wallet| &wallet.meta.name,
+    )?;
+    self.remove_json_record(&self.wallets_dir, &wallet.meta.id, "wallet vault")
+  }
 
-    fs::remove_file(&path).core_context(format!(
-      "failed to delete wallet vault `{}`",
-      path.display()
-    ))?;
+  pub(crate) fn delete_policy(&self, identifier: &str) -> CoreResult<()> {
+    let normalized_identifier = require_trimmed(identifier.to_string(), "nameOrId")?;
+    let policies = self.list_policies()?;
+    let policy = resolve_named_record(
+      &normalized_identifier,
+      &policies,
+      &self.vault_path,
+      "Policy",
+      "policies",
+      |policy| &policy.id,
+      |policy| &policy.name,
+    )?;
+    self.remove_json_record(&self.policies_dir, &policy.id, "policy vault")
+  }
 
+  pub(crate) fn revoke_api_key(&self, identifier: &str) -> CoreResult<()> {
+    let normalized_identifier = require_trimmed(identifier.to_string(), "nameOrId")?;
+    let api_keys = self.list_stored_api_keys()?;
+    let api_key = resolve_named_record(
+      &normalized_identifier,
+      &api_keys,
+      &self.vault_path,
+      "API key",
+      "API keys",
+      |api_key| &api_key.info.id,
+      |api_key| &api_key.info.name,
+    )?;
+    self.remove_json_record(&self.keys_dir, &api_key.info.id, "API key vault")
+  }
+
+  fn save_json_record<T: Serialize>(
+    &self,
+    dir: &Path,
+    record_id: &str,
+    label: &str,
+    record: &T,
+  ) -> CoreResult<()> {
+    self.ensure_dir(dir)?;
+
+    let path = self.json_file_path(dir, record_id);
+    let payload = serde_json::to_string_pretty(record).map_core_err()?;
+
+    fs::write(&path, payload)
+      .core_context(format!("failed to write {label} `{}`", path.display()))?;
+
+    set_file_permissions(&path);
     Ok(())
   }
 
-  fn ensure_wallets_dir(&self) -> CoreResult<()> {
-    let root_dir = Path::new(&self.vault_path);
+  fn list_json_records_lossy<T: DeserializeOwned>(&self, dir: &Path) -> CoreResult<Vec<T>> {
+    if !dir.exists() {
+      return Ok(Vec::new());
+    }
 
-    if !self.wallets_dir.exists() {
-      fs::create_dir_all(&self.wallets_dir).core_context(format!(
+    check_vault_permissions(dir);
+
+    let mut records = Vec::new();
+    for path in self.list_json_paths(dir)? {
+      let content = match fs::read_to_string(&path) {
+        Ok(content) => content,
+        Err(_) => continue,
+      };
+
+      let record = match serde_json::from_str::<T>(&content) {
+        Ok(record) => record,
+        Err(_) => continue,
+      };
+
+      records.push(record);
+    }
+
+    Ok(records)
+  }
+
+  fn list_json_records_strict<T: DeserializeOwned>(&self, dir: &Path) -> CoreResult<Vec<T>> {
+    if !dir.exists() {
+      return Ok(Vec::new());
+    }
+
+    check_vault_permissions(dir);
+
+    self
+      .list_json_paths(dir)?
+      .into_iter()
+      .map(|path| self.read_json_record(&path, "vault record"))
+      .collect()
+  }
+
+  fn read_json_record<T: DeserializeOwned>(&self, path: &Path, label: &str) -> CoreResult<T> {
+    let content = fs::read_to_string(path)
+      .core_context(format!("failed to read {label} `{}`", path.display()))?;
+    serde_json::from_str(&content)
+      .core_context(format!("failed to parse {label} `{}`", path.display()))
+  }
+
+  fn remove_json_record(&self, dir: &Path, record_id: &str, label: &str) -> CoreResult<()> {
+    let path = self.json_file_path(dir, record_id);
+    fs::remove_file(&path).core_context(format!("failed to delete {label} `{}`", path.display()))
+  }
+
+  fn ensure_dir(&self, dir: &Path) -> CoreResult<()> {
+    let root_dir = Path::new(&self.vault_path);
+    if !dir.exists() {
+      fs::create_dir_all(dir).core_context(format!(
         "failed to create vault directory `{}`",
-        self.wallets_dir.display()
+        dir.display()
       ))?;
     }
 
     if root_dir.exists() {
       set_dir_permissions(root_dir);
     }
-    set_dir_permissions(&self.wallets_dir);
-
+    set_dir_permissions(dir);
     Ok(())
   }
 
-  fn wallet_file_path(&self, wallet_id: &str) -> PathBuf {
-    self
-      .wallets_dir
-      .join(format!("{wallet_id}.{WALLET_FILE_EXTENSION}"))
+  fn list_json_paths(&self, dir: &Path) -> CoreResult<Vec<PathBuf>> {
+    let entries = fs::read_dir(dir).core_context(format!(
+      "failed to read vault directory `{}`",
+      dir.display()
+    ))?;
+
+    let mut paths = Vec::new();
+    for entry in entries {
+      let entry = entry.core_context(format!(
+        "failed to read entry in vault directory `{}`",
+        dir.display()
+      ))?;
+      let path = entry.path();
+      if path.extension().and_then(|ext| ext.to_str()) == Some(JSON_FILE_EXTENSION) {
+        paths.push(path);
+      }
+    }
+
+    Ok(paths)
+  }
+
+  fn json_file_path(&self, dir: &Path, record_id: &str) -> PathBuf {
+    dir.join(format!("{record_id}.{JSON_FILE_EXTENSION}"))
   }
 }
 
-fn format_wallet_candidates(wallets: &[&WalletInfo]) -> String {
-  wallets
+trait IntoPublicRecord<T> {
+  fn into_public(self) -> CoreResult<T>;
+}
+
+impl IntoPublicRecord<ApiKeyInfo> for StoredApiKey {
+  fn into_public(self) -> CoreResult<ApiKeyInfo> {
+    Ok(self.info)
+  }
+}
+
+fn format_record_candidates<T>(
+  records: &[&T],
+  id: impl Fn(&T) -> &str,
+  name: impl Fn(&T) -> &str,
+) -> String {
+  records
     .iter()
-    .map(|wallet| format!("{} ({})", wallet.meta.name, wallet.meta.id))
+    .map(|record| format!("{} ({})", name(record), id(record)))
     .collect::<Vec<_>>()
     .join(", ")
 }
 
-fn resolve_wallet<'a>(
+fn resolve_named_record<'a, T>(
   identifier: &str,
-  wallets: &'a [WalletInfo],
+  records: &'a [T],
   vault_path: &str,
-) -> CoreResult<&'a WalletInfo> {
-  if wallets.is_empty() {
+  singular_label: &str,
+  plural_label: &str,
+  id: impl Fn(&T) -> &str,
+  name: impl Fn(&T) -> &str,
+) -> CoreResult<&'a T> {
+  if records.is_empty() {
     return Err(CoreError::new(format!(
-      "No wallets found in vault: {vault_path}"
+      "No {plural_label} found in vault: {vault_path}"
     )));
   }
 
-  if let Some(wallet) = wallets.iter().find(|wallet| wallet.meta.id == identifier) {
-    return Ok(wallet);
+  if let Some(record) = records.iter().find(|record| id(record) == identifier) {
+    return Ok(record);
   }
 
-  let exact_name_matches = wallets
+  let exact_name_matches = records
     .iter()
-    .filter(|wallet| wallet.meta.name == identifier)
+    .filter(|record| name(record) == identifier)
     .collect::<Vec<_>>();
   if exact_name_matches.len() == 1 {
     return Ok(exact_name_matches[0]);
   }
   if exact_name_matches.len() > 1 {
     return Err(CoreError::new(format!(
-      "Multiple wallets share the name \"{identifier}\". Use a wallet id instead: {}",
-      format_wallet_candidates(&exact_name_matches)
+      "Multiple {plural_label} share the name \"{identifier}\". Use a {singular_label} id instead: {}",
+      format_record_candidates(&exact_name_matches, &id, &name)
     )));
   }
 
-  let id_prefix_matches = wallets
+  let id_prefix_matches = records
     .iter()
-    .filter(|wallet| wallet.meta.id.starts_with(identifier))
+    .filter(|record| id(record).starts_with(identifier))
     .collect::<Vec<_>>();
   if id_prefix_matches.len() == 1 {
     return Ok(id_prefix_matches[0]);
   }
   if id_prefix_matches.len() > 1 {
     return Err(CoreError::new(format!(
-      "Wallet id prefix \"{identifier}\" is ambiguous. Matches: {}",
-      format_wallet_candidates(&id_prefix_matches)
+      "{singular_label} id prefix \"{identifier}\" is ambiguous. Matches: {}",
+      format_record_candidates(&id_prefix_matches, &id, &name)
     )));
   }
 
-  Err(CoreError::new(format!("Wallet \"{identifier}\" not found")))
+  Err(CoreError::new(format!(
+    "{singular_label} \"{identifier}\" not found"
+  )))
 }
 
 #[cfg(unix)]
