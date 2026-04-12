@@ -11,7 +11,7 @@ pub(crate) use network::resolve_network;
 pub(crate) use spec::Chain;
 
 pub(crate) enum PreparedTransaction {
-  Ethereum(TcxEthTxInput),
+  Ethereum(Box<TcxEthTxInput>),
   Tron(TronTxInput),
 }
 
@@ -26,9 +26,9 @@ pub(crate) fn prepare_transaction(
   tx_hex: &str,
 ) -> CoreResult<PreparedTransaction> {
   match resolved.chain {
-    Chain::Ethereum => {
-      ethereum::prepare_transaction(tx_hex, &resolved.chain_id).map(PreparedTransaction::Ethereum)
-    }
+    Chain::Ethereum => ethereum::prepare_transaction(tx_hex, &resolved.chain_id)
+      .map(Box::new)
+      .map(PreparedTransaction::Ethereum),
     Chain::Tron => tron::prepare_transaction(tx_hex).map(PreparedTransaction::Tron),
   }
 }
@@ -53,7 +53,7 @@ pub(crate) fn sign_transaction(
 ) -> CoreResult<SignedTransaction> {
   match (resolved.chain, tx_data) {
     (Chain::Ethereum, PreparedTransaction::Ethereum(tx)) => {
-      ethereum::sign_transaction(keystore, resolved, derivation_path, tx)
+      ethereum::sign_transaction(keystore, resolved, derivation_path, *tx)
     }
     (Chain::Tron, PreparedTransaction::Tron(tx)) => {
       tron::sign_transaction(keystore, resolved, derivation_path, tx)
