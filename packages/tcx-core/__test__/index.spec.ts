@@ -4,6 +4,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import {
+  createApiKey,
+  createPolicy,
   type KeystoreData,
   type WalletInfo,
   createWallet,
@@ -13,6 +15,7 @@ import {
   importWalletKeystore,
   importWalletMnemonic,
   importWalletPrivateKey,
+  revokeApiKey,
   listWallet,
   loadWallet,
   signMessage,
@@ -498,6 +501,62 @@ test('signTransaction signs Tron transactions', () => {
     expect(signed.signatures).toEqual([
       'c65b4bde808f7fcfab7b0ef9c1e3946c83311f8ac0a5e95be2d8b6d2400cfe8b5e24dc8f0883132513e422f2aaad8a4ecc14438eae84b2683eefa626e3adffc601',
     ])
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true })
+  }
+})
+
+test('createApiKey and signTransaction reuse the original signing entrypoints', () => {
+  const tempDir = mkdtempSync(join(tmpdir(), 'tcx-core-wallet-'))
+  try {
+    importWalletPrivateKey('Agent Signer', PRIVATE_KEY, PASSWORD, tempDir)
+
+    const policy = createPolicy(
+      {
+        name: 'BSC only',
+        rules: [
+          {
+            type: 'allowed_chains',
+            chainIds: ['eip155:56'],
+          },
+        ],
+      },
+      tempDir,
+    )
+
+    const created = createApiKey(
+      {
+        name: 'agent',
+        wallet: 'Agent Signer',
+        policyIds: [policy.id],
+      },
+      PASSWORD,
+      tempDir,
+    )
+
+    expect(created.token.startsWith(`bulu_key_${created.apiKey.id}_`)).toBe(true)
+    expect(readFileSync(join(tempDir, 'keys', `${created.apiKey.id}.json`), 'utf-8')).not.toContain(created.token)
+
+    const txHex = buildUnsignedLegacyEthTxHex({
+      nonce: '8',
+      gasPrice: '20000000008',
+      gasLimit: '189000',
+      to: '0x3535353535353535353535353535353535353535',
+      value: '512',
+      data: '',
+      chainId: '0x38',
+    })
+
+    const signed = signTransaction('Agent Signer', 'eip155:56', txHex, created.token, tempDir)
+    expect('txHash' in signed).toBe(true)
+    if (!('txHash' in signed)) {
+      throw new Error('Expected an Ethereum signed transaction result')
+    }
+
+    revokeApiKey(created.apiKey.id, tempDir)
+    expect(() => signTransaction('Agent Signer', 'eip155:56', txHex, created.token, tempDir)).toThrow(
+      /credential is invalid/,
+    )
   } finally {
     rmSync(tempDir, { recursive: true, force: true })
   }

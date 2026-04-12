@@ -48,6 +48,14 @@ fn wallet_vault_path(vault_dir: &Path, wallet_id: &str) -> PathBuf {
   vault_dir.join("wallets").join(format!("{wallet_id}.json"))
 }
 
+fn policy_vault_path(vault_dir: &Path, policy_id: &str) -> PathBuf {
+  vault_dir.join("policies").join(format!("{policy_id}.json"))
+}
+
+fn api_key_vault_path(vault_dir: &Path, api_key_id: &str) -> PathBuf {
+  vault_dir.join("keys").join(format!("{api_key_id}.json"))
+}
+
 fn keystore_json_value(wallet: &WalletInfo) -> Value {
   serde_json::to_value(&wallet.keystore).expect("keystore JSON should serialize")
 }
@@ -82,5 +90,6 @@ fn default_tron_derivation_path(index: u32) -> String {
 }
 
 mod derivation;
+mod policy;
 mod signing;
 mod wallet;
