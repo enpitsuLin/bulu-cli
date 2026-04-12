@@ -2,6 +2,7 @@ use tcx_keystore::keystore::IdentityNetwork;
 
 use super::*;
 use crate::chain::{resolve_network, Caip2ChainId};
+use crate::derivation::resolve_derivation;
 
 #[test]
 fn derive_accounts_returns_requested_accounts() {
