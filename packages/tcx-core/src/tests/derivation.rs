@@ -2,7 +2,6 @@ use tcx_keystore::keystore::IdentityNetwork;
 
 use super::*;
 use crate::chain::{resolve_network, Caip2ChainId};
-use crate::derivation::resolve_derivation;
 
 #[test]
 fn derive_accounts_returns_requested_accounts() {
@@ -141,4 +140,12 @@ fn default_derivation_paths_follow_chain_spec() {
   assert_eq!(default_eth_derivation_path(1), "m/44'/60'/0'/0/1");
   assert_eq!(default_tron_derivation_path(0), "m/44'/195'/0'/0/0");
   assert_eq!(default_tron_derivation_path(1), "m/44'/195'/0'/0/1");
+  assert_eq!(default_ton_derivation_path(0), "m/44'/607'/0'");
+  assert_eq!(default_ton_derivation_path(1), "m/44'/607'/1'");
+}
+
+#[test]
+fn default_ton_chain_ids_follow_chain_spec() {
+  assert_eq!(default_ton_mainnet_chain_id(), "ton:-239");
+  assert_eq!(default_ton_testnet_chain_id(), "ton:-3");
 }

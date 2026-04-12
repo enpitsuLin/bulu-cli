@@ -30,8 +30,10 @@ const MNEMONIC = 'inject kidney empty canal shadow pact comfort wife crush horse
 const PRIVATE_KEY = 'a392604efc2fad9c0b3da43b5f698a2e3f270f170d859912be0d54742275c5f6'
 const ETH_MAINNET_CHAIN_ID = 'eip155:1'
 const TRON_MAINNET_CHAIN_ID = 'tron:0x2b6653dc'
+const TON_MAINNET_CHAIN_ID = 'ton:-239'
 const ETH_ACCOUNT_1_DERIVATION_PATH = "m/44'/60'/0'/0/1"
 const TRON_ACCOUNT_1_DERIVATION_PATH = "m/44'/195'/0'/0/1"
+const TON_ACCOUNT_1_DERIVATION_PATH = "m/44'/607'/1'"
 
 function withTempVault(run: (tempDir: string) => void) {
   const tempDir = mkdtempSync(join(tmpdir(), 'tcx-core-wallet-'))
@@ -140,8 +142,12 @@ test('createWallet returns keystore json and default accounts', () => {
     expect(wallet.meta.source).toBe('NEW_MNEMONIC')
     expect(wallet.meta.network).toBe('MAINNET')
     expect(wallet.meta.derivable).toBe(true)
-    expect(wallet.accounts).toHaveLength(2)
-    expect(wallet.accounts.map((account) => account.chainId)).toEqual([ETH_MAINNET_CHAIN_ID, TRON_MAINNET_CHAIN_ID])
+    expect(wallet.accounts).toHaveLength(3)
+    expect(wallet.accounts.map((account) => account.chainId)).toEqual([
+      ETH_MAINNET_CHAIN_ID,
+      TRON_MAINNET_CHAIN_ID,
+      TON_MAINNET_CHAIN_ID,
+    ])
     expect(wallet.keystore.version).toBe(12000)
   })
 })
@@ -173,8 +179,12 @@ test('importWalletMnemonic returns default accounts', () => {
 
     expect(wallet).not.toHaveProperty('mnemonic')
     expect(wallet.meta.source).toBe('MNEMONIC')
-    expect(wallet.accounts).toHaveLength(2)
-    expect(wallet.accounts.map((account) => account.chainId)).toEqual([ETH_MAINNET_CHAIN_ID, TRON_MAINNET_CHAIN_ID])
+    expect(wallet.accounts).toHaveLength(3)
+    expect(wallet.accounts.map((account) => account.chainId)).toEqual([
+      ETH_MAINNET_CHAIN_ID,
+      TRON_MAINNET_CHAIN_ID,
+      TON_MAINNET_CHAIN_ID,
+    ])
   })
 })
 
@@ -188,12 +198,14 @@ test('importWalletMnemonic derives the requested default account index and persi
     expect(indexedWallet.accounts.map((account) => account.derivationPath)).toEqual([
       ETH_ACCOUNT_1_DERIVATION_PATH,
       TRON_ACCOUNT_1_DERIVATION_PATH,
+      TON_ACCOUNT_1_DERIVATION_PATH,
     ])
     expect(indexedWallet.accounts[0]?.address).not.toBe(defaultWallet.accounts[0]?.address)
     expect(persisted.keystore).toEqual(indexedWallet.keystore)
     expect(persisted.accounts.map((account) => account.derivationPath)).toEqual([
       ETH_ACCOUNT_1_DERIVATION_PATH,
       TRON_ACCOUNT_1_DERIVATION_PATH,
+      TON_ACCOUNT_1_DERIVATION_PATH,
     ])
   })
 })
@@ -212,6 +224,21 @@ test('importWalletPrivateKey returns a non-derivable wallet', () => {
     expect(wallet.accounts[0]).not.toHaveProperty('extPubKey')
     expect(wallet.accounts[0]).not.toHaveProperty('publicKey')
     expect(wallet.meta.curve).toBe('secp256k1')
+  })
+})
+
+test('importWalletPrivateKey supports explicit ED25519 wallets for TON', () => {
+  withTempVault((tempDir) => {
+    const wallet = importWalletPrivateKey('Imported TON Private Key', PRIVATE_KEY, PASSWORD, tempDir, {
+      curve: 'ED25519',
+    })
+
+    expect(wallet.meta.source).toBe('PRIVATE')
+    expect(wallet.meta.derivable).toBe(false)
+    expect(wallet.meta.curve).toBe('ed25519')
+    expect(wallet.accounts).toHaveLength(1)
+    expect(wallet.accounts[0]?.chainId).toBe(TON_MAINNET_CHAIN_ID)
+    expect(wallet.accounts[0]?.derivationPath).toBe('')
   })
 })
 
@@ -265,7 +292,11 @@ test('importWalletKeystore renames and persists imported keystores', () => {
 
     expect(wallet.meta.name).toBe('Imported Keystore')
     expect(wallet.keystore.imTokenMeta.name).toBe('Imported Keystore')
-    expect(wallet.accounts.map((account) => account.chainId)).toEqual([ETH_MAINNET_CHAIN_ID, TRON_MAINNET_CHAIN_ID])
+    expect(wallet.accounts.map((account) => account.chainId)).toEqual([
+      ETH_MAINNET_CHAIN_ID,
+      TRON_MAINNET_CHAIN_ID,
+      TON_MAINNET_CHAIN_ID,
+    ])
     expect(persisted.meta.name).toBe('Imported Keystore')
     expect(persisted.keystore.imTokenMeta.name).toBe('Imported Keystore')
   })
@@ -386,6 +417,19 @@ test('signMessage signs Tron messages with default options', () => {
   }
 })
 
+test('signMessage rejects TON messages', () => {
+  const tempDir = mkdtempSync(join(tmpdir(), 'tcx-core-wallet-'))
+  try {
+    importWalletMnemonic('Imported Mnemonic', MNEMONIC, PASSWORD, tempDir)
+
+    expect(() => signMessage('Imported Mnemonic', TON_MAINNET_CHAIN_ID, 'hello world', PASSWORD, tempDir)).toThrow(
+      /TON signMessage is not supported/,
+    )
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true })
+  }
+})
+
 test('signTransaction signs Ethereum transactions', () => {
   const tempDir = mkdtempSync(join(tmpdir(), 'tcx-core-wallet-'))
   try {
@@ -403,15 +447,11 @@ test('signTransaction signs Ethereum transactions', () => {
 
     const signed = signTransaction('Imported Private Key', 'eip155:56', txHex, PASSWORD, tempDir)
 
-    expect('txHash' in signed).toBe(true)
-    if (!('txHash' in signed)) {
-      throw new Error('Expected an Ethereum signed transaction result')
-    }
-
-    expect(signed.txHash).toBe('0x1a3c3947ea626e00d6ff1493bcf929b9320d15ff088046990ef88a45f7d37623')
     expect(signed.signature).toBe(
       'f868088504a817c8088302e248943535353535353535353535353535353535353535820200808194a003479f1d6be72af58b1d60750e155c435e435726b5b690f4d3e59f34bd55e578a0314d2b03d29dc3f87ff95c3427658952add3cf718d3b6b8604068fc3105e4442',
     )
+    expect(signed.txHash).toBe('0x1a3c3947ea626e00d6ff1493bcf929b9320d15ff088046990ef88a45f7d37623')
+    expect(signed.signatures).toBeUndefined()
   } finally {
     rmSync(tempDir, { recursive: true, force: true })
   }
@@ -490,14 +530,36 @@ test('signTransaction signs Tron transactions', () => {
       tempDir,
     )
 
-    expect('signatures' in signed).toBe(true)
-    if (!('signatures' in signed)) {
-      throw new Error('Expected a Tron signed transaction result')
-    }
-
+    expect(signed.signature).toBe(
+      'c65b4bde808f7fcfab7b0ef9c1e3946c83311f8ac0a5e95be2d8b6d2400cfe8b5e24dc8f0883132513e422f2aaad8a4ecc14438eae84b2683eefa626e3adffc601',
+    )
     expect(signed.signatures).toEqual([
       'c65b4bde808f7fcfab7b0ef9c1e3946c83311f8ac0a5e95be2d8b6d2400cfe8b5e24dc8f0883132513e422f2aaad8a4ecc14438eae84b2683eefa626e3adffc601',
     ])
+    expect(signed.txHash).toBeUndefined()
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true })
+  }
+})
+
+test('signTransaction signs TON hashes', () => {
+  const tempDir = mkdtempSync(join(tmpdir(), 'tcx-core-wallet-'))
+  try {
+    importWalletMnemonic('Imported Mnemonic', MNEMONIC, PASSWORD, tempDir)
+
+    const signed = signTransaction(
+      'Imported Mnemonic',
+      TON_MAINNET_CHAIN_ID,
+      '0xd356774c21d6a6e2c651a5255f3f876fa973f1cfb7dce941c14ecabc2b1511d0',
+      PASSWORD,
+      tempDir,
+    )
+
+    expect(signed.signature).toBe(
+      '0x9771c1bf4c69630b69cc0f0ae38db635f4ff1d161badc0f70b257b5a8f6a387cd75b72361ebf67fc5803feccdbb22ade85d053d766ed3b7c7029509363990c02',
+    )
+    expect(signed.txHash).toBeUndefined()
+    expect(signed.signatures).toBeUndefined()
   } finally {
     rmSync(tempDir, { recursive: true, force: true })
   }

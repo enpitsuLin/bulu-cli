@@ -13,9 +13,10 @@ fn create_wallet_returns_keystore_json_and_default_accounts() {
 
   assert_eq!(wallet.meta.source, "NEW_MNEMONIC");
   assert_eq!(wallet.meta.network, "MAINNET");
-  assert_eq!(wallet.accounts.len(), 2);
+  assert_eq!(wallet.accounts.len(), 3);
   assert_eq!(wallet.accounts[0].chain_id, default_eth_mainnet_chain_id());
   assert_eq!(wallet.accounts[1].chain_id, default_tron_mainnet_chain_id());
+  assert_eq!(wallet.accounts[2].chain_id, default_ton_mainnet_chain_id());
   assert_eq!(wallet.meta.version, 12000);
   assert!(wallet.meta.derivable);
   assert_eq!(wallet.keystore.version, 12000);
@@ -79,6 +80,18 @@ fn create_wallet_persists_wallet_info_when_vault_path_is_provided() {
       wallet.accounts[1].address
     )
   );
+  assert_eq!(
+    persisted["accounts"][2]["chainId"],
+    default_ton_mainnet_chain_id()
+  );
+  assert_eq!(
+    persisted["accounts"][2]["accountId"],
+    format!(
+      "{}:{}",
+      default_ton_mainnet_chain_id(),
+      wallet.accounts[2].address
+    )
+  );
 
   let _ = fs::remove_dir_all(vault_dir);
 }
@@ -97,7 +110,7 @@ fn import_wallet_mnemonic_returns_default_accounts() {
 
   assert_eq!(wallet.meta.source, "MNEMONIC");
   assert_eq!(wallet.meta.network, "MAINNET");
-  assert_eq!(wallet.accounts.len(), 2);
+  assert_eq!(wallet.accounts.len(), 3);
   assert_eq!(wallet.accounts[0].chain_id, default_eth_mainnet_chain_id());
   assert_eq!(
     wallet.accounts[0].account_id,
@@ -114,6 +127,15 @@ fn import_wallet_mnemonic_returns_default_accounts() {
       "{}:{}",
       default_tron_mainnet_chain_id(),
       wallet.accounts[1].address
+    )
+  );
+  assert_eq!(wallet.accounts[2].chain_id, default_ton_mainnet_chain_id());
+  assert_eq!(
+    wallet.accounts[2].account_id,
+    format!(
+      "{}:{}",
+      default_ton_mainnet_chain_id(),
+      wallet.accounts[2].address
     )
   );
 
@@ -151,6 +173,10 @@ fn import_wallet_mnemonic_uses_index_for_default_derivations_and_persists_wallet
     indexed_wallet.accounts[1].derivation_path,
     default_tron_derivation_path(1)
   );
+  assert_eq!(
+    indexed_wallet.accounts[2].derivation_path,
+    default_ton_derivation_path(1)
+  );
   assert_ne!(
     indexed_wallet.accounts[0].address,
     default_wallet.accounts[0].address
@@ -163,6 +189,10 @@ fn import_wallet_mnemonic_uses_index_for_default_derivations_and_persists_wallet
   assert_eq!(
     persisted["accounts"][1]["derivationPath"],
     default_tron_derivation_path(1)
+  );
+  assert_eq!(
+    persisted["accounts"][2]["derivationPath"],
+    default_ton_derivation_path(1)
   );
 
   let _ = fs::remove_dir_all(default_vault_dir);
@@ -212,6 +242,40 @@ fn import_wallet_private_key_returns_non_derivable_accounts() {
 }
 
 #[test]
+fn import_wallet_ed25519_private_key_returns_ton_account() {
+  let (vault_dir, vault_path) = temp_vault("import-ed25519-private-key");
+  let wallet = import_wallet_private_key(
+    "Imported TON private key".to_string(),
+    TEST_PRIVATE_KEY.to_string(),
+    TEST_PASSWORD.to_string(),
+    vault_path,
+    Some(Either::B(PrivateKeyImportOptions {
+      curve: Some(PrivateKeyImportCurve::Ed25519),
+    })),
+  )
+  .expect("ed25519 private key import should succeed");
+
+  assert_eq!(wallet.meta.source, "PRIVATE");
+  assert_eq!(wallet.meta.network, "MAINNET");
+  assert_eq!(wallet.accounts.len(), 1);
+  assert_eq!(wallet.accounts[0].chain_id, default_ton_mainnet_chain_id());
+  assert_eq!(
+    wallet.accounts[0].account_id,
+    format!(
+      "{}:{}",
+      default_ton_mainnet_chain_id(),
+      wallet.accounts[0].address
+    )
+  );
+  assert_eq!(wallet.accounts[0].derivation_path, "");
+  assert_eq!(wallet.meta.version, 12001);
+  assert_eq!(wallet.meta.curve.as_deref(), Some("ed25519"));
+  assert!(!wallet.meta.derivable);
+
+  let _ = fs::remove_dir_all(vault_dir);
+}
+
+#[test]
 fn import_wallet_private_key_persists_wallet_info_and_ignores_index() {
   let (vault_dir, vault_path) = temp_vault("import-private-key");
   let wallet = import_wallet_private_key(
@@ -219,7 +283,7 @@ fn import_wallet_private_key_persists_wallet_info_and_ignores_index() {
     TEST_PRIVATE_KEY.to_string(),
     TEST_PASSWORD.to_string(),
     vault_path,
-    Some(9),
+    Some(Either::A(9)),
   )
   .expect("private key import should succeed");
   let wallet_path = wallet_vault_path(&vault_dir, &wallet.meta.id);
@@ -333,7 +397,7 @@ fn import_wallet_keystore_renames_and_persists_wallet() {
 
   assert_eq!(wallet.meta.name, "Imported keystore");
   assert_eq!(wallet.keystore.meta.name, "Imported keystore");
-  assert_eq!(wallet.accounts.len(), 2);
+  assert_eq!(wallet.accounts.len(), 3);
   assert_eq!(persisted["meta"]["name"], "Imported keystore");
   assert_eq!(
     persisted["keystore"]["imTokenMeta"]["name"],

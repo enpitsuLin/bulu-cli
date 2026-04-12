@@ -73,12 +73,24 @@ fn default_tron_mainnet_chain_id() -> &'static str {
   Chain::Tron.default_chain_id(IdentityNetwork::Mainnet)
 }
 
+fn default_ton_mainnet_chain_id() -> &'static str {
+  Chain::Ton.default_chain_id(IdentityNetwork::Mainnet)
+}
+
+fn default_ton_testnet_chain_id() -> &'static str {
+  Chain::Ton.default_chain_id(IdentityNetwork::Testnet)
+}
+
 fn default_eth_derivation_path(index: u32) -> String {
   Chain::Ethereum.default_derivation_path(index)
 }
 
 fn default_tron_derivation_path(index: u32) -> String {
   Chain::Tron.default_derivation_path(index)
+}
+
+fn default_ton_derivation_path(index: u32) -> String {
+  Chain::Ton.default_derivation_path(index)
 }
 
 mod derivation;

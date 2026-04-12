@@ -61,6 +61,33 @@ fn sign_message_signs_tron_messages() {
 }
 
 #[test]
+fn sign_message_rejects_ton_messages() {
+  let vault_dir = temp_vault_dir("sign-ton-message");
+  let vault_path = vault_dir.to_string_lossy().into_owned();
+  let wallet = import_wallet_mnemonic(
+    "Imported mnemonic".to_string(),
+    TEST_MNEMONIC.to_string(),
+    TEST_PASSWORD.to_string(),
+    vault_path.clone(),
+    None,
+  )
+  .expect("mnemonic import should succeed");
+
+  let err = sign_message(
+    wallet.meta.name,
+    default_ton_mainnet_chain_id().to_string(),
+    "hello world".to_string(),
+    TEST_PASSWORD.to_string(),
+    vault_path,
+  )
+  .expect_err("TON signMessage should be unsupported");
+
+  assert_eq!(err.reason, "TON signMessage is not supported");
+
+  let _ = fs::remove_dir_all(vault_dir);
+}
+
+#[test]
 fn sign_transaction_signs_ethereum_transactions() {
   let vault_dir = temp_vault_dir("sign-eth-transaction");
   let vault_path = vault_dir.to_string_lossy().into_owned();
@@ -96,18 +123,12 @@ fn sign_transaction_signs_ethereum_transactions() {
   )
   .expect("ethereum transaction signing should succeed");
 
-  let Either::A(signed) = signed else {
-    panic!("expected an Ethereum signed transaction");
-  };
-
+  assert_eq!(signed.signature, "f868088504a817c8088302e248943535353535353535353535353535353535353535820200808194a003479f1d6be72af58b1d60750e155c435e435726b5b690f4d3e59f34bd55e578a0314d2b03d29dc3f87ff95c3427658952add3cf718d3b6b8604068fc3105e4442");
   assert_eq!(
-    signed.tx_hash,
-    "0x1a3c3947ea626e00d6ff1493bcf929b9320d15ff088046990ef88a45f7d37623"
+    signed.tx_hash.as_deref(),
+    Some("0x1a3c3947ea626e00d6ff1493bcf929b9320d15ff088046990ef88a45f7d37623")
   );
-  assert_eq!(
-    signed.signature,
-    "f868088504a817c8088302e248943535353535353535353535353535353535353535820200808194a003479f1d6be72af58b1d60750e155c435e435726b5b690f4d3e59f34bd55e578a0314d2b03d29dc3f87ff95c3427658952add3cf718d3b6b8604068fc3105e4442"
-  );
+  assert_eq!(signed.signatures, None);
 
   let _ = fs::remove_dir_all(vault_dir);
 }
@@ -192,18 +213,12 @@ fn sign_transaction_signs_ethereum_eip1559_transaction_hex() {
   )
   .expect("eip1559 transaction signing should succeed");
 
-  let Either::A(signed) = signed else {
-    panic!("expected an Ethereum signed transaction");
-  };
-
+  assert_eq!(signed.signature, "02f875010881e285faac6c45d88210be943535353535353535353535353535353535353535833542398a200184c0486d5f082a27c001a0602501c9cfedf145810f9b54558de6cf866a89b7a65890ccde19dd6cec1fe32ca02769f3382ee526a372241238922da39f6283a9613215fd98c8ce37a0d03fa3bb");
   assert_eq!(
-    signed.tx_hash,
-    "0x9a427f295369171f686d83a05b92d8849b822f1fa1c9ccb853e81de545f4625b"
+    signed.tx_hash.as_deref(),
+    Some("0x9a427f295369171f686d83a05b92d8849b822f1fa1c9ccb853e81de545f4625b")
   );
-  assert_eq!(
-    signed.signature,
-    "02f875010881e285faac6c45d88210be943535353535353535353535353535353535353535833542398a200184c0486d5f082a27c001a0602501c9cfedf145810f9b54558de6cf866a89b7a65890ccde19dd6cec1fe32ca02769f3382ee526a372241238922da39f6283a9613215fd98c8ce37a0d03fa3bb"
-  );
+  assert_eq!(signed.signatures, None);
 
   let _ = fs::remove_dir_all(vault_dir);
 }
@@ -230,17 +245,49 @@ fn sign_transaction_signs_tron_transactions() {
   )
   .expect("tron transaction signing should succeed");
 
-  let Either::B(signed) = signed else {
-    panic!("expected a Tron signed transaction");
-  };
-
+  let expected_signature =
+    "c65b4bde808f7fcfab7b0ef9c1e3946c83311f8ac0a5e95be2d8b6d2400cfe8b5e24dc8f0883132513e422f2aaad8a4ecc14438eae84b2683eefa626e3adffc601";
+  assert_eq!(signed.signature, expected_signature);
+  assert_eq!(signed.tx_hash, None);
   assert_eq!(
     signed.signatures,
-    vec![
+    Some(vec![
       "c65b4bde808f7fcfab7b0ef9c1e3946c83311f8ac0a5e95be2d8b6d2400cfe8b5e24dc8f0883132513e422f2aaad8a4ecc14438eae84b2683eefa626e3adffc601"
         .to_string()
-    ]
+    ])
   );
+
+  let _ = fs::remove_dir_all(vault_dir);
+}
+
+#[test]
+fn sign_transaction_signs_ton_hashes() {
+  let vault_dir = temp_vault_dir("sign-ton-transaction");
+  let vault_path = vault_dir.to_string_lossy().into_owned();
+  let wallet = import_wallet_mnemonic(
+    "Imported mnemonic".to_string(),
+    TEST_MNEMONIC.to_string(),
+    TEST_PASSWORD.to_string(),
+    vault_path.clone(),
+    None,
+  )
+  .expect("mnemonic import should succeed");
+
+  let signed = sign_transaction(
+    wallet.meta.name,
+    default_ton_mainnet_chain_id().to_string(),
+    "0xd356774c21d6a6e2c651a5255f3f876fa973f1cfb7dce941c14ecabc2b1511d0".to_string(),
+    TEST_PASSWORD.to_string(),
+    vault_path,
+  )
+  .expect("TON transaction signing should succeed");
+
+  assert_eq!(
+    signed.signature,
+    "0x9771c1bf4c69630b69cc0f0ae38db635f4ff1d161badc0f70b257b5a8f6a387cd75b72361ebf67fc5803feccdbb22ade85d053d766ed3b7c7029509363990c02"
+  );
+  assert_eq!(signed.tx_hash, None);
+  assert_eq!(signed.signatures, None);
 
   let _ = fs::remove_dir_all(vault_dir);
 }
