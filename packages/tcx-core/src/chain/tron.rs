@@ -8,9 +8,9 @@ use tcx_tron::transaction::{
 };
 
 use crate::derivation::ResolvedDerivation;
-use crate::error::{CoreResult, ResultExt};
+use crate::error::{CoreError, CoreResult, ResultExt};
 use crate::strings::strip_hex_prefix;
-use crate::types::{SignedMessage, TronMessageInput, TronSignedTransaction};
+use crate::types::{SignedMessage, TronMessageInput};
 
 use super::SignedTransaction;
 
@@ -63,7 +63,14 @@ pub(crate) fn sign_transaction(
     seg_wit: String::new(),
   };
   let signed: TcxTronTxOutput = keystore.sign_transaction(&params, &tx).map_core_err()?;
-  Ok(SignedTransaction::Tron(TronSignedTransaction {
-    signatures: signed.signatures,
-  }))
+  let signature = signed
+    .signatures
+    .first()
+    .cloned()
+    .ok_or_else(|| CoreError::new("Tron signer returned no signatures"))?;
+  Ok(SignedTransaction {
+    signature,
+    tx_hash: None,
+    signatures: Some(signed.signatures),
+  })
 }

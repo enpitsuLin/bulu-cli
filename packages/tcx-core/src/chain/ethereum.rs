@@ -13,7 +13,7 @@ use tcx_keystore::{
 use crate::chain::Caip2ChainId;
 use crate::derivation::ResolvedDerivation;
 use crate::error::{CoreError, CoreResult, ResultExt};
-use crate::types::{EthMessageInput, EthMessageSignatureType, EthSignedTransaction, SignedMessage};
+use crate::types::{EthMessageInput, EthMessageSignatureType, SignedMessage};
 
 use super::SignedTransaction;
 
@@ -74,10 +74,11 @@ pub(crate) fn sign_transaction(
     seg_wit: String::new(),
   };
   let signed: TcxEthTxOutput = keystore.sign_transaction(&params, &tx).map_core_err()?;
-  Ok(SignedTransaction::Ethereum(EthSignedTransaction {
+  Ok(SignedTransaction {
     signature: signed.signature,
-    tx_hash: signed.tx_hash,
-  }))
+    tx_hash: Some(signed.tx_hash),
+    signatures: None,
+  })
 }
 
 fn parse_legacy_transaction(
