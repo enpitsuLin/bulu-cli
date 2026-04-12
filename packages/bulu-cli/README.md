@@ -1,6 +1,6 @@
 # @bulu-cli/core
 
-`@bulu-cli/core` provides the `bulu` command-line tool for managing local Ethereum and Tron wallets.
+`@bulu-cli/core` provides the `bulu` command-line tool for managing local Ethereum, Tron, and TON wallets.
 
 ## Install
 
