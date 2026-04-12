@@ -1,13 +1,14 @@
 import { listWallet, type WalletInfo } from '@bulu-cli/tcx-core'
 import { defineCommand } from 'citty'
-import { getVaultPath } from '../../core/config'
+import { getActiveWallet, getVaultPath } from '../../core/config'
 import { createOutput, resolveOutputOptions } from '../../core/output'
 import { withDefaultArgs } from '../../core/args-def'
+import { styleText } from 'node:util'
 
-function formatWalletsForTable(wallets: WalletInfo[]) {
+function formatWalletsForTable(wallets: WalletInfo[], activeWallet?: string) {
   return wallets.map((w) => ({
     Name: w.meta.name,
-    ID: w.meta.id.slice(0, 16) + '...',
+    Active: w.meta.name === activeWallet ? styleText('cyan', '●') : '',
     Network: w.meta.network,
     Source: w.meta.source,
     Derivable: w.meta.derivable ? 'Yes' : 'No',
@@ -28,10 +29,11 @@ export default defineCommand({
       return
     }
 
-    const rows = formatWalletsForTable(wallets)
+    const activeWallet = getActiveWallet()
+    const rows = formatWalletsForTable(wallets, activeWallet)
     output.table(rows, {
-      columns: ['Name', 'ID', 'Network', 'Source', 'Derivable', 'Accounts'],
-      title: `Wallets (${wallets.length})`,
+      columns: ['Name', 'Active', 'Network', 'Source', 'Derivable', 'Accounts'],
+      title: `Wallets (${wallets.length})${activeWallet ? ` - Active: ${activeWallet}` : ''}`,
     })
   },
 })

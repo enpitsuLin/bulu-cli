@@ -3,7 +3,7 @@ import { importWalletKeystore, importWalletMnemonic, importWalletPrivateKey } fr
 import { defineCommand } from 'citty'
 import { styleText } from 'node:util'
 import { readFileSync } from 'node:fs'
-import { getVaultPath } from '../../core/config'
+import { getVaultPath, setActiveWallet } from '../../core/config'
 import { resolveTCXPassphrase } from '../../core/tcx'
 import { createOutput, resolveOutputOptions } from '../../core/output'
 import { withDefaultArgs } from '../../core/args-def'
@@ -119,12 +119,8 @@ export default defineCommand({
           process.exit(6)
         }
         wallet = importWalletMnemonic(name, value, passphrase, vaultPath, index)
-        out.data(formatWalletOutput(wallet))
-        return
-      }
-
-      // Keystore import (interactive)
-      if (args.keystore) {
+      } else if (args.keystore) {
+        // Keystore import (interactive)
         const clack = await import('@clack/prompts')
         const value = await clack.text({
           message: 'Enter keystore JSON:',
@@ -135,43 +131,42 @@ export default defineCommand({
           process.exit(6)
         }
         wallet = importWalletKeystore(name, value, passphrase, vaultPath)
-        out.data(formatWalletOutput(wallet))
-        return
-      }
-
-      // Read secret from source
-      let secret: string
-      if (args.file) {
-        secret = readFileSync(args.file, 'utf-8').trim()
-      } else if (args.key) {
-        console.error(styleText('yellow', 'Warning: Private key in CLI args is visible in shell history.'))
-        secret = args.key
-      } else if (process.stdin.isTTY) {
-        const clack = await import('@clack/prompts')
-        const value = await clack.password({ message: 'Enter private key or mnemonic:' })
-        if (!value || typeof value === 'symbol') {
-          out.warn('No key provided')
-          process.exit(6)
+      } else {
+        // Read secret from source
+        let secret: string
+        if (args.file) {
+          secret = readFileSync(args.file, 'utf-8').trim()
+        } else if (args.key) {
+          console.error(styleText('yellow', 'Warning: Private key in CLI args is visible in shell history.'))
+          secret = args.key
+        } else if (process.stdin.isTTY) {
+          const clack = await import('@clack/prompts')
+          const value = await clack.password({ message: 'Enter private key or mnemonic:' })
+          if (!value || typeof value === 'symbol') {
+            out.warn('No key provided')
+            process.exit(6)
+          }
+          secret = value
+        } else {
+          secret = await readSecretFromStdin()
         }
-        secret = value
-      } else {
-        secret = await readSecretFromStdin()
+
+        if (!secret) {
+          out.warn('No key or mnemonic provided')
+          process.exit(1)
+        }
+
+        // Detect if the secret looks like a mnemonic
+        const isMnemonic = detectIsMnemonic(secret)
+
+        if (isMnemonic) {
+          wallet = importWalletMnemonic(name, secret, passphrase, vaultPath, index)
+        } else {
+          wallet = importWalletPrivateKey(name, secret, passphrase, vaultPath)
+        }
       }
 
-      if (!secret) {
-        out.warn('No key or mnemonic provided')
-        process.exit(1)
-      }
-
-      // Detect if the secret looks like a mnemonic
-      const isMnemonic = detectIsMnemonic(secret)
-
-      if (isMnemonic) {
-        wallet = importWalletMnemonic(name, secret, passphrase, vaultPath, index)
-      } else {
-        wallet = importWalletPrivateKey(name, secret, passphrase, vaultPath)
-      }
-
+      setActiveWallet(wallet.meta.name)
       out.data(formatWalletOutput(wallet))
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)

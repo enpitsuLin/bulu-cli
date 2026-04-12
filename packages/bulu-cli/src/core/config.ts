@@ -167,3 +167,15 @@ export function setConfigValueByPath(config: UserConfig, keyPath: string, value:
 
   current[segments[segments.length - 1]] = value
 }
+
+export function getActiveWallet(cwd?: string): string | undefined {
+  const config = loadBuluConfigSync(cwd)
+  return config.default?.wallet
+}
+
+export function setActiveWallet(name: string, cwd?: string): void {
+  const configDir = cwd ?? getConfigDir()
+  const userConfig = loadUserConfigSync(configDir)
+  setConfigValueByPath(userConfig, 'default.wallet', name)
+  saveUserConfigSync(userConfig, configDir)
+}
