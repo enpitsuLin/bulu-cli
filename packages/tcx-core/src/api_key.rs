@@ -172,3 +172,159 @@ pub(crate) struct ParsedApiToken {
   pub(crate) api_key_id: String,
   pub(crate) secret: Vec<u8>,
 }
+
+#[cfg(test)]
+mod tests {
+  use std::env;
+  use std::fs;
+  use std::path::{Path, PathBuf};
+  use std::time::{SystemTime, UNIX_EPOCH};
+
+  use tcx_keystore::keystore::IdentityNetwork;
+
+  use super::{create_api_key, get_api_key, list_api_keys, revoke_api_key};
+  use crate::chain::Chain;
+  use crate::policy::{create_policy, delete_policy};
+  use crate::types::{PolicyCreateInput, PolicyRule};
+  use crate::wallet::{delete_wallet, import_wallet_mnemonic};
+
+  const TEST_PASSWORD: &str = "imToken";
+  const TEST_MNEMONIC: &str =
+    "inject kidney empty canal shadow pact comfort wife crush horse wife sketch";
+
+  fn temp_vault_dir(test_name: &str) -> PathBuf {
+    let timestamp = SystemTime::now()
+      .duration_since(UNIX_EPOCH)
+      .expect("system clock should be after Unix epoch")
+      .as_nanos();
+
+    env::temp_dir().join(format!(
+      "tcx-core-{test_name}-{}-{timestamp}",
+      std::process::id()
+    ))
+  }
+
+  fn temp_vault(test_name: &str) -> (PathBuf, String) {
+    let vault_dir = temp_vault_dir(test_name);
+    let vault_path = vault_dir.to_string_lossy().into_owned();
+    (vault_dir, vault_path)
+  }
+
+  fn read_vault_text(path: &Path) -> String {
+    fs::read_to_string(path).expect("vault JSON should be readable")
+  }
+
+  fn api_key_vault_path(vault_dir: &Path, api_key_id: &str) -> PathBuf {
+    vault_dir.join("keys").join(format!("{api_key_id}.json"))
+  }
+
+  fn default_eth_mainnet_chain_id() -> &'static str {
+    Chain::Ethereum.default_chain_id(IdentityNetwork::Mainnet)
+  }
+
+  fn allowed_chain_rule(chain_id: &str) -> PolicyRule {
+    PolicyRule {
+      rule_type: "allowed_chains".to_string(),
+      chain_ids: Some(vec![chain_id.to_string()]),
+      timestamp: None,
+    }
+  }
+
+  #[test]
+  fn create_api_key_persists_without_storing_plaintext_token() {
+    let (vault_dir, vault_path) = temp_vault("api-key-create");
+    let wallet = import_wallet_mnemonic(
+      "API wallet".to_string(),
+      TEST_MNEMONIC.to_string(),
+      TEST_PASSWORD.to_string(),
+      vault_path.clone(),
+      None,
+    )
+    .expect("wallet import should succeed");
+    let policy = create_policy(
+      PolicyCreateInput {
+        name: "ETH only".to_string(),
+        rules: vec![allowed_chain_rule(default_eth_mainnet_chain_id())],
+      },
+      vault_path.clone(),
+    )
+    .expect("policy creation should succeed");
+
+    let created = create_api_key(
+      "Claude".to_string(),
+      vec![wallet.meta.id.clone()],
+      vec![policy.id.clone()],
+      TEST_PASSWORD.to_string(),
+      None,
+      Some(vault_path.clone()),
+    )
+    .expect("API key creation should succeed");
+
+    assert!(created
+      .token
+      .starts_with(&format!("bulu_key_{}_", created.api_key.id)));
+
+    let listed = list_api_keys(vault_path.clone()).expect("API keys should list");
+    assert_eq!(listed, vec![created.api_key.clone()]);
+
+    let loaded =
+      get_api_key(created.api_key.id.clone(), vault_path.clone()).expect("API key should load");
+    assert_eq!(loaded, created.api_key);
+
+    let persisted = read_vault_text(&api_key_vault_path(&vault_dir, &created.api_key.id));
+    assert!(persisted.contains("\"tokenHash\""));
+    assert!(!persisted.contains(&created.token));
+
+    let _ = fs::remove_dir_all(vault_dir);
+  }
+
+  #[test]
+  fn delete_policy_and_wallet_reject_when_api_key_still_references_them() {
+    let (vault_dir, vault_path) = temp_vault("api-key-reference-guards");
+    let wallet = import_wallet_mnemonic(
+      "Treasury".to_string(),
+      TEST_MNEMONIC.to_string(),
+      TEST_PASSWORD.to_string(),
+      vault_path.clone(),
+      None,
+    )
+    .expect("wallet import should succeed");
+    let policy = create_policy(
+      PolicyCreateInput {
+        name: "Guarded".to_string(),
+        rules: vec![allowed_chain_rule(default_eth_mainnet_chain_id())],
+      },
+      vault_path.clone(),
+    )
+    .expect("policy creation should succeed");
+    let api_key = create_api_key(
+      "guard".to_string(),
+      vec![wallet.meta.id.clone()],
+      vec![policy.id.clone()],
+      TEST_PASSWORD.to_string(),
+      None,
+      Some(vault_path.clone()),
+    )
+    .expect("API key creation should succeed");
+
+    let delete_policy_err = delete_policy(policy.id.clone(), vault_path.clone())
+      .expect_err("referenced policy should fail");
+    assert_eq!(
+      delete_policy_err.to_string(),
+      "Policy \"Guarded\" is still referenced by an API key"
+    );
+
+    let delete_wallet_err = delete_wallet(wallet.meta.id.clone(), vault_path.clone())
+      .expect_err("referenced wallet should fail");
+    assert_eq!(
+      delete_wallet_err.to_string(),
+      "Wallet \"Treasury\" is still referenced by an API key"
+    );
+
+    revoke_api_key(api_key.api_key.id, vault_path.clone()).expect("API key revoke should succeed");
+    delete_policy(policy.id, vault_path.clone()).expect("policy delete should succeed");
+    delete_wallet(wallet.meta.id, vault_path.clone()).expect("wallet delete should succeed");
+
+    let _ = fs::remove_dir_all(vault_dir);
+  }
+}

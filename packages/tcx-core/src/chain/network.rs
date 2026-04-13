@@ -19,3 +19,21 @@ pub(crate) fn resolve_network(
     None => Ok(fallback_network),
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use tcx_keystore::keystore::IdentityNetwork;
+
+  use super::resolve_network;
+
+  #[test]
+  fn resolve_network_uses_override_or_wallet_network() {
+    let fallback = resolve_network(IdentityNetwork::Mainnet, None)
+      .expect("missing override should use wallet network");
+    assert_eq!(fallback, IdentityNetwork::Mainnet);
+
+    let testnet = resolve_network(IdentityNetwork::Mainnet, Some("TESTNET".to_string()))
+      .expect("override should win");
+    assert_eq!(testnet, IdentityNetwork::Testnet);
+  }
+}

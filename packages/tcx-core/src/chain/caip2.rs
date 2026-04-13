@@ -79,3 +79,44 @@ impl Display for Caip2ChainId {
     f.write_str(self.as_str())
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use super::Caip2ChainId;
+
+  #[test]
+  fn caip2_chain_id_normalizes_namespace_to_lowercase() {
+    let chain_id = Caip2ChainId::parse("EIP155:1").expect("chain id should parse");
+
+    assert_eq!(chain_id.to_string(), "eip155:1");
+  }
+
+  #[test]
+  fn caip2_chain_id_rejects_invalid_reference_shapes() {
+    let err = Caip2ChainId::parse("eip155:1:extra").expect_err("multiple separators should fail");
+    assert_eq!(
+      err.to_string(),
+      "chainId must be a valid CAIP-2 chain id, received `eip155:1:extra`"
+    );
+
+    let err = Caip2ChainId::parse("eip155:bad/reference")
+      .expect_err("invalid reference characters should fail");
+    assert_eq!(
+      err.to_string(),
+      "chainId must be a valid CAIP-2 chain id, received `eip155:bad/reference`"
+    );
+  }
+
+  #[test]
+  fn caip2_chain_id_rejects_non_numeric_eip155_reference() {
+    let err = Caip2ChainId::parse("eip155:sepolia")
+      .expect("chain id should parse structurally")
+      .ethereum_reference()
+      .expect_err("non-numeric eip155 reference should fail");
+
+    assert_eq!(
+      err.to_string(),
+      "chainId must use a numeric eip155 reference, received `eip155:sepolia`"
+    );
+  }
+}

@@ -21,6 +21,3 @@ pub use napi::{
   load_wallet, revoke_api_key, sign_message, sign_transaction,
 };
 pub use types::*;
-
-#[cfg(test)]
-mod tests;
