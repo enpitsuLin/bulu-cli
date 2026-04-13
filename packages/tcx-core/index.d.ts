@@ -293,10 +293,10 @@ export interface PolicyInfo {
   version: number
   /** Creation time in Unix seconds. */
   createdAt: number
-  /** Policy action. v1 always uses `DENY`. */
-  action: string
   /** Declarative rules evaluated for this policy. */
   rules: Array<PolicyRule>
+  /** Policy action. v1 always uses `deny`. */
+  action: string
 }
 
 /** Declarative policy rule used during agent-mode signing. */

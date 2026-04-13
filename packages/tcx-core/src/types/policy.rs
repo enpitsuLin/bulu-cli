@@ -44,8 +44,8 @@ pub struct PolicyInfo {
   /// Creation time in Unix seconds.
   #[napi(js_name = "createdAt")]
   pub created_at: i64,
-  /// Policy action. v1 always uses `DENY`.
-  pub action: String,
   /// Declarative rules evaluated for this policy.
   pub rules: Vec<PolicyRule>,
+  /// Policy action. v1 always uses `deny`.
+  pub action: String,
 }

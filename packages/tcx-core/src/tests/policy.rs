@@ -33,7 +33,8 @@ fn policy_crud_round_trips_and_rejects_duplicate_names() {
 
   let persisted = read_vault_json(&policy_vault_path(&vault_dir, &policy.id));
   assert_eq!(persisted["name"], "Base only");
-  assert_eq!(persisted["action"], "DENY");
+  assert_eq!(persisted["action"], "deny");
+  assert!(persisted["createdAt"].is_i64());
 
   let loaded = get_policy(policy.id.clone(), vault_path.clone()).expect("policy should load");
   assert_eq!(loaded, policy);

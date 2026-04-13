@@ -98,8 +98,8 @@ pub(crate) fn create_policy(
     name: normalized_name,
     version: 1,
     created_at: now_timestamp(),
-    action: "DENY".to_string(),
     rules: normalized_rules,
+    action: "deny".to_string(),
   };
   vault.save_policy(&policy)?;
   Ok(policy)
