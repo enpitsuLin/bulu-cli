@@ -1,4 +1,4 @@
-use napi::Either;
+use ::napi::Either;
 use serde_json::Value;
 use std::env;
 use std::fs;
