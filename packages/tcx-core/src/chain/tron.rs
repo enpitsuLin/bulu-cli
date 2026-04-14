@@ -92,7 +92,6 @@ impl ChainSigner for TronSigner {
       .map_core_err()?;
     Ok(SignedTransactionResult {
       signature: signature.to_hex(),
-      raw_transaction: None,
     })
   }
 }

@@ -14,7 +14,4 @@ pub struct SignedMessage {
 pub struct SignedTransactionResult {
   /// Hex-encoded recoverable signature (65 bytes).
   pub signature: String,
-  /// For chains that embed the signature into the transaction (e.g. EVM),
-  /// this is the complete encoded signed transaction ready for broadcast.
-  pub raw_transaction: Option<String>,
 }

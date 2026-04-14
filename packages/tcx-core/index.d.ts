@@ -275,11 +275,6 @@ export interface SignedMessage {
 export interface SignedTransactionResult {
   /** Hex-encoded recoverable signature (65 bytes). */
   signature: string
-  /**
-   * For chains that embed the signature into the transaction (e.g. EVM),
-   * this is the complete encoded signed transaction ready for broadcast.
-   */
-  rawTransaction?: string
 }
 
 /**

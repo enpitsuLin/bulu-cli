@@ -409,9 +409,6 @@ test('signTransaction signs Ethereum transactions', () => {
     expect(signed.signature).toBe(
       '0x03479f1d6be72af58b1d60750e155c435e435726b5b690f4d3e59f34bd55e578314d2b03d29dc3f87ff95c3427658952add3cf718d3b6b8604068fc3105e444201',
     )
-    expect(signed.rawTransaction).toBe(
-      'f868088504a817c8088302e248943535353535353535353535353535353535353535820200808194a003479f1d6be72af58b1d60750e155c435e435726b5b690f4d3e59f34bd55e578a0314d2b03d29dc3f87ff95c3427658952add3cf718d3b6b8604068fc3105e4442',
-    )
   } finally {
     rmSync(tempDir, { recursive: true, force: true })
   }
@@ -493,7 +490,6 @@ test('signTransaction signs Tron transactions', () => {
     expect(signed.signature).toBe(
       'c65b4bde808f7fcfab7b0ef9c1e3946c83311f8ac0a5e95be2d8b6d2400cfe8b5e24dc8f0883132513e422f2aaad8a4ecc14438eae84b2683eefa626e3adffc601',
     )
-    expect(signed.rawTransaction).toBeUndefined()
   } finally {
     rmSync(tempDir, { recursive: true, force: true })
   }
@@ -535,9 +531,6 @@ test('createApiKey and signTransaction reuse the original signing entrypoints', 
     const signed = signTransaction('Agent Signer', 'eip155:56', txHex, created.token, tempDir)
     expect(signed.signature).toBe(
       '0x03479f1d6be72af58b1d60750e155c435e435726b5b690f4d3e59f34bd55e578314d2b03d29dc3f87ff95c3427658952add3cf718d3b6b8604068fc3105e444201',
-    )
-    expect(signed.rawTransaction).toBe(
-      'f868088504a817c8088302e248943535353535353535353535353535353535353535820200808194a003479f1d6be72af58b1d60750e155c435e435726b5b690f4d3e59f34bd55e578a0314d2b03d29dc3f87ff95c3427658952add3cf718d3b6b8604068fc3105e4442',
     )
 
     revokeApiKey(created.apiKey.id, tempDir)

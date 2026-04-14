@@ -42,20 +42,6 @@ pub(crate) trait ChainSigner: std::fmt::Debug + Send + Sync {
     derivation_path: &str,
     tx_bytes: &[u8],
   ) -> CoreResult<SignedTransactionResult>;
-
-  /// Assemble the fully-encoded signed transaction ready for broadcast.
-  /// Chains that do not support this must explicitly override and return `Ok(None)`.
-  fn encode_signed_transaction(
-    &self,
-    chain_id: &Caip2ChainId,
-    tx_bytes: &[u8],
-    signature: &[u8],
-  ) -> CoreResult<Option<String>> {
-    let _ = (chain_id, tx_bytes, signature);
-    Err(crate::error::CoreError::new(
-      "encode_signed_transaction is not implemented for this chain",
-    ))
-  }
 }
 
 pub(crate) const ALL_SIGNERS: &[&'static (dyn ChainSigner + Send + Sync)] =

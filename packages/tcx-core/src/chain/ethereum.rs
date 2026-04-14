@@ -3,7 +3,7 @@ use tcx_common::{keccak256, parse_u64, ToHex};
 use tcx_constants::CurveType;
 use tcx_eth::address::EthAddress;
 use tcx_eth::transaction::{AccessList as TcxEthAccessList, EthTxInput as TcxEthTxInput};
-use tcx_eth::transaction_types::{Signature, Transaction};
+use tcx_eth::transaction_types::Transaction;
 use tcx_keystore::keystore::IdentityNetwork;
 use tcx_keystore::{Keystore as TcxKeystore, Signer};
 
@@ -92,21 +92,7 @@ impl ChainSigner for EthereumSigner {
       .map_core_err()?;
     Ok(SignedTransactionResult {
       signature: format!("0x{}", sign_result.to_hex()),
-      raw_transaction: None,
     })
-  }
-
-  fn encode_signed_transaction(
-    &self,
-    chain_id: &Caip2ChainId,
-    tx_bytes: &[u8],
-    signature: &[u8],
-  ) -> CoreResult<Option<String>> {
-    let tx_input = prepare_eth_transaction(tx_bytes, chain_id)?;
-    let tx: Transaction = (&tx_input).try_into().map_core_err()?;
-    let sig = Signature::from_slice(signature).map_core_err()?;
-    let signed_tx = tx.to_signed_tx(sig);
-    Ok(Some(signed_tx.raw().to_hex()))
   }
 }
 
