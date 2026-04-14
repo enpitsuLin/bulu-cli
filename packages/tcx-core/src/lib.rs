@@ -1,20 +1,32 @@
 #![deny(clippy::all)]
 
-mod api_key;
+// Infrastructure
+mod error;
+mod strings;
+mod utils;
+
+// Data types
+mod types;
+
+// Persistence
+mod vault;
+
+// Chain support
 mod chain;
 mod derivation;
-mod error;
-mod napi;
+
+// Business domains
+mod api_key;
 mod policy;
-mod policy_engine;
 mod signing;
-mod strings;
+mod wallet;
+
+// NAPI bindings
+mod napi;
+
+// Test utilities
 #[cfg(test)]
 mod test_utils;
-mod types;
-mod utils;
-mod vault;
-mod wallet;
 
 pub use napi::{
   create_api_key, create_policy, create_wallet, delete_policy, delete_wallet, derive_accounts,
