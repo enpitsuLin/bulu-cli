@@ -278,7 +278,7 @@ export interface SignedTransactionResult {
   /** Hex-encoded recoverable signature (65 bytes). */
   signature: string
   /** Signature format identifier (e.g. "base64"). */
-  format?: string
+  format?: 'base64' | undefined
 }
 
 /**

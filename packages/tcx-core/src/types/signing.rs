@@ -18,5 +18,6 @@ pub struct SignedTransactionResult {
   /// Hex-encoded recoverable signature (65 bytes).
   pub signature: String,
   /// Signature format identifier (e.g. "base64").
+  #[napi(ts_type = "'base64' | undefined")]
   pub format: Option<String>,
 }
