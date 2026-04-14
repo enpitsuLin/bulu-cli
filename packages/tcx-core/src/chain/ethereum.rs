@@ -1,49 +1,84 @@
 use rlp::Rlp;
 use tcx_common::{parse_u64, FromHex, ToHex};
 use tcx_constants::CurveType;
+use tcx_eth::address::EthAddress;
 use tcx_eth::transaction::{
   AccessList as TcxEthAccessList, EthMessageInput as TcxEthMessageInput,
   EthMessageOutput as TcxEthMessageOutput, EthTxInput as TcxEthTxInput,
-  EthTxOutput as TcxEthTxOutput,
+  EthTxOutput as TcxEthTxOutput, SignatureType as TcxEthSignatureType,
 };
 use tcx_keystore::{
   Keystore as TcxKeystore, MessageSigner, SignatureParameters, TransactionSigner,
 };
 
 use crate::chain::Caip2ChainId;
-use crate::derivation::ResolvedDerivation;
 use crate::error::{CoreError, CoreResult, ResultExt};
-use crate::types::{
-  EthMessageInput, EthMessageSignatureType, SignedMessage, SignedTransactionResult,
-};
+use crate::types::{SignedMessage, SignedTransactionResult};
 
-pub(crate) fn prepare_transaction(
-  tx_hex: &str,
-  request_chain_id: &Caip2ChainId,
-) -> CoreResult<TcxEthTxInput> {
-  let tx_bytes = Vec::from_hex_auto(tx_hex).map_core_err()?;
-  if tx_bytes.is_empty() {
-    return Err(CoreError::new("txHex must not be empty"));
-  }
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum EthMessageSignatureType {
+  PersonalSign,
+  EcSign,
+}
 
-  match tx_bytes[0] {
-    0x01 => parse_eip2930_transaction(&tx_bytes[1..], request_chain_id),
-    0x02 => parse_eip1559_transaction(&tx_bytes[1..], request_chain_id),
-    _ => parse_legacy_transaction(&tx_bytes, request_chain_id),
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct EthMessageInput {
+  pub(crate) message: String,
+  pub(crate) signature_type: Option<EthMessageSignatureType>,
+}
+
+impl From<EthMessageSignatureType> for i32 {
+  fn from(value: EthMessageSignatureType) -> Self {
+    match value {
+      EthMessageSignatureType::PersonalSign => TcxEthSignatureType::PersonalSign as i32,
+      EthMessageSignatureType::EcSign => TcxEthSignatureType::EcSign as i32,
+    }
   }
 }
 
-pub(crate) fn sign_message(
+impl From<EthMessageInput> for TcxEthMessageInput {
+  fn from(value: EthMessageInput) -> Self {
+    Self {
+      message: value.message,
+      signature_type: value
+        .signature_type
+        .unwrap_or(EthMessageSignatureType::PersonalSign)
+        .into(),
+    }
+  }
+}
+
+pub(crate) fn derive_eth_address(
   keystore: &mut TcxKeystore,
-  resolved: &ResolvedDerivation,
   derivation_path: &str,
+  network: &str,
+) -> CoreResult<String> {
+  let coin_info = tcx_constants::CoinInfo {
+    chain_id: String::new(),
+    coin: "ETHEREUM".to_string(),
+    derivation_path: derivation_path.to_string(),
+    curve: CurveType::SECP256k1,
+    network: network.to_string(),
+    seg_wit: String::new(),
+    contract_code: String::new(),
+  };
+  let account = keystore
+    .derive_coin::<EthAddress>(&coin_info)
+    .map_core_err()?;
+  Ok(account.address)
+}
+
+pub(crate) fn sign_eth_message(
+  keystore: &mut TcxKeystore,
+  derivation_path: &str,
+  network: &str,
   message: &str,
 ) -> CoreResult<SignedMessage> {
   let params = SignatureParameters {
     curve: CurveType::SECP256k1,
     derivation_path: derivation_path.to_string(),
-    chain_type: resolved.chain.coin_name().to_string(),
-    network: resolved.network.to_string(),
+    chain_type: "ETHEREUM".to_string(),
+    network: network.to_string(),
     seg_wit: String::new(),
   };
   let signed: TcxEthMessageOutput = keystore
@@ -60,23 +95,41 @@ pub(crate) fn sign_message(
   })
 }
 
-pub(crate) fn sign_transaction(
+pub(crate) fn sign_eth_transaction(
   keystore: &mut TcxKeystore,
-  resolved: &ResolvedDerivation,
   derivation_path: &str,
-  tx: TcxEthTxInput,
+  network: &str,
+  chain_id: &Caip2ChainId,
+  tx_hex: &str,
 ) -> CoreResult<SignedTransactionResult> {
+  let tx = prepare_eth_transaction(tx_hex, chain_id)?;
   let params = SignatureParameters {
     curve: CurveType::SECP256k1,
     derivation_path: derivation_path.to_string(),
-    chain_type: resolved.chain.coin_name().to_string(),
-    network: resolved.network.to_string(),
+    chain_type: "ETHEREUM".to_string(),
+    network: network.to_string(),
     seg_wit: String::new(),
   };
   let signed: TcxEthTxOutput = keystore.sign_transaction(&params, &tx).map_core_err()?;
   Ok(SignedTransactionResult {
     signature: signed.signature,
   })
+}
+
+fn prepare_eth_transaction(
+  tx_hex: &str,
+  request_chain_id: &Caip2ChainId,
+) -> CoreResult<TcxEthTxInput> {
+  let tx_bytes = Vec::from_hex_auto(tx_hex).map_core_err()?;
+  if tx_bytes.is_empty() {
+    return Err(CoreError::new("txHex must not be empty"));
+  }
+
+  match tx_bytes[0] {
+    0x01 => parse_eip2930_transaction(&tx_bytes[1..], request_chain_id),
+    0x02 => parse_eip1559_transaction(&tx_bytes[1..], request_chain_id),
+    _ => parse_legacy_transaction(&tx_bytes, request_chain_id),
+  }
 }
 
 fn parse_legacy_transaction(
@@ -92,7 +145,6 @@ fn parse_legacy_transaction(
   let chain_id = match item_count {
     6 => request_chain_id.ethereum_reference()?,
     9 => {
-      // Verify unsigned transaction (no signature placeholders)
       let r = tx
         .at(7)
         .map_core_err()?
@@ -200,8 +252,6 @@ fn parse_eip1559_transaction(
   })
 }
 
-/// Convert RLP item at index to hex string.
-/// If `is_uint` is true, empty bytes become "0x0", otherwise empty string.
 fn rlp_bytes_to_hex(rlp: &Rlp, index: usize, is_uint: bool) -> CoreResult<String> {
   let bytes = rlp
     .at(index)

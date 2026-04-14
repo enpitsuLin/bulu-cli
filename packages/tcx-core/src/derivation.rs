@@ -1,11 +1,8 @@
-use tcx_constants::{CoinInfo, CurveType};
-use tcx_eth::address::EthAddress;
 use tcx_keystore::keystore::IdentityNetwork;
 use tcx_keystore::Keystore as TcxKeystore;
-use tcx_tron::TronAddress;
 
-use crate::chain::{resolve_network, Caip2ChainId, Chain};
-use crate::error::{CoreResult, ResultExt};
+use crate::chain::{resolve_network, Caip2ChainId, Chain, ChainSigner};
+use crate::error::CoreResult;
 use crate::strings::sanitize_optional_text;
 use crate::types::{DerivationInput, WalletAccount};
 
@@ -104,28 +101,17 @@ fn derive_account(
   request: &DerivationRequest,
 ) -> CoreResult<WalletAccount> {
   let chain_id = request.resolved.chain_id.to_string();
-  let coin_info = CoinInfo {
-    chain_id: chain_id.clone(),
-    coin: request.resolved.chain.coin_name().to_string(),
-    derivation_path: request.derivation_path.clone(),
-    curve: CurveType::SECP256k1,
-    network: request.resolved.network.to_string(),
-    seg_wit: String::new(),
-    contract_code: String::new(),
-  };
-
-  let account = match request.resolved.chain {
-    Chain::Ethereum => keystore.derive_coin::<EthAddress>(&coin_info),
-    Chain::Tron => keystore.derive_coin::<TronAddress>(&coin_info),
-  }
-  .map_core_err()?;
-  let address = account.address;
+  let address = request.resolved.chain.derive_address(
+    keystore,
+    &request.derivation_path,
+    &request.resolved.network.to_string(),
+  )?;
 
   Ok(WalletAccount {
     account_id: format!("{chain_id}:{address}"),
     chain_id,
     address,
-    derivation_path: account.derivation_path,
+    derivation_path: request.derivation_path.clone(),
   })
 }
 
