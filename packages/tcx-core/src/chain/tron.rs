@@ -63,7 +63,7 @@ impl ChainSigner for TronSigner {
     // tcx-tron's MessageSigner implementation is incompatible with tronWeb.trx.verifyMessageV2.
     // For version 1 it hardcodes '\n32' in the header regardless of actual message length.
     // For version 2 it omits the length entirely.
-    // tronWeb expects: keccak256('\x19TRON Signed Message:\n' + len(message) + message).
+    // tronWeb expects: keccak256('\x19TRON Signed Message:\n' + len(message) + message_bytes).
     // We bypass tcx-tron and hash/sign manually to match tronWeb's standard behavior.
     let prefix = "\x19TRON Signed Message:\n";
     let len_str = message.len().to_string();
