@@ -21,7 +21,6 @@ pub(crate) trait ChainSigner: std::fmt::Debug {
   fn sign_message(
     &self,
     keystore: &mut tcx_keystore::Keystore,
-    resolved: &ResolvedDerivation,
     derivation_path: &str,
     message: &str,
   ) -> CoreResult<SignedMessage>;

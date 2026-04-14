@@ -1,36 +1,18 @@
 use rlp::Rlp;
-use tcx_common::{parse_u64, FromHex, ToHex};
+use tcx_common::{keccak256, parse_u64, utf8_or_hex_to_bytes, FromHex, ToHex};
 use tcx_constants::CurveType;
 use tcx_eth::address::EthAddress;
 use tcx_eth::transaction::{
-  AccessList as TcxEthAccessList, EthMessageInput as TcxEthMessageInput,
-  EthMessageOutput as TcxEthMessageOutput, EthTxInput as TcxEthTxInput,
-  EthTxOutput as TcxEthTxOutput, SignatureType as TcxEthSignatureType,
+  AccessList as TcxEthAccessList, EthTxInput as TcxEthTxInput, EthTxOutput as TcxEthTxOutput,
 };
 use tcx_keystore::keystore::IdentityNetwork;
-use tcx_keystore::{
-  Keystore as TcxKeystore, MessageSigner, SignatureParameters, TransactionSigner,
-};
+use tcx_keystore::{Keystore as TcxKeystore, SignatureParameters, Signer, TransactionSigner};
 
 use crate::chain::Caip2ChainId;
 use crate::chain::ChainSigner;
 use crate::derivation::ResolvedDerivation;
 use crate::error::{CoreError, CoreResult, ResultExt};
 use crate::types::{SignedMessage, SignedTransactionResult};
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct EthMessageInput {
-  pub(crate) message: String,
-}
-
-impl From<EthMessageInput> for TcxEthMessageInput {
-  fn from(value: EthMessageInput) -> Self {
-    Self {
-      message: value.message,
-      signature_type: TcxEthSignatureType::PersonalSign as i32,
-    }
-  }
-}
 
 #[derive(Debug)]
 pub(crate) struct EthereumSigner;
@@ -80,27 +62,22 @@ impl ChainSigner for EthereumSigner {
   fn sign_message(
     &self,
     keystore: &mut TcxKeystore,
-    resolved: &ResolvedDerivation,
     derivation_path: &str,
     message: &str,
   ) -> CoreResult<SignedMessage> {
-    let params = SignatureParameters {
-      curve: CurveType::SECP256k1,
-      derivation_path: derivation_path.to_string(),
-      chain_type: "ETHEREUM".to_string(),
-      network: resolved.network.to_string(),
-      seg_wit: String::new(),
-    };
-    let signed: TcxEthMessageOutput = keystore
-      .sign_message(
-        &params,
-        &TcxEthMessageInput::from(EthMessageInput {
-          message: message.to_string(),
-        }),
-      )
+    let data = utf8_or_hex_to_bytes(message).map_core_err()?;
+    let prefix = "\x19Ethereum Signed Message:\n";
+    let len_str = data.len().to_string();
+    let to_hash = [prefix.as_bytes(), len_str.as_bytes(), &data].concat();
+    let hash = keccak256(&to_hash);
+
+    let mut sign_result = keystore
+      .secp256k1_ecdsa_sign_recoverable(&hash, derivation_path)
       .map_core_err()?;
+    sign_result[64] += 27;
+
     Ok(SignedMessage {
-      signature: signed.signature,
+      signature: format!("0x{}", sign_result.to_hex()),
     })
   }
 

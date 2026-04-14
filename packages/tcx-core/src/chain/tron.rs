@@ -78,7 +78,6 @@ impl ChainSigner for TronSigner {
   fn sign_message(
     &self,
     keystore: &mut TcxKeystore,
-    _resolved: &ResolvedDerivation,
     derivation_path: &str,
     message: &str,
   ) -> CoreResult<SignedMessage> {

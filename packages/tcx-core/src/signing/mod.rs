@@ -22,12 +22,10 @@ pub(crate) fn sign_message(
     vault_path,
     PolicyOperation::SignMessage,
     move |unlocked_keystore, request| {
-      request.resolved.signer.sign_message(
-        unlocked_keystore,
-        &request.resolved,
-        &request.derivation_path,
-        &message,
-      )
+      request
+        .resolved
+        .signer
+        .sign_message(unlocked_keystore, &request.derivation_path, &message)
     },
   )
 }
