@@ -270,7 +270,7 @@ export interface SignedMessage {
   /** Hex-encoded recoverable signature. */
   signature: string
   /** Signature format identifier (e.g. "base64"). */
-  format?: string
+  format?: 'base64' | undefined
 }
 
 /** Unified signed transaction result. */
