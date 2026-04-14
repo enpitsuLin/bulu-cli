@@ -51,6 +51,7 @@ impl From<EthMessageInput> for TcxEthMessageInput {
   }
 }
 
+#[derive(Debug)]
 pub(crate) struct EthereumSigner;
 pub(crate) const ETHEREUM_SIGNER: EthereumSigner = EthereumSigner;
 

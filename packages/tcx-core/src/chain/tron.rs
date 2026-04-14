@@ -32,6 +32,7 @@ impl From<TronMessageInput> for TcxTronMessageInput {
   }
 }
 
+#[derive(Debug)]
 pub(crate) struct TronSigner;
 pub(crate) const TRON_SIGNER: TronSigner = TronSigner;
 

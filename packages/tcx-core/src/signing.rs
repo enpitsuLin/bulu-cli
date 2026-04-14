@@ -4,7 +4,6 @@ use crate::api_key::{
   decrypt_derived_key, invalid_credential_error, parse_api_token, API_KEY_TOKEN_PREFIX,
 };
 use crate::chain::Caip2ChainId;
-use crate::chain::ChainSigner;
 use crate::derivation::{resolve_derivation, DerivationRequest};
 use crate::error::{require_non_empty, require_trimmed, CoreError, CoreResult, ResultExt};
 use crate::policy_engine::{
@@ -32,7 +31,7 @@ pub(crate) fn sign_message(
     vault_path,
     PolicyOperation::SignMessage,
     move |unlocked_keystore, request| {
-      request.resolved.chain.signer().sign_message(
+      request.resolved.signer.sign_message(
         unlocked_keystore,
         &request.resolved,
         &request.derivation_path,
@@ -59,7 +58,7 @@ pub(crate) fn sign_transaction(
     vault_path,
     PolicyOperation::SignTransaction,
     move |unlocked_keystore, request| {
-      request.resolved.chain.signer().sign_transaction(
+      request.resolved.signer.sign_transaction(
         unlocked_keystore,
         &request.resolved,
         &request.derivation_path,
@@ -189,7 +188,8 @@ mod tests {
 
   use super::{sign_message, sign_transaction};
   use crate::api_key;
-  use crate::chain::Chain;
+  use crate::chain::ethereum::ETHEREUM_SIGNER;
+  use crate::chain::tron::TRON_SIGNER;
   use crate::policy::create_policy;
   use crate::types::{PolicyCreateInput, PolicyRule};
   use crate::wallet::{import_wallet_mnemonic, import_wallet_private_key};
@@ -227,11 +227,11 @@ mod tests {
   }
 
   fn default_eth_mainnet_chain_id() -> &'static str {
-    Chain::Ethereum.default_chain_id(IdentityNetwork::Mainnet)
+    ETHEREUM_SIGNER.default_chain_id(IdentityNetwork::Mainnet)
   }
 
   fn default_tron_mainnet_chain_id() -> &'static str {
-    Chain::Tron.default_chain_id(IdentityNetwork::Mainnet)
+    TRON_SIGNER.default_chain_id(IdentityNetwork::Mainnet)
   }
 
   fn allowed_chain_rule(chain_id: &str) -> PolicyRule {

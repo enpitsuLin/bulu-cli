@@ -271,7 +271,8 @@ mod tests {
     create_wallet, delete_wallet, export_wallet, get_wallet, import_wallet_keystore,
     import_wallet_mnemonic, import_wallet_private_key, list_wallets, load_wallet,
   };
-  use crate::chain::Chain;
+  use crate::chain::ethereum::ETHEREUM_SIGNER;
+  use crate::chain::tron::TRON_SIGNER;
   use crate::types::{DerivationInput, KeystoreData, WalletInfo};
 
   const TEST_PASSWORD: &str = "imToken";
@@ -322,23 +323,19 @@ mod tests {
   }
 
   fn default_eth_mainnet_chain_id() -> &'static str {
-    Chain::Ethereum
-      .signer()
-      .default_chain_id(IdentityNetwork::Mainnet)
+    ETHEREUM_SIGNER.default_chain_id(IdentityNetwork::Mainnet)
   }
 
   fn default_tron_mainnet_chain_id() -> &'static str {
-    Chain::Tron
-      .signer()
-      .default_chain_id(IdentityNetwork::Mainnet)
+    TRON_SIGNER.default_chain_id(IdentityNetwork::Mainnet)
   }
 
   fn default_eth_derivation_path(index: u32) -> String {
-    Chain::Ethereum.signer().default_derivation_path(index)
+    ETHEREUM_SIGNER.default_derivation_path(index)
   }
 
   fn default_tron_derivation_path(index: u32) -> String {
-    Chain::Tron.signer().default_derivation_path(index)
+    TRON_SIGNER.default_derivation_path(index)
   }
 
   #[test]

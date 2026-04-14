@@ -70,7 +70,7 @@ mod tests {
   use tcx_keystore::keystore::IdentityNetwork;
 
   use super::{create_policy, delete_policy, get_policy, list_policies};
-  use crate::chain::Chain;
+  use crate::chain::ethereum::ETHEREUM_SIGNER;
   use crate::types::{PolicyCreateInput, PolicyRule};
 
   fn temp_vault_dir(test_name: &str) -> PathBuf {
@@ -101,7 +101,7 @@ mod tests {
   }
 
   fn default_eth_mainnet_chain_id() -> &'static str {
-    Chain::Ethereum.default_chain_id(IdentityNetwork::Mainnet)
+    ETHEREUM_SIGNER.default_chain_id(IdentityNetwork::Mainnet)
   }
 
   fn allowed_chain_rule(chain_id: &str) -> PolicyRule {
