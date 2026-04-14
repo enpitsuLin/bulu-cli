@@ -54,13 +54,13 @@ pub(crate) fn sign_transaction(
     move |unlocked_keystore, request| {
       let signed = request.resolved.signer.sign_transaction(
         unlocked_keystore,
-        &request.resolved,
+        &request.resolved.chain_id,
         &request.derivation_path,
         &tx_bytes,
       )?;
       let signature_bytes = Vec::from_hex_auto(&signed.signature).map_core_err()?;
       let raw_tx = request.resolved.signer.encode_signed_transaction(
-        &request.resolved,
+        &request.resolved.chain_id,
         &tx_bytes,
         &signature_bytes,
       )?;

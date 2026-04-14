@@ -9,7 +9,6 @@ use tcx_keystore::{Keystore as TcxKeystore, Signer};
 
 use crate::chain::Caip2ChainId;
 use crate::chain::ChainSigner;
-use crate::derivation::ResolvedDerivation;
 use crate::error::{CoreError, CoreResult, ResultExt};
 use crate::types::{SignedMessage, SignedTransactionResult};
 
@@ -82,11 +81,11 @@ impl ChainSigner for EthereumSigner {
   fn sign_transaction(
     &self,
     keystore: &mut TcxKeystore,
-    resolved: &ResolvedDerivation,
+    chain_id: &Caip2ChainId,
     derivation_path: &str,
     tx_bytes: &[u8],
   ) -> CoreResult<SignedTransactionResult> {
-    let tx_input = prepare_eth_transaction(tx_bytes, &resolved.chain_id)?;
+    let tx_input = prepare_eth_transaction(tx_bytes, chain_id)?;
     let tx: Transaction = (&tx_input).try_into().map_core_err()?;
     let sign_result = keystore
       .secp256k1_ecdsa_sign_recoverable(&tx.sighash(), derivation_path)
@@ -99,11 +98,11 @@ impl ChainSigner for EthereumSigner {
 
   fn encode_signed_transaction(
     &self,
-    resolved: &ResolvedDerivation,
+    chain_id: &Caip2ChainId,
     tx_bytes: &[u8],
     signature: &[u8],
   ) -> CoreResult<Option<String>> {
-    let tx_input = prepare_eth_transaction(tx_bytes, &resolved.chain_id)?;
+    let tx_input = prepare_eth_transaction(tx_bytes, chain_id)?;
     let tx: Transaction = (&tx_input).try_into().map_core_err()?;
     let sig = Signature::from_slice(signature).map_core_err()?;
     let signed_tx = tx.to_signed_tx(sig);

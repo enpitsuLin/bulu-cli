@@ -1,4 +1,3 @@
-use crate::derivation::ResolvedDerivation;
 use crate::error::CoreResult;
 use crate::types::{SignedMessage, SignedTransactionResult};
 
@@ -39,7 +38,7 @@ pub(crate) trait ChainSigner: std::fmt::Debug + Send + Sync {
   fn sign_transaction(
     &self,
     keystore: &mut tcx_keystore::Keystore,
-    resolved: &ResolvedDerivation,
+    chain_id: &Caip2ChainId,
     derivation_path: &str,
     tx_bytes: &[u8],
   ) -> CoreResult<SignedTransactionResult>;
@@ -48,11 +47,11 @@ pub(crate) trait ChainSigner: std::fmt::Debug + Send + Sync {
   /// Chains that do not support this must explicitly override and return `Ok(None)`.
   fn encode_signed_transaction(
     &self,
-    resolved: &ResolvedDerivation,
+    chain_id: &Caip2ChainId,
     tx_bytes: &[u8],
     signature: &[u8],
   ) -> CoreResult<Option<String>> {
-    let _ = (resolved, tx_bytes, signature);
+    let _ = (chain_id, tx_bytes, signature);
     Err(crate::error::CoreError::new(
       "encode_signed_transaction is not implemented for this chain",
     ))
