@@ -45,14 +45,17 @@ pub(crate) trait ChainSigner: std::fmt::Debug + Send + Sync {
   ) -> CoreResult<SignedTransactionResult>;
 
   /// Assemble the fully-encoded signed transaction ready for broadcast.
-  /// Returns `None` for chains that do not support embedding a signature into a raw transaction.
+  /// Chains that do not support this must explicitly override and return `Ok(None)`.
   fn encode_signed_transaction(
     &self,
-    _resolved: &ResolvedDerivation,
-    _tx_bytes: &[u8],
-    _signature: &[u8],
+    resolved: &ResolvedDerivation,
+    tx_bytes: &[u8],
+    signature: &[u8],
   ) -> CoreResult<Option<String>> {
-    Ok(None)
+    let _ = (resolved, tx_bytes, signature);
+    Err(crate::error::CoreError::new(
+      "encode_signed_transaction is not implemented for this chain",
+    ))
   }
 }
 

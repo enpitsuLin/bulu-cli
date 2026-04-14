@@ -83,10 +83,11 @@ impl ChainSigner for TronSigner {
   fn sign_transaction(
     &self,
     keystore: &mut TcxKeystore,
-    _resolved: &ResolvedDerivation,
+    resolved: &ResolvedDerivation,
     derivation_path: &str,
     tx_bytes: &[u8],
   ) -> CoreResult<SignedTransactionResult> {
+    let _ = resolved;
     let hash = sha256(tx_bytes);
     let signature = keystore
       .secp256k1_ecdsa_sign_recoverable(&hash, derivation_path)
@@ -95,5 +96,15 @@ impl ChainSigner for TronSigner {
       signature: signature.to_hex(),
       raw_transaction: None,
     })
+  }
+
+  fn encode_signed_transaction(
+    &self,
+    resolved: &ResolvedDerivation,
+    tx_bytes: &[u8],
+    signature: &[u8],
+  ) -> CoreResult<Option<String>> {
+    let _ = (resolved, tx_bytes, signature);
+    Ok(None)
   }
 }
