@@ -8,7 +8,7 @@ use crate::types::{DerivationInput, WalletAccount};
 
 #[derive(Clone, Debug)]
 pub(crate) struct ResolvedDerivation {
-  pub(crate) signer: &'static dyn ChainSigner,
+  pub(crate) signer: &'static (dyn ChainSigner + Send + Sync),
   pub(crate) network: IdentityNetwork,
   pub(crate) chain_id: Caip2ChainId,
 }

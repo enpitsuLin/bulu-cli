@@ -5,7 +5,7 @@ use crate::types::{SignedMessage, SignedTransactionResult};
 pub(crate) use caip2::Caip2ChainId;
 pub(crate) use network::resolve_network;
 
-pub(crate) trait ChainSigner: std::fmt::Debug {
+pub(crate) trait ChainSigner: std::fmt::Debug + Send + Sync {
   fn coin_name(&self) -> &'static str;
   fn namespace(&self) -> &'static str;
   fn default_chain_id(&self, network: tcx_keystore::keystore::IdentityNetwork) -> &'static str;
@@ -43,10 +43,12 @@ pub(crate) trait ChainSigner: std::fmt::Debug {
   }
 }
 
-pub(crate) const ALL_SIGNERS: &[&'static dyn ChainSigner] =
+pub(crate) const ALL_SIGNERS: &[&'static (dyn ChainSigner + Send + Sync)] =
   &[&ethereum::ETHEREUM_SIGNER, &tron::TRON_SIGNER];
 
-pub(crate) fn resolve_signer(chain_id: &Caip2ChainId) -> CoreResult<&'static dyn ChainSigner> {
+pub(crate) fn resolve_signer(
+  chain_id: &Caip2ChainId,
+) -> CoreResult<&'static (dyn ChainSigner + Send + Sync)> {
   match chain_id.namespace() {
     namespace if namespace == ethereum::ETHEREUM_SIGNER.namespace() => {
       Ok(&ethereum::ETHEREUM_SIGNER)
