@@ -6,11 +6,19 @@ pub(crate) use caip2::Caip2ChainId;
 pub(crate) use network::resolve_network;
 
 pub(crate) trait ChainSigner: std::fmt::Debug + Send + Sync {
+  /// Coin identifier used by the underlying tcx library (e.g. "ETHEREUM", "TRON").
   fn coin_name(&self) -> &'static str;
+
+  /// CAIP-2 namespace (e.g. "eip155", "tron").
   fn namespace(&self) -> &'static str;
+
+  /// Default CAIP-2 chainId for the given network.
   fn default_chain_id(&self, network: tcx_keystore::keystore::IdentityNetwork) -> &'static str;
+
+  /// BIP-44 derivation path for the account at `index`.
   fn default_derivation_path(&self, index: u32) -> String;
 
+  /// Derive a chain-specific address from the keystore.
   fn derive_address(
     &self,
     keystore: &mut tcx_keystore::Keystore,
@@ -18,6 +26,8 @@ pub(crate) trait ChainSigner: std::fmt::Debug + Send + Sync {
     network: &str,
   ) -> CoreResult<String>;
 
+  /// Sign raw message bytes according to the chain's message-signing standard.
+  /// The implementation is responsible for any required prefixing/hashing.
   fn sign_message(
     &self,
     keystore: &mut tcx_keystore::Keystore,
@@ -25,6 +35,7 @@ pub(crate) trait ChainSigner: std::fmt::Debug + Send + Sync {
     message: &[u8],
   ) -> CoreResult<SignedMessage>;
 
+  /// Sign raw transaction bytes and return the recoverable signature.
   fn sign_transaction(
     &self,
     keystore: &mut tcx_keystore::Keystore,
@@ -33,6 +44,8 @@ pub(crate) trait ChainSigner: std::fmt::Debug + Send + Sync {
     tx_bytes: &[u8],
   ) -> CoreResult<SignedTransactionResult>;
 
+  /// Assemble the fully-encoded signed transaction ready for broadcast.
+  /// Returns `None` for chains that do not support embedding a signature into a raw transaction.
   fn encode_signed_transaction(
     &self,
     _resolved: &ResolvedDerivation,
