@@ -406,12 +406,6 @@ test('signTransaction signs Ethereum transactions', () => {
 
     const signed = signTransaction('Imported Private Key', 'eip155:56', txHex, PASSWORD, tempDir)
 
-    expect('txHash' in signed).toBe(true)
-    if (!('txHash' in signed)) {
-      throw new Error('Expected an Ethereum signed transaction result')
-    }
-
-    expect(signed.txHash).toBe('0x1a3c3947ea626e00d6ff1493bcf929b9320d15ff088046990ef88a45f7d37623')
     expect(signed.signature).toBe(
       'f868088504a817c8088302e248943535353535353535353535353535353535353535820200808194a003479f1d6be72af58b1d60750e155c435e435726b5b690f4d3e59f34bd55e578a0314d2b03d29dc3f87ff95c3427658952add3cf718d3b6b8604068fc3105e4442',
     )
@@ -493,14 +487,9 @@ test('signTransaction signs Tron transactions', () => {
       tempDir,
     )
 
-    expect('signatures' in signed).toBe(true)
-    if (!('signatures' in signed)) {
-      throw new Error('Expected a Tron signed transaction result')
-    }
-
-    expect(signed.signatures).toEqual([
+    expect(signed.signature).toBe(
       'c65b4bde808f7fcfab7b0ef9c1e3946c83311f8ac0a5e95be2d8b6d2400cfe8b5e24dc8f0883132513e422f2aaad8a4ecc14438eae84b2683eefa626e3adffc601',
-    ])
+    )
   } finally {
     rmSync(tempDir, { recursive: true, force: true })
   }
@@ -540,10 +529,7 @@ test('createApiKey and signTransaction reuse the original signing entrypoints', 
     })
 
     const signed = signTransaction('Agent Signer', 'eip155:56', txHex, created.token, tempDir)
-    expect('txHash' in signed).toBe(true)
-    if (!('txHash' in signed)) {
-      throw new Error('Expected an Ethereum signed transaction result')
-    }
+    expect(signed.signature).toBeDefined()
 
     revokeApiKey(created.apiKey.id, tempDir)
     expect(() => signTransaction('Agent Signer', 'eip155:56', txHex, created.token, tempDir)).toThrow(

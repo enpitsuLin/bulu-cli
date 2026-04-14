@@ -97,14 +97,6 @@ export interface EncPairData {
   nonce: string
 }
 
-/** Ethereum signed transaction result. */
-export interface EthSignedTransaction {
-  /** Serialized signed transaction payload. */
-  signature: string
-  /** Transaction hash. */
-  txHash: string
-}
-
 /**
  * Exports the wallet's mnemonic or private key.
  *
@@ -279,6 +271,12 @@ export interface SignedMessage {
   signature: string
 }
 
+/** Unified signed transaction result. */
+export interface SignedTransactionResult {
+  /** Hex-encoded signature. */
+  signature: string
+}
+
 /**
  * Signs a plain chain-specific message using the default chain conventions.
  *
@@ -298,13 +296,7 @@ export declare function signMessage(name: string, chainId: string, message: stri
  * `credential` accepts either the wallet passphrase (owner mode) or a
  * `bulu_key_...` API token (agent mode).
  */
-export declare function signTransaction(name: string, chainId: string, txHex: string, credential: string, vaultPath: string): EthSignedTransaction | TronSignedTransaction
-
-/** Tron signed transaction result. */
-export interface TronSignedTransaction {
-  /** Array of hex-encoded signatures. */
-  signatures: Array<string>
-}
+export declare function signTransaction(name: string, chainId: string, txHex: string, credential: string, vaultPath: string): SignedTransactionResult
 
 /** A derived account returned to JavaScript. */
 export interface WalletAccount {
