@@ -14,8 +14,8 @@ export interface ApiKeyInfo {
   walletIds: Array<string>
   /** Attached policy ids evaluated during agent-mode signing. */
   policyIds: Array<string>
-  /** Optional RFC 3339 UTC expiry time for the key itself. */
-  expiresAt?: string
+  /** Optional expiry time in Unix seconds for the key itself. */
+  expiresAt?: number
 }
 
 /** Cipher parameters for encryption. */
@@ -25,7 +25,7 @@ export interface CipherParams {
 }
 
 /** Creates an API key bound to one or more wallets and optional declarative policies. */
-export declare function createApiKey(name: string, walletIds: Array<string>, policyIds: Array<string>, passphrase: string, expiresAt?: string, vaultPathOpt?: string): CreatedApiKey
+export declare function createApiKey(name: string, walletIds: Array<string>, policyIds: Array<string>, passphrase: string, expiresAt?: number, vaultPathOpt?: string): CreatedApiKey
 
 /** Result returned when an API key is created. */
 export interface CreatedApiKey {
@@ -266,8 +266,8 @@ export interface PolicyRule {
   type: string
   /** Allowed CAIP-2 chain ids for `allowed_chains`. */
   chainIds?: Array<string>
-  /** RFC 3339 UTC timestamp for `expires_at`. */
-  timestamp?: string
+  /** Unix seconds timestamp for `expires_at`. */
+  timestamp?: number
 }
 
 /** Revokes an API key by removing its persisted record from the vault. */

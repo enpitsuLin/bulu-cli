@@ -9,7 +9,6 @@ version = "0.0.2"
 crate-type = ["cdylib"]
 
 [dependencies]
-chrono        = { version = "0.4.44", default-features = false, features = ["std"] }
 napi          = "3.0.0"
 napi-derive   = "3.0.0"
 rlp           = "=0.5.2"

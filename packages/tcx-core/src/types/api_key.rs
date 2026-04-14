@@ -24,10 +24,10 @@ pub struct ApiKeyInfo {
   /// Attached policy ids evaluated during agent-mode signing.
   #[napi(js_name = "policyIds")]
   pub policy_ids: Vec<String>,
-  /// Optional RFC 3339 UTC expiry time for the key itself.
+  /// Optional expiry time in Unix seconds for the key itself.
   #[napi(js_name = "expiresAt")]
   #[serde(skip_serializing_if = "Option::is_none")]
-  pub expires_at: Option<String>,
+  pub expires_at: Option<i64>,
 }
 
 #[napi(object)]

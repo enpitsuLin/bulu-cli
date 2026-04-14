@@ -2,7 +2,6 @@ use tcx_common::{FromHex, ToHex};
 use tcx_crypto::aes::ctr256;
 
 use crate::error::{require_non_empty, require_trimmed, CoreError, CoreResult, ResultExt};
-use crate::policy_engine::normalize_timestamp;
 use crate::strings::sanitize_optional_text;
 use crate::types::{
   ApiKeyInfo, CreatedApiKey, EncPairData, StoredApiKey, StoredEncryptedWalletKey,
@@ -30,7 +29,7 @@ pub(crate) fn create_api_key(
   wallet_ids: Vec<String>,
   policy_ids: Vec<String>,
   passphrase: String,
-  expires_at: Option<String>,
+  expires_at: Option<i64>,
   vault_path_opt: Option<String>,
 ) -> CoreResult<CreatedApiKey> {
   require_non_empty(&passphrase, "passphrase")?;
@@ -51,10 +50,7 @@ pub(crate) fn create_api_key(
     .map(|wallet| wallet.meta.id.clone())
     .collect::<Vec<_>>();
   let policy_ids = resolve_policy_ids(&vault, policy_ids)?;
-  let normalized_expires_at = match expires_at {
-    Some(timestamp) => Some(normalize_timestamp(&timestamp)?),
-    None => None,
-  };
+  let normalized_expires_at = expires_at;
 
   let secret = tcx_common::random_u8_32();
   let nonce = tcx_common::random_u8_16();
