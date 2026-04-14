@@ -14,9 +14,9 @@ pub struct PolicyRule {
   #[napi(js_name = "chainIds")]
   #[serde(skip_serializing_if = "Option::is_none")]
   pub chain_ids: Option<Vec<String>>,
-  /// RFC 3339 UTC timestamp for `expires_at`.
+  /// Unix seconds timestamp for `expires_at`.
   #[serde(skip_serializing_if = "Option::is_none")]
-  pub timestamp: Option<String>,
+  pub timestamp: Option<i64>,
 }
 
 #[napi(object)]

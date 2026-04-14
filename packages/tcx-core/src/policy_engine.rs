@@ -1,5 +1,3 @@
-use chrono::{DateTime, SecondsFormat, Utc};
-
 use crate::chain::Caip2ChainId;
 use crate::error::{require_non_empty, CoreError, CoreResult};
 use crate::types::{PolicyInfo, PolicyRule};
@@ -51,18 +49,12 @@ pub(crate) fn evaluate_policy(
         }
       }
       "expires_at" => {
-        let timestamp = rule
+        let expires_at = rule
           .timestamp
-          .as_deref()
           .ok_or_else(|| deny_policy(policy, "expires_at rule is missing timestamp"))?;
-        let expires_at = parse_rfc3339_utc(timestamp)
-          .map_err(|err| deny_policy(policy, format!("invalid expires_at timestamp: {err}")))?;
 
-        if context.now_timestamp >= expires_at.timestamp() {
-          return Err(deny_policy(
-            policy,
-            format!("expired at {}", normalize_timestamp(timestamp)?),
-          ));
+        if context.now_timestamp >= expires_at {
+          return Err(deny_policy(policy, format!("expired at {expires_at}")));
         }
       }
       other => {
@@ -126,7 +118,7 @@ pub(crate) fn normalize_policy_rule(rule: PolicyRule) -> CoreResult<PolicyRule> 
       Ok(PolicyRule {
         rule_type,
         chain_ids: None,
-        timestamp: Some(normalize_timestamp(&timestamp)?),
+        timestamp: Some(timestamp),
       })
     }
     other => Err(CoreError::new(format!(
@@ -135,21 +127,8 @@ pub(crate) fn normalize_policy_rule(rule: PolicyRule) -> CoreResult<PolicyRule> 
   }
 }
 
-pub(crate) fn normalize_timestamp(timestamp: &str) -> CoreResult<String> {
-  let parsed = parse_rfc3339_utc(timestamp)?;
-  Ok(parsed.to_rfc3339_opts(SecondsFormat::Secs, true))
-}
-
-pub(crate) fn timestamp_is_expired(timestamp: &str, now_timestamp: i64) -> CoreResult<bool> {
-  Ok(now_timestamp >= parse_rfc3339_utc(timestamp)?.timestamp())
-}
-
-fn parse_rfc3339_utc(timestamp: &str) -> CoreResult<DateTime<Utc>> {
-  let normalized = timestamp.trim();
-  require_non_empty(normalized, "timestamp")?;
-  DateTime::parse_from_rfc3339(normalized)
-    .map(|parsed| parsed.with_timezone(&Utc))
-    .map_err(|err| CoreError::new(format!("invalid RFC3339 timestamp: {err}")))
+pub(crate) fn timestamp_is_expired(timestamp: i64, now_timestamp: i64) -> bool {
+  now_timestamp >= timestamp
 }
 
 fn deny_policy(policy: &PolicyInfo, reason: impl Into<String>) -> CoreError {

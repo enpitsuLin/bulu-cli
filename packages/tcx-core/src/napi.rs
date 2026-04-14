@@ -146,7 +146,7 @@ pub fn get_api_key(name_or_id: String, vault_path: String) -> Result<ApiKeyInfo>
 
 #[napi(
   js_name = "createApiKey",
-  ts_args_type = "name: string, walletIds: Array<string>, policyIds: Array<string>, passphrase: string, expiresAt?: string, vaultPathOpt?: string"
+  ts_args_type = "name: string, walletIds: Array<string>, policyIds: Array<string>, passphrase: string, expiresAt?: number, vaultPathOpt?: string"
 )]
 /// Creates an API key bound to one or more wallets and optional declarative policies.
 pub fn create_api_key(
@@ -154,7 +154,7 @@ pub fn create_api_key(
   wallet_ids: Vec<String>,
   policy_ids: Vec<String>,
   passphrase: String,
-  expires_at: Option<String>,
+  expires_at: Option<i64>,
   vault_path_opt: Option<String>,
 ) -> Result<CreatedApiKey> {
   crate::api_key::create_api_key(

@@ -116,8 +116,8 @@ fn with_signing_request<T>(
       now_timestamp: now_timestamp(),
     };
 
-    if let Some(expires_at) = api_key.info.expires_at.as_deref() {
-      if timestamp_is_expired(expires_at, policy_context.now_timestamp)? {
+    if let Some(expires_at) = api_key.info.expires_at {
+      if timestamp_is_expired(expires_at, policy_context.now_timestamp) {
         return Err(CoreError::new(format!(
           "API key \"{}\" expired at {}",
           api_key.info.name, expires_at
@@ -245,11 +245,11 @@ mod tests {
     }
   }
 
-  fn expires_at_rule(timestamp: &str) -> PolicyRule {
+  fn expires_at_rule(timestamp: i64) -> PolicyRule {
     PolicyRule {
       rule_type: "expires_at".to_string(),
       chain_ids: None,
-      timestamp: Some(timestamp.to_string()),
+      timestamp: Some(timestamp),
     }
   }
 
@@ -705,7 +705,7 @@ mod tests {
     let expired_policy = create_policy(
       PolicyCreateInput {
         name: "Expired".to_string(),
-        rules: vec![expires_at_rule("2000-01-01T00:00:00Z")],
+        rules: vec![expires_at_rule(946_684_800)],
       },
       vault_path.clone(),
     )
@@ -730,7 +730,7 @@ mod tests {
     .expect_err("expired policy should fail");
     assert!(expired_err
       .to_string()
-      .contains("policy denied by \"Expired\": expired at 2000-01-01T00:00:00Z"));
+      .contains("policy denied by \"Expired\": expired at 946684800"));
 
     fs::remove_file(policy_vault_path(&vault_dir, &expired_policy.id))
       .expect("policy file should be removable");
@@ -766,7 +766,7 @@ mod tests {
       vec![wallet.meta.id.clone()],
       vec![],
       TEST_PASSWORD.to_string(),
-      Some("2000-01-01T00:00:00Z".to_string()),
+      Some(946_684_800),
       Some(vault_path.clone()),
     )
     .expect("API key creation should succeed");
@@ -781,7 +781,7 @@ mod tests {
     .expect_err("expired API key should fail");
     assert_eq!(
       err.to_string(),
-      "API key \"expired-key\" expired at 2000-01-01T00:00:00Z"
+      "API key \"expired-key\" expired at 946684800"
     );
 
     let _ = fs::remove_dir_all(vault_dir);
