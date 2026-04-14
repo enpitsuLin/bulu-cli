@@ -36,78 +36,6 @@ impl From<EthMessageInput> for TcxEthMessageInput {
 pub(crate) struct EthereumSigner;
 pub(crate) const ETHEREUM_SIGNER: EthereumSigner = EthereumSigner;
 
-impl EthereumSigner {
-  fn derive_address(
-    &self,
-    keystore: &mut TcxKeystore,
-    derivation_path: &str,
-    network: &str,
-  ) -> CoreResult<String> {
-    let coin_info = tcx_constants::CoinInfo {
-      chain_id: String::new(),
-      coin: "ETHEREUM".to_string(),
-      derivation_path: derivation_path.to_string(),
-      curve: CurveType::SECP256k1,
-      network: network.to_string(),
-      seg_wit: String::new(),
-      contract_code: String::new(),
-    };
-    let account = keystore
-      .derive_coin::<EthAddress>(&coin_info)
-      .map_core_err()?;
-    Ok(account.address)
-  }
-
-  fn sign_message(
-    &self,
-    keystore: &mut TcxKeystore,
-    network: &str,
-    derivation_path: &str,
-    message: &str,
-  ) -> CoreResult<SignedMessage> {
-    let params = SignatureParameters {
-      curve: CurveType::SECP256k1,
-      derivation_path: derivation_path.to_string(),
-      chain_type: "ETHEREUM".to_string(),
-      network: network.to_string(),
-      seg_wit: String::new(),
-    };
-    let signed: TcxEthMessageOutput = keystore
-      .sign_message(
-        &params,
-        &TcxEthMessageInput::from(EthMessageInput {
-          message: message.to_string(),
-        }),
-      )
-      .map_core_err()?;
-    Ok(SignedMessage {
-      signature: signed.signature,
-    })
-  }
-
-  fn sign_transaction(
-    &self,
-    keystore: &mut TcxKeystore,
-    network: &str,
-    chain_id: &Caip2ChainId,
-    derivation_path: &str,
-    tx_hex: &str,
-  ) -> CoreResult<SignedTransactionResult> {
-    let tx = prepare_eth_transaction(tx_hex, chain_id)?;
-    let params = SignatureParameters {
-      curve: CurveType::SECP256k1,
-      derivation_path: derivation_path.to_string(),
-      chain_type: "ETHEREUM".to_string(),
-      network: network.to_string(),
-      seg_wit: String::new(),
-    };
-    let signed: TcxEthTxOutput = keystore.sign_transaction(&params, &tx).map_core_err()?;
-    Ok(SignedTransactionResult {
-      signature: signed.signature,
-    })
-  }
-}
-
 impl ChainSigner for EthereumSigner {
   fn coin_name(&self) -> &'static str {
     "ETHEREUM"
@@ -134,7 +62,19 @@ impl ChainSigner for EthereumSigner {
     derivation_path: &str,
     network: &str,
   ) -> CoreResult<String> {
-    self.derive_address(keystore, derivation_path, network)
+    let coin_info = tcx_constants::CoinInfo {
+      chain_id: String::new(),
+      coin: "ETHEREUM".to_string(),
+      derivation_path: derivation_path.to_string(),
+      curve: CurveType::SECP256k1,
+      network: network.to_string(),
+      seg_wit: String::new(),
+      contract_code: String::new(),
+    };
+    let account = keystore
+      .derive_coin::<EthAddress>(&coin_info)
+      .map_core_err()?;
+    Ok(account.address)
   }
 
   fn sign_message(
@@ -144,12 +84,24 @@ impl ChainSigner for EthereumSigner {
     derivation_path: &str,
     message: &str,
   ) -> CoreResult<SignedMessage> {
-    self.sign_message(
-      keystore,
-      &resolved.network.to_string(),
-      derivation_path,
-      message,
-    )
+    let params = SignatureParameters {
+      curve: CurveType::SECP256k1,
+      derivation_path: derivation_path.to_string(),
+      chain_type: "ETHEREUM".to_string(),
+      network: resolved.network.to_string(),
+      seg_wit: String::new(),
+    };
+    let signed: TcxEthMessageOutput = keystore
+      .sign_message(
+        &params,
+        &TcxEthMessageInput::from(EthMessageInput {
+          message: message.to_string(),
+        }),
+      )
+      .map_core_err()?;
+    Ok(SignedMessage {
+      signature: signed.signature,
+    })
   }
 
   fn sign_transaction(
@@ -159,13 +111,18 @@ impl ChainSigner for EthereumSigner {
     derivation_path: &str,
     tx_hex: &str,
   ) -> CoreResult<SignedTransactionResult> {
-    self.sign_transaction(
-      keystore,
-      &resolved.network.to_string(),
-      &resolved.chain_id,
-      derivation_path,
-      tx_hex,
-    )
+    let tx = prepare_eth_transaction(tx_hex, &resolved.chain_id)?;
+    let params = SignatureParameters {
+      curve: CurveType::SECP256k1,
+      derivation_path: derivation_path.to_string(),
+      chain_type: "ETHEREUM".to_string(),
+      network: resolved.network.to_string(),
+      seg_wit: String::new(),
+    };
+    let signed: TcxEthTxOutput = keystore.sign_transaction(&params, &tx).map_core_err()?;
+    Ok(SignedTransactionResult {
+      signature: signed.signature,
+    })
   }
 }
 
