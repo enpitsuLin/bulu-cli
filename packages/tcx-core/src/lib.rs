@@ -9,6 +9,8 @@ mod policy;
 mod policy_engine;
 mod signing;
 mod strings;
+#[cfg(test)]
+mod test_utils;
 mod types;
 mod utils;
 mod vault;

@@ -125,39 +125,15 @@ fn derive_account(
 
 #[cfg(test)]
 mod tests {
-  use std::env;
   use std::fs;
-  use std::path::PathBuf;
-  use std::time::{SystemTime, UNIX_EPOCH};
 
   use tcx_keystore::keystore::IdentityNetwork;
 
   use super::resolve_derivation;
   use crate::chain::{ethereum::ETHEREUM_SIGNER, tron::TRON_SIGNER, ChainSigner};
+  use crate::test_utils::fixtures;
   use crate::types::DerivationInput;
   use crate::wallet::{derive_accounts, import_wallet_mnemonic};
-
-  const TEST_PASSWORD: &str = "imToken";
-  const TEST_MNEMONIC: &str =
-    "inject kidney empty canal shadow pact comfort wife crush horse wife sketch";
-
-  fn temp_vault_dir(test_name: &str) -> PathBuf {
-    let timestamp = SystemTime::now()
-      .duration_since(UNIX_EPOCH)
-      .expect("system clock should be after Unix epoch")
-      .as_nanos();
-
-    env::temp_dir().join(format!(
-      "tcx-core-{test_name}-{}-{timestamp}",
-      std::process::id()
-    ))
-  }
-
-  fn temp_vault(test_name: &str) -> (PathBuf, String) {
-    let vault_dir = temp_vault_dir(test_name);
-    let vault_path = vault_dir.to_string_lossy().into_owned();
-    (vault_dir, vault_path)
-  }
 
   fn keystore_json(wallet: &crate::types::WalletInfo) -> String {
     wallet
@@ -180,11 +156,11 @@ mod tests {
 
   #[test]
   fn derive_accounts_returns_requested_accounts() {
-    let (vault_dir, vault_path) = temp_vault("derive-accounts");
+    let (vault_dir, vault_path) = fixtures::temp_vault("derive-accounts");
     let source_wallet = import_wallet_mnemonic(
       "Imported mnemonic".to_string(),
-      TEST_MNEMONIC.to_string(),
-      TEST_PASSWORD.to_string(),
+      fixtures::TEST_MNEMONIC.to_string(),
+      fixtures::TEST_PASSWORD.to_string(),
       vault_path,
       None,
     )
@@ -192,7 +168,7 @@ mod tests {
 
     let accounts = derive_accounts(
       keystore_json(&source_wallet),
-      TEST_PASSWORD.to_string(),
+      fixtures::TEST_PASSWORD.to_string(),
       Some(vec![
         DerivationInput {
           chain_id: default_eth_mainnet_chain_id().to_string(),
@@ -220,11 +196,11 @@ mod tests {
 
   #[test]
   fn derive_accounts_rejects_unsupported_chain_id_namespace() {
-    let (vault_dir, vault_path) = temp_vault("derive-unsupported-chain");
+    let (vault_dir, vault_path) = fixtures::temp_vault("derive-unsupported-chain");
     let source_wallet = import_wallet_mnemonic(
       "Imported mnemonic".to_string(),
-      TEST_MNEMONIC.to_string(),
-      TEST_PASSWORD.to_string(),
+      fixtures::TEST_MNEMONIC.to_string(),
+      fixtures::TEST_PASSWORD.to_string(),
       vault_path,
       None,
     )
@@ -232,7 +208,7 @@ mod tests {
 
     let err = derive_accounts(
       keystore_json(&source_wallet),
-      TEST_PASSWORD.to_string(),
+      fixtures::TEST_PASSWORD.to_string(),
       Some(vec![DerivationInput {
         chain_id: "bip122:000000000019d6689c085ae165831e93".to_string(),
         derivation_path: None,

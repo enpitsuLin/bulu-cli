@@ -164,6 +164,7 @@ dependencies = [
  "tcx-keystore",
  "tcx-primitive",
  "tcx-tron",
+ "thiserror",
 ]
 
 [[package]]

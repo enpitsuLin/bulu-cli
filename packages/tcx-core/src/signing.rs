@@ -176,10 +176,8 @@ fn with_unlocked_keystore_by_derived_key<T>(
 
 #[cfg(test)]
 mod tests {
-  use std::env;
   use std::fs;
   use std::path::{Path, PathBuf};
-  use std::time::{SystemTime, UNIX_EPOCH};
 
   use tcx_common::ToHex;
   use tcx_eth::transaction::EthTxInput as TcxEthTxInput;
@@ -190,31 +188,9 @@ mod tests {
   use crate::api_key;
   use crate::chain::{ethereum::ETHEREUM_SIGNER, tron::TRON_SIGNER, ChainSigner};
   use crate::policy::create_policy;
+  use crate::test_utils::fixtures;
   use crate::types::{PolicyCreateInput, PolicyRule};
   use crate::wallet::{import_wallet_mnemonic, import_wallet_private_key};
-
-  const TEST_PASSWORD: &str = "imToken";
-  const TEST_MNEMONIC: &str =
-    "inject kidney empty canal shadow pact comfort wife crush horse wife sketch";
-  const TEST_PRIVATE_KEY: &str = "a392604efc2fad9c0b3da43b5f698a2e3f270f170d859912be0d54742275c5f6";
-
-  fn temp_vault_dir(test_name: &str) -> PathBuf {
-    let timestamp = SystemTime::now()
-      .duration_since(UNIX_EPOCH)
-      .expect("system clock should be after Unix epoch")
-      .as_nanos();
-
-    env::temp_dir().join(format!(
-      "tcx-core-{test_name}-{}-{timestamp}",
-      std::process::id()
-    ))
-  }
-
-  fn temp_vault(test_name: &str) -> (PathBuf, String) {
-    let vault_dir = temp_vault_dir(test_name);
-    let vault_path = vault_dir.to_string_lossy().into_owned();
-    (vault_dir, vault_path)
-  }
 
   fn policy_vault_path(vault_dir: &Path, policy_id: &str) -> PathBuf {
     vault_dir.join("policies").join(format!("{policy_id}.json"))
@@ -251,12 +227,12 @@ mod tests {
 
   #[test]
   fn sign_message_signs_ethereum_personal_messages() {
-    let vault_dir = temp_vault_dir("sign-eth-message");
+    let vault_dir = fixtures::temp_vault_dir("sign-eth-message");
     let vault_path = vault_dir.to_string_lossy().into_owned();
     let wallet = import_wallet_mnemonic(
       "Imported mnemonic".to_string(),
-      TEST_MNEMONIC.to_string(),
-      TEST_PASSWORD.to_string(),
+      fixtures::TEST_MNEMONIC.to_string(),
+      fixtures::TEST_PASSWORD.to_string(),
       vault_path.clone(),
       None,
     )
@@ -266,7 +242,7 @@ mod tests {
       wallet.meta.name,
       default_eth_mainnet_chain_id().to_string(),
       "hello world".to_string(),
-      TEST_PASSWORD.to_string(),
+      fixtures::TEST_PASSWORD.to_string(),
       vault_path,
     )
     .expect("ethereum message signing should succeed");
@@ -281,12 +257,12 @@ mod tests {
 
   #[test]
   fn sign_message_signs_tron_messages() {
-    let vault_dir = temp_vault_dir("sign-tron-message");
+    let vault_dir = fixtures::temp_vault_dir("sign-tron-message");
     let vault_path = vault_dir.to_string_lossy().into_owned();
     let wallet = import_wallet_mnemonic(
       "Imported mnemonic".to_string(),
-      TEST_MNEMONIC.to_string(),
-      TEST_PASSWORD.to_string(),
+      fixtures::TEST_MNEMONIC.to_string(),
+      fixtures::TEST_PASSWORD.to_string(),
       vault_path.clone(),
       None,
     )
@@ -296,7 +272,7 @@ mod tests {
       wallet.meta.name,
       default_tron_mainnet_chain_id().to_string(),
       "hello world".to_string(),
-      TEST_PASSWORD.to_string(),
+      fixtures::TEST_PASSWORD.to_string(),
       vault_path,
     )
     .expect("tron message signing should succeed");
@@ -311,12 +287,12 @@ mod tests {
 
   #[test]
   fn sign_transaction_signs_ethereum_transactions() {
-    let vault_dir = temp_vault_dir("sign-eth-transaction");
+    let vault_dir = fixtures::temp_vault_dir("sign-eth-transaction");
     let vault_path = vault_dir.to_string_lossy().into_owned();
     let wallet = import_wallet_private_key(
       "Imported private key".to_string(),
-      TEST_PRIVATE_KEY.to_string(),
-      TEST_PASSWORD.to_string(),
+      fixtures::TEST_PRIVATE_KEY.to_string(),
+      fixtures::TEST_PASSWORD.to_string(),
       vault_path.clone(),
       None,
     )
@@ -340,7 +316,7 @@ mod tests {
       wallet.meta.name,
       "eip155:56".to_string(),
       tx_hex,
-      TEST_PASSWORD.to_string(),
+      fixtures::TEST_PASSWORD.to_string(),
       vault_path,
     )
     .expect("ethereum transaction signing should succeed");
@@ -355,12 +331,12 @@ mod tests {
 
   #[test]
   fn sign_transaction_rejects_mismatched_ethereum_chain_id() {
-    let vault_dir = temp_vault_dir("sign-eth-chain-mismatch");
+    let vault_dir = fixtures::temp_vault_dir("sign-eth-chain-mismatch");
     let vault_path = vault_dir.to_string_lossy().into_owned();
     let wallet = import_wallet_private_key(
       "Imported private key".to_string(),
-      TEST_PRIVATE_KEY.to_string(),
-      TEST_PASSWORD.to_string(),
+      fixtures::TEST_PRIVATE_KEY.to_string(),
+      fixtures::TEST_PASSWORD.to_string(),
       vault_path.clone(),
       None,
     )
@@ -384,7 +360,7 @@ mod tests {
       wallet.meta.name,
       default_eth_mainnet_chain_id().to_string(),
       tx_hex,
-      TEST_PASSWORD.to_string(),
+      fixtures::TEST_PASSWORD.to_string(),
       vault_path,
     )
     .expect_err("mismatched chain id should fail");
@@ -399,12 +375,12 @@ mod tests {
 
   #[test]
   fn sign_transaction_signs_ethereum_eip1559_transaction_hex() {
-    let vault_dir = temp_vault_dir("sign-eth-eip1559-transaction");
+    let vault_dir = fixtures::temp_vault_dir("sign-eth-eip1559-transaction");
     let vault_path = vault_dir.to_string_lossy().into_owned();
     let wallet = import_wallet_mnemonic(
       "Imported mnemonic".to_string(),
-      TEST_MNEMONIC.to_string(),
-      TEST_PASSWORD.to_string(),
+      fixtures::TEST_MNEMONIC.to_string(),
+      fixtures::TEST_PASSWORD.to_string(),
       vault_path.clone(),
       None,
     )
@@ -428,7 +404,7 @@ mod tests {
       wallet.meta.name,
       default_eth_mainnet_chain_id().to_string(),
       tx_hex,
-      TEST_PASSWORD.to_string(),
+      fixtures::TEST_PASSWORD.to_string(),
       vault_path,
     )
     .expect("eip1559 transaction signing should succeed");
@@ -443,12 +419,12 @@ mod tests {
 
   #[test]
   fn sign_transaction_signs_tron_transactions() {
-    let vault_dir = temp_vault_dir("sign-tron-transaction");
+    let vault_dir = fixtures::temp_vault_dir("sign-tron-transaction");
     let vault_path = vault_dir.to_string_lossy().into_owned();
     let wallet = import_wallet_mnemonic(
       "Imported mnemonic".to_string(),
-      TEST_MNEMONIC.to_string(),
-      TEST_PASSWORD.to_string(),
+      fixtures::TEST_MNEMONIC.to_string(),
+      fixtures::TEST_PASSWORD.to_string(),
       vault_path.clone(),
       None,
     )
@@ -458,7 +434,7 @@ mod tests {
       wallet.meta.name,
       default_tron_mainnet_chain_id().to_string(),
       "0a0208312208b02efdc02638b61e40f083c3a7c92d5a65080112610a2d747970652e676f6f676c65617069732e636f6d2f70726f746f636f6c2e5472616e73666572436f6e747261637412300a1541a1e81654258bf14f63feb2e8d1380075d45b0dac1215410b3e84ec677b3e63c99affcadb91a6b4e086798f186470a0bfbfa7c92d".to_string(),
-      TEST_PASSWORD.to_string(),
+      fixtures::TEST_PASSWORD.to_string(),
       vault_path,
     )
     .expect("tron transaction signing should succeed");
@@ -473,11 +449,11 @@ mod tests {
 
   #[test]
   fn sign_transaction_accepts_api_key_and_revoke_immediately_invalidates_it() {
-    let (vault_dir, vault_path) = temp_vault("api-key-sign-transaction");
+    let (vault_dir, vault_path) = fixtures::temp_vault("api-key-sign-transaction");
     let wallet = import_wallet_private_key(
       "Signer".to_string(),
-      TEST_PRIVATE_KEY.to_string(),
-      TEST_PASSWORD.to_string(),
+      fixtures::TEST_PRIVATE_KEY.to_string(),
+      fixtures::TEST_PASSWORD.to_string(),
       vault_path.clone(),
       None,
     )
@@ -494,7 +470,7 @@ mod tests {
       "bsc-agent".to_string(),
       vec![wallet.meta.name.clone()],
       vec![policy.id],
-      TEST_PASSWORD.to_string(),
+      fixtures::TEST_PASSWORD.to_string(),
       None,
       Some(vault_path.clone()),
     )
@@ -542,19 +518,19 @@ mod tests {
 
   #[test]
   fn sign_message_accepts_api_key_for_any_bound_wallet_id() {
-    let (vault_dir, vault_path) = temp_vault("api-key-multi-wallets");
+    let (vault_dir, vault_path) = fixtures::temp_vault("api-key-multi-wallets");
     let first_wallet = import_wallet_mnemonic(
       "First".to_string(),
-      TEST_MNEMONIC.to_string(),
-      TEST_PASSWORD.to_string(),
+      fixtures::TEST_MNEMONIC.to_string(),
+      fixtures::TEST_PASSWORD.to_string(),
       vault_path.clone(),
       None,
     )
     .expect("first wallet import should succeed");
     let second_wallet = import_wallet_private_key(
       "Second".to_string(),
-      TEST_PRIVATE_KEY.to_string(),
-      TEST_PASSWORD.to_string(),
+      fixtures::TEST_PRIVATE_KEY.to_string(),
+      fixtures::TEST_PASSWORD.to_string(),
       vault_path.clone(),
       None,
     )
@@ -571,7 +547,7 @@ mod tests {
       "multi-wallet-agent".to_string(),
       vec![first_wallet.meta.id, second_wallet.meta.id.clone()],
       vec![policy.id],
-      TEST_PASSWORD.to_string(),
+      fixtures::TEST_PASSWORD.to_string(),
       None,
       Some(vault_path.clone()),
     )
@@ -595,19 +571,19 @@ mod tests {
 
   #[test]
   fn sign_message_rejects_wallet_mismatch_and_disallowed_chain_for_api_key() {
-    let (vault_dir, vault_path) = temp_vault("api-key-wallet-mismatch");
+    let (vault_dir, vault_path) = fixtures::temp_vault("api-key-wallet-mismatch");
     let bound_wallet = import_wallet_mnemonic(
       "Bound".to_string(),
-      TEST_MNEMONIC.to_string(),
-      TEST_PASSWORD.to_string(),
+      fixtures::TEST_MNEMONIC.to_string(),
+      fixtures::TEST_PASSWORD.to_string(),
       vault_path.clone(),
       None,
     )
     .expect("bound wallet import should succeed");
     let other_wallet = import_wallet_private_key(
       "Other".to_string(),
-      TEST_PRIVATE_KEY.to_string(),
-      TEST_PASSWORD.to_string(),
+      fixtures::TEST_PRIVATE_KEY.to_string(),
+      fixtures::TEST_PASSWORD.to_string(),
       vault_path.clone(),
       None,
     )
@@ -624,7 +600,7 @@ mod tests {
       "eth-agent".to_string(),
       vec![bound_wallet.meta.id.clone()],
       vec![policy.id],
-      TEST_PASSWORD.to_string(),
+      fixtures::TEST_PASSWORD.to_string(),
       None,
       Some(vault_path.clone()),
     )
@@ -654,7 +630,7 @@ mod tests {
     assert_eq!(
       chain_err.to_string(),
       format!(
-        "policy denied by \"ETH only\": chainId `{}` is not allowed",
+        "policy denied by `ETH only`: chainId `{}` is not allowed",
         default_tron_mainnet_chain_id()
       )
     );
@@ -664,11 +640,11 @@ mod tests {
 
   #[test]
   fn sign_message_rejects_expired_or_missing_policies() {
-    let (vault_dir, vault_path) = temp_vault("api-key-policy-denials");
+    let (vault_dir, vault_path) = fixtures::temp_vault("api-key-policy-denials");
     let wallet = import_wallet_mnemonic(
       "Signer".to_string(),
-      TEST_MNEMONIC.to_string(),
-      TEST_PASSWORD.to_string(),
+      fixtures::TEST_MNEMONIC.to_string(),
+      fixtures::TEST_PASSWORD.to_string(),
       vault_path.clone(),
       None,
     )
@@ -685,7 +661,7 @@ mod tests {
       "expired-agent".to_string(),
       vec![wallet.meta.name.clone()],
       vec![expired_policy.id.clone()],
-      TEST_PASSWORD.to_string(),
+      fixtures::TEST_PASSWORD.to_string(),
       None,
       Some(vault_path.clone()),
     )
@@ -701,7 +677,7 @@ mod tests {
     .expect_err("expired policy should fail");
     assert!(expired_err
       .to_string()
-      .contains("policy denied by \"Expired\": expired at 946684800"));
+      .contains("policy denied by `Expired`: expired at 946684800"));
 
     fs::remove_file(policy_vault_path(&vault_dir, &expired_policy.id))
       .expect("policy file should be removable");
@@ -723,11 +699,11 @@ mod tests {
 
   #[test]
   fn sign_message_rejects_expired_api_key() {
-    let (vault_dir, vault_path) = temp_vault("api-key-expired");
+    let (vault_dir, vault_path) = fixtures::temp_vault("api-key-expired");
     let wallet = import_wallet_mnemonic(
       "Signer".to_string(),
-      TEST_MNEMONIC.to_string(),
-      TEST_PASSWORD.to_string(),
+      fixtures::TEST_MNEMONIC.to_string(),
+      fixtures::TEST_PASSWORD.to_string(),
       vault_path.clone(),
       None,
     )
@@ -736,7 +712,7 @@ mod tests {
       "expired-key".to_string(),
       vec![wallet.meta.id.clone()],
       vec![],
-      TEST_PASSWORD.to_string(),
+      fixtures::TEST_PASSWORD.to_string(),
       Some(946_684_800),
       Some(vault_path.clone()),
     )

@@ -23,10 +23,11 @@ pub(crate) fn delete_policy(name_or_id: String, vault_path: String) -> CoreResul
       .iter()
       .any(|policy_id| policy_id == &policy.id)
   }) {
-    return Err(CoreError::new(format!(
-      "Policy \"{}\" is still referenced by an API key",
-      policy.name
-    )));
+    return Err(CoreError::StillReferenced {
+      resource: "Policy",
+      identifier: policy.name,
+      reference: "API key",
+    });
   }
 
   vault.delete_policy(&policy.id)
@@ -41,10 +42,10 @@ pub(crate) fn create_policy(
 
   let vault = VaultRepository::new(vault_path)?;
   if vault.policy_name_exists(&normalized_name)? {
-    return Err(CoreError::new(format!(
-      r#"Policy "{}" already exists"#,
-      normalized_name
-    )));
+    return Err(CoreError::AlreadyExists {
+      resource: "Policy",
+      name: normalized_name,
+    });
   }
 
   let policy = PolicyInfo {
@@ -61,35 +62,16 @@ pub(crate) fn create_policy(
 
 #[cfg(test)]
 mod tests {
-  use std::env;
   use std::fs;
   use std::path::{Path, PathBuf};
-  use std::time::{SystemTime, UNIX_EPOCH};
 
   use serde_json::Value;
   use tcx_keystore::keystore::IdentityNetwork;
 
   use super::{create_policy, delete_policy, get_policy, list_policies};
   use crate::chain::{ethereum::ETHEREUM_SIGNER, ChainSigner};
+  use crate::test_utils::fixtures;
   use crate::types::{PolicyCreateInput, PolicyRule};
-
-  fn temp_vault_dir(test_name: &str) -> PathBuf {
-    let timestamp = SystemTime::now()
-      .duration_since(UNIX_EPOCH)
-      .expect("system clock should be after Unix epoch")
-      .as_nanos();
-
-    env::temp_dir().join(format!(
-      "tcx-core-{test_name}-{}-{timestamp}",
-      std::process::id()
-    ))
-  }
-
-  fn temp_vault(test_name: &str) -> (PathBuf, String) {
-    let vault_dir = temp_vault_dir(test_name);
-    let vault_path = vault_dir.to_string_lossy().into_owned();
-    (vault_dir, vault_path)
-  }
 
   fn read_vault_json(path: &Path) -> Value {
     let persisted = fs::read_to_string(path).expect("vault JSON should be readable");
@@ -114,7 +96,7 @@ mod tests {
 
   #[test]
   fn policy_crud_round_trips_and_rejects_duplicate_names() {
-    let (vault_dir, vault_path) = temp_vault("policy-crud");
+    let (vault_dir, vault_path) = fixtures::temp_vault("policy-crud");
 
     let policy = create_policy(
       PolicyCreateInput {
@@ -144,7 +126,7 @@ mod tests {
       vault_path.clone(),
     )
     .expect_err("duplicate policy name should fail");
-    assert_eq!(err.to_string(), "Policy \"Base only\" already exists");
+    assert_eq!(err.to_string(), "Policy `Base only` already exists");
 
     delete_policy(policy.id.clone(), vault_path.clone()).expect("policy delete should succeed");
     assert!(

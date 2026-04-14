@@ -317,7 +317,7 @@ test('createWallet rejects duplicate wallet names', () => {
   withTempVault((tempDir) => {
     createWallet('Duplicate', PASSWORD, tempDir)
 
-    expect(() => createWallet('Duplicate', PASSWORD, tempDir)).toThrow(/Wallet "Duplicate" already exists/)
+    expect(() => createWallet('Duplicate', PASSWORD, tempDir)).toThrow(/Wallet `Duplicate` already exists/)
     expect(listWallet(tempDir)).toHaveLength(1)
   })
 })
@@ -327,7 +327,7 @@ test('importWalletMnemonic rejects duplicate wallet names', () => {
     createWallet('Duplicate', PASSWORD, tempDir)
 
     expect(() => importWalletMnemonic('Duplicate', MNEMONIC, PASSWORD, tempDir)).toThrow(
-      /Wallet "Duplicate" already exists/,
+      /Wallet `Duplicate` already exists/,
     )
     expect(listWallet(tempDir)).toHaveLength(1)
   })
@@ -338,7 +338,7 @@ test('importWalletPrivateKey rejects duplicate wallet names', () => {
     createWallet('Duplicate', PASSWORD, tempDir)
 
     expect(() => importWalletPrivateKey('Duplicate', PRIVATE_KEY, PASSWORD, tempDir)).toThrow(
-      /Wallet "Duplicate" already exists/,
+      /Wallet `Duplicate` already exists/,
     )
     expect(listWallet(tempDir)).toHaveLength(1)
   })

@@ -132,9 +132,8 @@ pub(crate) fn timestamp_is_expired(timestamp: i64, now_timestamp: i64) -> bool {
 }
 
 fn deny_policy(policy: &PolicyInfo, reason: impl Into<String>) -> CoreError {
-  CoreError::new(format!(
-    "policy denied by \"{}\": {}",
-    policy.name,
-    reason.into()
-  ))
+  CoreError::PolicyDenied {
+    policy: policy.name.clone(),
+    reason: reason.into(),
+  }
 }

@@ -207,7 +207,7 @@ impl VaultRepository {
     &self,
     dir: &Path,
     record_id: &str,
-    label: &str,
+    _label: &str,
     record: &T,
   ) -> CoreResult<()> {
     self.ensure_dir(dir)?;
@@ -215,8 +215,10 @@ impl VaultRepository {
     let path = self.json_file_path(dir, record_id);
     let payload = serde_json::to_string_pretty(record).map_core_err()?;
 
-    fs::write(&path, payload)
-      .core_context(format!("failed to write {label} `{}`", path.display()))?;
+    fs::write(&path, payload).map_err(|err| CoreError::VaultIo {
+      path: path.display().to_string(),
+      source: err,
+    })?;
 
     set_file_permissions(&path);
     Ok(())
@@ -261,25 +263,41 @@ impl VaultRepository {
       .collect()
   }
 
-  fn read_json_record<T: DeserializeOwned>(&self, path: &Path, label: &str) -> CoreResult<T> {
-    let content = fs::read_to_string(path)
-      .core_context(format!("failed to read {label} `{}`", path.display()))?;
-    serde_json::from_str(&content)
-      .core_context(format!("failed to parse {label} `{}`", path.display()))
+  fn read_json_record<T: DeserializeOwned>(&self, path: &Path, _label: &str) -> CoreResult<T> {
+    let content = fs::read_to_string(path).map_err(|err| CoreError::VaultIo {
+      path: path.display().to_string(),
+      source: err,
+    })?;
+    serde_json::from_str(&content).map_err(|err| {
+      CoreError::with_context(
+        format!("failed to parse vault record `{}`", path.display()),
+        err,
+      )
+    })
   }
 
-  fn remove_json_record(&self, dir: &Path, record_id: &str, label: &str) -> CoreResult<()> {
+  fn remove_json_record(&self, dir: &Path, record_id: &str, _label: &str) -> CoreResult<()> {
     let path = self.json_file_path(dir, record_id);
-    fs::remove_file(&path).core_context(format!("failed to delete {label} `{}`", path.display()))
+    fs::remove_file(&path)
+      .map_err(|err| CoreError::VaultIo {
+        path: path.display().to_string(),
+        source: err,
+      })
+      .map_err(|err| {
+        CoreError::with_context(
+          format!("failed to delete vault record `{}`", path.display()),
+          err,
+        )
+      })
   }
 
   fn ensure_dir(&self, dir: &Path) -> CoreResult<()> {
     let root_dir = Path::new(&self.vault_path);
     if !dir.exists() {
-      fs::create_dir_all(dir).core_context(format!(
-        "failed to create vault directory `{}`",
-        dir.display()
-      ))?;
+      fs::create_dir_all(dir).map_err(|err| CoreError::VaultIo {
+        path: dir.display().to_string(),
+        source: err,
+      })?;
     }
 
     if root_dir.exists() {
@@ -290,17 +308,17 @@ impl VaultRepository {
   }
 
   fn list_json_paths(&self, dir: &Path) -> CoreResult<Vec<PathBuf>> {
-    let entries = fs::read_dir(dir).core_context(format!(
-      "failed to read vault directory `{}`",
-      dir.display()
-    ))?;
+    let entries = fs::read_dir(dir).map_err(|err| CoreError::VaultIo {
+      path: dir.display().to_string(),
+      source: err,
+    })?;
 
     let mut paths = Vec::new();
     for entry in entries {
-      let entry = entry.core_context(format!(
-        "failed to read entry in vault directory `{}`",
-        dir.display()
-      ))?;
+      let entry = entry.map_err(|err| CoreError::VaultIo {
+        path: dir.display().to_string(),
+        source: err,
+      })?;
       let path = entry.path();
       if path.extension().and_then(|ext| ext.to_str()) == Some(JSON_FILE_EXTENSION) {
         paths.push(path);
@@ -341,15 +359,16 @@ fn resolve_named_record<'a, T>(
   identifier: &str,
   records: &'a [T],
   vault_path: &str,
-  singular_label: &str,
+  singular_label: &'static str,
   plural_label: &str,
   id: impl Fn(&T) -> &str,
   name: impl Fn(&T) -> &str,
 ) -> CoreResult<&'a T> {
   if records.is_empty() {
-    return Err(CoreError::new(format!(
-      "No {plural_label} found in vault: {vault_path}"
-    )));
+    return Err(CoreError::NotFound {
+      resource: singular_label,
+      identifier: format!("any in vault: {vault_path}"),
+    });
   }
 
   if let Some(record) = records.iter().find(|record| id(record) == identifier) {
@@ -384,9 +403,10 @@ fn resolve_named_record<'a, T>(
     )));
   }
 
-  Err(CoreError::new(format!(
-    "{singular_label} \"{identifier}\" not found"
-  )))
+  Err(CoreError::NotFound {
+    resource: singular_label,
+    identifier: identifier.into(),
+  })
 }
 
 #[cfg(unix)]
