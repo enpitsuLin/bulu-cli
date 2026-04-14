@@ -1,6 +1,8 @@
 pub(crate) mod auth;
 
-use crate::error::{require_non_empty, require_trimmed, CoreResult};
+use tcx_common::{utf8_or_hex_to_bytes, FromHex};
+
+use crate::error::{require_non_empty, require_trimmed, CoreResult, ResultExt};
 use crate::policy::engine::PolicyOperation;
 use crate::signing::auth::with_signing_request;
 use crate::types::{SignedMessage, SignedTransactionResult};
@@ -14,6 +16,7 @@ pub(crate) fn sign_message(
 ) -> CoreResult<SignedMessage> {
   require_non_empty(&credential, "credential")?;
   require_non_empty(&message, "message")?;
+  let message_bytes = utf8_or_hex_to_bytes(&message).map_core_err()?;
 
   with_signing_request(
     name,
@@ -24,9 +27,8 @@ pub(crate) fn sign_message(
     move |unlocked_keystore, request| {
       request.resolved.signer.sign_message(
         unlocked_keystore,
-        &request.resolved,
         &request.derivation_path,
-        &message,
+        &message_bytes,
       )
     },
   )
@@ -41,6 +43,7 @@ pub(crate) fn sign_transaction(
 ) -> CoreResult<SignedTransactionResult> {
   require_non_empty(&credential, "credential")?;
   let normalized_tx_hex = require_trimmed(tx_hex, "txHex")?;
+  let tx_bytes = Vec::from_hex_auto(&normalized_tx_hex).map_core_err()?;
 
   with_signing_request(
     name,
@@ -49,12 +52,15 @@ pub(crate) fn sign_transaction(
     vault_path,
     PolicyOperation::SignTransaction,
     move |unlocked_keystore, request| {
-      request.resolved.signer.sign_transaction(
+      let signed = request.resolved.signer.sign_transaction(
         unlocked_keystore,
-        &request.resolved,
+        &request.resolved.chain_id,
         &request.derivation_path,
-        &normalized_tx_hex,
-      )
+        &tx_bytes,
+      )?;
+      Ok(SignedTransactionResult {
+        signature: signed.signature,
+      })
     },
   )
 }
@@ -208,7 +214,7 @@ mod tests {
 
     assert_eq!(
       signed.signature,
-      "f868088504a817c8088302e248943535353535353535353535353535353535353535820200808194a003479f1d6be72af58b1d60750e155c435e435726b5b690f4d3e59f34bd55e578a0314d2b03d29dc3f87ff95c3427658952add3cf718d3b6b8604068fc3105e4442"
+      "0x03479f1d6be72af58b1d60750e155c435e435726b5b690f4d3e59f34bd55e578314d2b03d29dc3f87ff95c3427658952add3cf718d3b6b8604068fc3105e444201"
     );
 
     let _ = fs::remove_dir_all(vault_dir);
@@ -296,7 +302,7 @@ mod tests {
 
     assert_eq!(
       signed.signature,
-      "02f875010881e285faac6c45d88210be943535353535353535353535353535353535353535833542398a200184c0486d5f082a27c001a0602501c9cfedf145810f9b54558de6cf866a89b7a65890ccde19dd6cec1fe32ca02769f3382ee526a372241238922da39f6283a9613215fd98c8ce37a0d03fa3bb"
+      "0x602501c9cfedf145810f9b54558de6cf866a89b7a65890ccde19dd6cec1fe32c2769f3382ee526a372241238922da39f6283a9613215fd98c8ce37a0d03fa3bb01"
     );
 
     let _ = fs::remove_dir_all(vault_dir);

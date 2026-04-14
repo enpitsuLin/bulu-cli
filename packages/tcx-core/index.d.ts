@@ -273,7 +273,7 @@ export interface SignedMessage {
 
 /** Unified signed transaction result. */
 export interface SignedTransactionResult {
-  /** Hex-encoded signature. */
+  /** Hex-encoded recoverable signature (65 bytes). */
   signature: string
 }
 

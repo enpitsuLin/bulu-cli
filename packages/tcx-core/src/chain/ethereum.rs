@@ -1,36 +1,16 @@
 use rlp::Rlp;
-use tcx_common::{parse_u64, FromHex, ToHex};
+use tcx_common::{keccak256, parse_u64, ToHex};
 use tcx_constants::CurveType;
 use tcx_eth::address::EthAddress;
-use tcx_eth::transaction::{
-  AccessList as TcxEthAccessList, EthMessageInput as TcxEthMessageInput,
-  EthMessageOutput as TcxEthMessageOutput, EthTxInput as TcxEthTxInput,
-  EthTxOutput as TcxEthTxOutput, SignatureType as TcxEthSignatureType,
-};
+use tcx_eth::transaction::{AccessList as TcxEthAccessList, EthTxInput as TcxEthTxInput};
+use tcx_eth::transaction_types::Transaction;
 use tcx_keystore::keystore::IdentityNetwork;
-use tcx_keystore::{
-  Keystore as TcxKeystore, MessageSigner, SignatureParameters, TransactionSigner,
-};
+use tcx_keystore::{Keystore as TcxKeystore, Signer};
 
 use crate::chain::Caip2ChainId;
 use crate::chain::ChainSigner;
-use crate::derivation::ResolvedDerivation;
 use crate::error::{CoreError, CoreResult, ResultExt};
 use crate::types::{SignedMessage, SignedTransactionResult};
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct EthMessageInput {
-  pub(crate) message: String,
-}
-
-impl From<EthMessageInput> for TcxEthMessageInput {
-  fn from(value: EthMessageInput) -> Self {
-    Self {
-      message: value.message,
-      signature_type: TcxEthSignatureType::PersonalSign as i32,
-    }
-  }
-}
 
 #[derive(Debug)]
 pub(crate) struct EthereumSigner;
@@ -80,57 +60,46 @@ impl ChainSigner for EthereumSigner {
   fn sign_message(
     &self,
     keystore: &mut TcxKeystore,
-    resolved: &ResolvedDerivation,
     derivation_path: &str,
-    message: &str,
+    message: &[u8],
   ) -> CoreResult<SignedMessage> {
-    let params = SignatureParameters {
-      curve: CurveType::SECP256k1,
-      derivation_path: derivation_path.to_string(),
-      chain_type: "ETHEREUM".to_string(),
-      network: resolved.network.to_string(),
-      seg_wit: String::new(),
-    };
-    let signed: TcxEthMessageOutput = keystore
-      .sign_message(
-        &params,
-        &TcxEthMessageInput::from(EthMessageInput {
-          message: message.to_string(),
-        }),
-      )
+    let prefix = "\x19Ethereum Signed Message:\n";
+    let len_str = message.len().to_string();
+    let to_hash = [prefix.as_bytes(), len_str.as_bytes(), message].concat();
+    let hash = keccak256(&to_hash);
+
+    let mut sign_result = keystore
+      .secp256k1_ecdsa_sign_recoverable(&hash, derivation_path)
       .map_core_err()?;
+    sign_result[64] += 27;
+
     Ok(SignedMessage {
-      signature: signed.signature,
+      signature: format!("0x{}", sign_result.to_hex()),
     })
   }
 
   fn sign_transaction(
     &self,
     keystore: &mut TcxKeystore,
-    resolved: &ResolvedDerivation,
+    chain_id: &Caip2ChainId,
     derivation_path: &str,
-    tx_hex: &str,
+    tx_bytes: &[u8],
   ) -> CoreResult<SignedTransactionResult> {
-    let tx = prepare_eth_transaction(tx_hex, &resolved.chain_id)?;
-    let params = SignatureParameters {
-      curve: CurveType::SECP256k1,
-      derivation_path: derivation_path.to_string(),
-      chain_type: "ETHEREUM".to_string(),
-      network: resolved.network.to_string(),
-      seg_wit: String::new(),
-    };
-    let signed: TcxEthTxOutput = keystore.sign_transaction(&params, &tx).map_core_err()?;
+    let tx_input = prepare_eth_transaction(tx_bytes, chain_id)?;
+    let tx: Transaction = (&tx_input).try_into().map_core_err()?;
+    let sign_result = keystore
+      .secp256k1_ecdsa_sign_recoverable(&tx.sighash(), derivation_path)
+      .map_core_err()?;
     Ok(SignedTransactionResult {
-      signature: signed.signature,
+      signature: format!("0x{}", sign_result.to_hex()),
     })
   }
 }
 
 fn prepare_eth_transaction(
-  tx_hex: &str,
+  tx_bytes: &[u8],
   request_chain_id: &Caip2ChainId,
 ) -> CoreResult<TcxEthTxInput> {
-  let tx_bytes = Vec::from_hex_auto(tx_hex).map_core_err()?;
   if tx_bytes.is_empty() {
     return Err(CoreError::new("txHex must not be empty"));
   }
@@ -138,7 +107,7 @@ fn prepare_eth_transaction(
   match tx_bytes[0] {
     0x01 => parse_eip2930_transaction(&tx_bytes[1..], request_chain_id),
     0x02 => parse_eip1559_transaction(&tx_bytes[1..], request_chain_id),
-    _ => parse_legacy_transaction(&tx_bytes, request_chain_id),
+    _ => parse_legacy_transaction(tx_bytes, request_chain_id),
   }
 }
 
