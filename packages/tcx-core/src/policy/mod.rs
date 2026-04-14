@@ -1,5 +1,7 @@
+pub(crate) mod engine;
+
 use crate::error::{require_trimmed, CoreError, CoreResult};
-use crate::policy_engine::validate_policy_rules;
+use crate::policy::engine::validate_policy_rules;
 use crate::types::{PolicyCreateInput, PolicyInfo};
 use crate::utils::{new_record_id, now_timestamp};
 use crate::vault::VaultRepository;
