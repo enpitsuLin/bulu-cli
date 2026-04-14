@@ -133,8 +133,7 @@ mod tests {
   use tcx_keystore::keystore::IdentityNetwork;
 
   use super::resolve_derivation;
-  use crate::chain::ethereum::ETHEREUM_SIGNER;
-  use crate::chain::tron::TRON_SIGNER;
+  use crate::chain::{ethereum::ETHEREUM_SIGNER, tron::TRON_SIGNER, ChainSigner};
   use crate::types::DerivationInput;
   use crate::wallet::{derive_accounts, import_wallet_mnemonic};
 

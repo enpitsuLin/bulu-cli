@@ -271,8 +271,7 @@ mod tests {
     create_wallet, delete_wallet, export_wallet, get_wallet, import_wallet_keystore,
     import_wallet_mnemonic, import_wallet_private_key, list_wallets, load_wallet,
   };
-  use crate::chain::ethereum::ETHEREUM_SIGNER;
-  use crate::chain::tron::TRON_SIGNER;
+  use crate::chain::{ethereum::ETHEREUM_SIGNER, tron::TRON_SIGNER, ChainSigner};
   use crate::types::{DerivationInput, KeystoreData, WalletInfo};
 
   const TEST_PASSWORD: &str = "imToken";

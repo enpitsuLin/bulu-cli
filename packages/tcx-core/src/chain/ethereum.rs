@@ -18,35 +18,16 @@ use crate::derivation::ResolvedDerivation;
 use crate::error::{CoreError, CoreResult, ResultExt};
 use crate::types::{SignedMessage, SignedTransactionResult};
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum EthMessageSignatureType {
-  PersonalSign,
-  EcSign,
-}
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct EthMessageInput {
   pub(crate) message: String,
-  pub(crate) signature_type: Option<EthMessageSignatureType>,
-}
-
-impl From<EthMessageSignatureType> for i32 {
-  fn from(value: EthMessageSignatureType) -> Self {
-    match value {
-      EthMessageSignatureType::PersonalSign => TcxEthSignatureType::PersonalSign as i32,
-      EthMessageSignatureType::EcSign => TcxEthSignatureType::EcSign as i32,
-    }
-  }
 }
 
 impl From<EthMessageInput> for TcxEthMessageInput {
   fn from(value: EthMessageInput) -> Self {
     Self {
       message: value.message,
-      signature_type: value
-        .signature_type
-        .unwrap_or(EthMessageSignatureType::PersonalSign)
-        .into(),
+      signature_type: TcxEthSignatureType::PersonalSign as i32,
     }
   }
 }
@@ -154,7 +135,6 @@ fn sign_eth_message(
       &params,
       &TcxEthMessageInput::from(EthMessageInput {
         message: message.to_string(),
-        signature_type: Some(EthMessageSignatureType::PersonalSign),
       }),
     )
     .map_core_err()?;

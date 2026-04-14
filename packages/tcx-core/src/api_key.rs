@@ -179,7 +179,7 @@ mod tests {
   use tcx_keystore::keystore::IdentityNetwork;
 
   use super::{create_api_key, get_api_key, list_api_keys, revoke_api_key};
-  use crate::chain::ethereum::ETHEREUM_SIGNER;
+  use crate::chain::{ethereum::ETHEREUM_SIGNER, ChainSigner};
   use crate::policy::{create_policy, delete_policy};
   use crate::types::{PolicyCreateInput, PolicyRule};
   use crate::wallet::{delete_wallet, import_wallet_mnemonic};

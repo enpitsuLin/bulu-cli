@@ -188,8 +188,7 @@ mod tests {
 
   use super::{sign_message, sign_transaction};
   use crate::api_key;
-  use crate::chain::ethereum::ETHEREUM_SIGNER;
-  use crate::chain::tron::TRON_SIGNER;
+  use crate::chain::{ethereum::ETHEREUM_SIGNER, tron::TRON_SIGNER, ChainSigner};
   use crate::policy::create_policy;
   use crate::types::{PolicyCreateInput, PolicyRule};
   use crate::wallet::{import_wallet_mnemonic, import_wallet_private_key};
