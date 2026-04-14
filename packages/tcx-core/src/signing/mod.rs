@@ -164,7 +164,7 @@ mod tests {
 
     assert_eq!(
       signed.signature,
-      "0x8686cc3cf49e772d96d3a8147a59eb3df2659c172775f3611648bfbe7e3c48c11859b873d9d2185567a4f64a14fa38ce78dc385a7364af55109c5b6426e4c0f61b"
+      "0x99d6dc90e3ab98b42d02f72b0f8d548641e213f4c064882fd5e475637978e16e4702753c47588eef4fa8b5a8882b07c76142e55c2a6d531cd49b19005e950ce41b"
     );
 
     let _ = fs::remove_dir_all(vault_dir);

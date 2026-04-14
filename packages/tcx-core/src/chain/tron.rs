@@ -1,11 +1,9 @@
+use tcx_common::{keccak256, FromHex, ToHex};
 use tcx_constants::CurveType;
 use tcx_keystore::keystore::IdentityNetwork;
-use tcx_keystore::{
-  Keystore as TcxKeystore, MessageSigner, SignatureParameters, TransactionSigner,
-};
+use tcx_keystore::{Keystore as TcxKeystore, SignatureParameters, Signer, TransactionSigner};
 use tcx_tron::transaction::{
-  TronMessageInput as TcxTronMessageInput, TronMessageOutput as TcxTronMessageOutput, TronTxInput,
-  TronTxOutput as TcxTronTxOutput,
+  TronMessageInput as TcxTronMessageInput, TronTxInput, TronTxOutput as TcxTronTxOutput,
 };
 use tcx_tron::TronAddress;
 
@@ -80,29 +78,33 @@ impl ChainSigner for TronSigner {
   fn sign_message(
     &self,
     keystore: &mut TcxKeystore,
-    resolved: &ResolvedDerivation,
+    _resolved: &ResolvedDerivation,
     derivation_path: &str,
     message: &str,
   ) -> CoreResult<SignedMessage> {
-    let params = SignatureParameters {
-      curve: CurveType::SECP256k1,
-      derivation_path: derivation_path.to_string(),
-      chain_type: "TRON".to_string(),
-      network: resolved.network.to_string(),
-      seg_wit: String::new(),
+    // tcx-tron's MessageSigner implementation is incompatible with tronWeb.trx.verifyMessageV2.
+    // For version 1 it hardcodes '\n32' in the header regardless of actual message length.
+    // For version 2 it omits the length entirely.
+    // tronWeb expects: keccak256('\x19TRON Signed Message:\n' + len(message) + message).
+    // We bypass tcx-tron and hash/sign manually to match tronWeb's standard behavior.
+    let data = if message.to_lowercase().starts_with("0x") {
+      Vec::from_hex_auto(message).map_core_err()?
+    } else {
+      message.as_bytes().to_vec()
     };
-    let signed: TcxTronMessageOutput = keystore
-      .sign_message(
-        &params,
-        &TcxTronMessageInput::from(TronMessageInput {
-          value: message.to_string(),
-          header: Some("TRON".to_string()),
-          version: Some(1),
-        }),
-      )
+
+    let prefix = "\x19TRON Signed Message:\n";
+    let len_str = data.len().to_string();
+    let to_hash = [prefix.as_bytes(), len_str.as_bytes(), &data].concat();
+    let hash = keccak256(&to_hash);
+
+    let mut sign_result = keystore
+      .secp256k1_ecdsa_sign_recoverable(&hash, derivation_path)
       .map_core_err()?;
+    sign_result[64] += 27;
+
     Ok(SignedMessage {
-      signature: signed.signature,
+      signature: format!("0x{}", sign_result.to_hex()),
     })
   }
 
