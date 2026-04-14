@@ -47,12 +47,21 @@ pub(crate) fn sign_transaction(
     vault_path,
     PolicyOperation::SignTransaction,
     move |unlocked_keystore, request| {
-      request.resolved.signer.sign_transaction(
+      let signed = request.resolved.signer.sign_transaction(
         unlocked_keystore,
         &request.resolved,
         &request.derivation_path,
         &normalized_tx_hex,
-      )
+      )?;
+      let raw_tx = request.resolved.signer.encode_signed_transaction(
+        &request.resolved,
+        &normalized_tx_hex,
+        &signed.signature,
+      )?;
+      Ok(SignedTransactionResult {
+        signature: signed.signature,
+        raw_transaction: raw_tx,
+      })
     },
   )
 }
@@ -206,7 +215,13 @@ mod tests {
 
     assert_eq!(
       signed.signature,
-      "f868088504a817c8088302e248943535353535353535353535353535353535353535820200808194a003479f1d6be72af58b1d60750e155c435e435726b5b690f4d3e59f34bd55e578a0314d2b03d29dc3f87ff95c3427658952add3cf718d3b6b8604068fc3105e4442"
+      "0x03479f1d6be72af58b1d60750e155c435e435726b5b690f4d3e59f34bd55e578314d2b03d29dc3f87ff95c3427658952add3cf718d3b6b8604068fc3105e444201"
+    );
+    assert_eq!(
+      signed.raw_transaction,
+      Some(
+        "f868088504a817c8088302e248943535353535353535353535353535353535353535820200808194a003479f1d6be72af58b1d60750e155c435e435726b5b690f4d3e59f34bd55e578a0314d2b03d29dc3f87ff95c3427658952add3cf718d3b6b8604068fc3105e4442".to_string()
+      )
     );
 
     let _ = fs::remove_dir_all(vault_dir);
@@ -294,7 +309,13 @@ mod tests {
 
     assert_eq!(
       signed.signature,
-      "02f875010881e285faac6c45d88210be943535353535353535353535353535353535353535833542398a200184c0486d5f082a27c001a0602501c9cfedf145810f9b54558de6cf866a89b7a65890ccde19dd6cec1fe32ca02769f3382ee526a372241238922da39f6283a9613215fd98c8ce37a0d03fa3bb"
+      "0x602501c9cfedf145810f9b54558de6cf866a89b7a65890ccde19dd6cec1fe32c2769f3382ee526a372241238922da39f6283a9613215fd98c8ce37a0d03fa3bb01"
+    );
+    assert_eq!(
+      signed.raw_transaction,
+      Some(
+        "02f875010881e285faac6c45d88210be943535353535353535353535353535353535353535833542398a200184c0486d5f082a27c001a0602501c9cfedf145810f9b54558de6cf866a89b7a65890ccde19dd6cec1fe32ca02769f3382ee526a372241238922da39f6283a9613215fd98c8ce37a0d03fa3bb".to_string()
+      )
     );
 
     let _ = fs::remove_dir_all(vault_dir);
@@ -326,6 +347,7 @@ mod tests {
       signed.signature,
       "c65b4bde808f7fcfab7b0ef9c1e3946c83311f8ac0a5e95be2d8b6d2400cfe8b5e24dc8f0883132513e422f2aaad8a4ecc14438eae84b2683eefa626e3adffc601"
     );
+    assert_eq!(signed.raw_transaction, None);
 
     let _ = fs::remove_dir_all(vault_dir);
   }

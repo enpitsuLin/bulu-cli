@@ -32,6 +32,15 @@ pub(crate) trait ChainSigner: std::fmt::Debug {
     derivation_path: &str,
     tx_hex: &str,
   ) -> CoreResult<SignedTransactionResult>;
+
+  fn encode_signed_transaction(
+    &self,
+    _resolved: &ResolvedDerivation,
+    _tx_hex: &str,
+    _signature: &str,
+  ) -> CoreResult<Option<String>> {
+    Ok(None)
+  }
 }
 
 pub(crate) const ALL_SIGNERS: &[&'static dyn ChainSigner] =

@@ -89,16 +89,27 @@ impl ChainSigner for EthereumSigner {
   ) -> CoreResult<SignedTransactionResult> {
     let tx_input = prepare_eth_transaction(tx_hex, &resolved.chain_id)?;
     let tx: Transaction = (&tx_input).try_into().map_core_err()?;
-    let signature = Signature::from_slice(
-      &keystore
-        .secp256k1_ecdsa_sign_recoverable(&tx.sighash(), derivation_path)
-        .map_core_err()?,
-    )
-    .map_core_err()?;
-    let signed_tx = tx.to_signed_tx(signature);
+    let sign_result = keystore
+      .secp256k1_ecdsa_sign_recoverable(&tx.sighash(), derivation_path)
+      .map_core_err()?;
     Ok(SignedTransactionResult {
-      signature: signed_tx.raw().to_hex(),
+      signature: format!("0x{}", sign_result.to_hex()),
+      raw_transaction: None,
     })
+  }
+
+  fn encode_signed_transaction(
+    &self,
+    resolved: &ResolvedDerivation,
+    tx_hex: &str,
+    signature: &str,
+  ) -> CoreResult<Option<String>> {
+    let tx_input = prepare_eth_transaction(tx_hex, &resolved.chain_id)?;
+    let tx: Transaction = (&tx_input).try_into().map_core_err()?;
+    let sign_bytes = Vec::from_hex_auto(signature).map_core_err()?;
+    let sig = Signature::from_slice(&sign_bytes).map_core_err()?;
+    let signed_tx = tx.to_signed_tx(sig);
+    Ok(Some(signed_tx.raw().to_hex()))
   }
 }
 
