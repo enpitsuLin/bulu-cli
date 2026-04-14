@@ -269,12 +269,16 @@ export declare function revokeApiKey(nameOrId: string, vaultPath: string): void
 export interface SignedMessage {
   /** Hex-encoded recoverable signature. */
   signature: string
+  /** Signature format identifier (e.g. "base64"). */
+  format?: 'base64' | undefined
 }
 
 /** Unified signed transaction result. */
 export interface SignedTransactionResult {
   /** Hex-encoded recoverable signature (65 bytes). */
   signature: string
+  /** Signature format identifier (e.g. "base64"). */
+  format?: 'base64' | undefined
 }
 
 /**

@@ -44,8 +44,11 @@ pub(crate) trait ChainSigner: std::fmt::Debug + Send + Sync {
   ) -> CoreResult<SignedTransactionResult>;
 }
 
-pub(crate) const ALL_SIGNERS: &[&'static (dyn ChainSigner + Send + Sync)] =
-  &[&ethereum::ETHEREUM_SIGNER, &tron::TRON_SIGNER];
+pub(crate) const ALL_SIGNERS: &[&'static (dyn ChainSigner + Send + Sync)] = &[
+  &ethereum::ETHEREUM_SIGNER,
+  &tron::TRON_SIGNER,
+  &bitcoin::BITCOIN_SIGNER,
+];
 
 pub(crate) fn resolve_signer(
   chain_id: &Caip2ChainId,
@@ -55,12 +58,14 @@ pub(crate) fn resolve_signer(
       Ok(&ethereum::ETHEREUM_SIGNER)
     }
     namespace if namespace == tron::TRON_SIGNER.namespace() => Ok(&tron::TRON_SIGNER),
+    namespace if namespace == bitcoin::BITCOIN_SIGNER.namespace() => Ok(&bitcoin::BITCOIN_SIGNER),
     namespace => Err(crate::error::CoreError::new(format!(
       "unsupported chainId namespace `{namespace}`"
     ))),
   }
 }
 
+pub(crate) mod bitcoin;
 mod caip2;
 pub(crate) mod ethereum;
 mod network;

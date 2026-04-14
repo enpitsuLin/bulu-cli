@@ -2,6 +2,16 @@
 members  = ["packages/tcx-core"]
 resolver = "2"
 
+[patch."https://github.com/consenlabs/token-core-monorepo"]
+tcx-btc-kin   = { git = "https://github.com/enpitsuLin/token-core-monorepo" }
+tcx-common    = { git = "https://github.com/enpitsuLin/token-core-monorepo" }
+tcx-constants = { git = "https://github.com/enpitsuLin/token-core-monorepo" }
+tcx-crypto    = { git = "https://github.com/enpitsuLin/token-core-monorepo" }
+tcx-eth       = { git = "https://github.com/enpitsuLin/token-core-monorepo" }
+tcx-keystore  = { git = "https://github.com/enpitsuLin/token-core-monorepo" }
+tcx-primitive = { git = "https://github.com/enpitsuLin/token-core-monorepo" }
+tcx-tron      = { git = "https://github.com/enpitsuLin/token-core-monorepo" }
+
 [profile.release]
 lto   = true
 strip = "symbols"

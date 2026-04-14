@@ -130,7 +130,9 @@ mod tests {
   use tcx_keystore::keystore::IdentityNetwork;
 
   use super::resolve_derivation;
-  use crate::chain::{ethereum::ETHEREUM_SIGNER, tron::TRON_SIGNER, ChainSigner};
+  use crate::chain::{
+    bitcoin::BITCOIN_SIGNER, ethereum::ETHEREUM_SIGNER, tron::TRON_SIGNER, ChainSigner,
+  };
   use crate::test_utils::fixtures;
   use crate::types::DerivationInput;
   use crate::wallet::{derive_accounts, import_wallet_mnemonic};
@@ -152,6 +154,10 @@ mod tests {
 
   fn default_tron_derivation_path(index: u32) -> String {
     TRON_SIGNER.default_derivation_path(index)
+  }
+
+  fn default_btc_derivation_path(index: u32) -> String {
+    BITCOIN_SIGNER.default_derivation_path(index)
   }
 
   #[test]
@@ -210,14 +216,14 @@ mod tests {
       keystore_json(&source_wallet),
       fixtures::TEST_PASSWORD.to_string(),
       Some(vec![DerivationInput {
-        chain_id: "bip122:000000000019d6689c085ae165831e93".to_string(),
+        chain_id: "xyz:123".to_string(),
         derivation_path: None,
         network: None,
       }]),
     )
     .expect_err("unsupported namespaces should fail");
 
-    assert_eq!(err.to_string(), "unsupported chainId namespace `bip122`");
+    assert_eq!(err.to_string(), "unsupported chainId namespace `xyz`");
 
     let _ = fs::remove_dir_all(vault_dir);
   }
@@ -244,5 +250,7 @@ mod tests {
     assert_eq!(default_eth_derivation_path(1), "m/44'/60'/0'/0/1");
     assert_eq!(default_tron_derivation_path(0), "m/44'/195'/0'/0/0");
     assert_eq!(default_tron_derivation_path(1), "m/44'/195'/0'/0/1");
+    assert_eq!(default_btc_derivation_path(0), "m/84'/0'/0'/0/0");
+    assert_eq!(default_btc_derivation_path(1), "m/84'/0'/0'/0/1");
   }
 }

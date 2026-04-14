@@ -43,7 +43,11 @@ pub(crate) fn sign_transaction(
 ) -> CoreResult<SignedTransactionResult> {
   require_non_empty(&credential, "credential")?;
   let normalized_tx_hex = require_trimmed(tx_hex, "txHex")?;
-  let tx_bytes = Vec::from_hex_auto(&normalized_tx_hex).map_core_err()?;
+  let tx_bytes: Vec<u8> = if chain_id.starts_with("bip122:") {
+    normalized_tx_hex.as_bytes().to_vec()
+  } else {
+    Vec::from_hex_auto(&normalized_tx_hex).map_core_err()?
+  };
 
   with_signing_request(
     name,
@@ -60,6 +64,7 @@ pub(crate) fn sign_transaction(
       )?;
       Ok(SignedTransactionResult {
         signature: signed.signature,
+        format: signed.format,
       })
     },
   )
@@ -77,7 +82,9 @@ mod tests {
 
   use super::{sign_message, sign_transaction};
   use crate::api_key;
-  use crate::chain::{ethereum::ETHEREUM_SIGNER, tron::TRON_SIGNER, ChainSigner};
+  use crate::chain::{
+    bitcoin::BITCOIN_SIGNER, ethereum::ETHEREUM_SIGNER, tron::TRON_SIGNER, ChainSigner,
+  };
   use crate::policy::create_policy;
   use crate::test_utils::fixtures;
   use crate::types::{PolicyCreateInput, PolicyRule};
@@ -98,6 +105,10 @@ mod tests {
 
   fn default_tron_mainnet_chain_id() -> &'static str {
     TRON_SIGNER.default_chain_id(IdentityNetwork::Mainnet)
+  }
+
+  fn default_btc_mainnet_chain_id() -> &'static str {
+    BITCOIN_SIGNER.default_chain_id(IdentityNetwork::Mainnet)
   }
 
   fn allowed_chain_rule(chain_id: &str) -> PolicyRule {
@@ -621,6 +632,62 @@ mod tests {
       err.to_string(),
       "API key \"expired-key\" expired at 946684800"
     );
+
+    let _ = fs::remove_dir_all(vault_dir);
+  }
+
+  #[test]
+  fn sign_message_signs_bitcoin_messages() {
+    let vault_dir = fixtures::temp_vault_dir("sign-btc-message");
+    let vault_path = vault_dir.to_string_lossy().into_owned();
+    let wallet = import_wallet_mnemonic(
+      "Imported mnemonic".to_string(),
+      fixtures::TEST_MNEMONIC.to_string(),
+      fixtures::TEST_PASSWORD.to_string(),
+      vault_path.clone(),
+      None,
+    )
+    .expect("mnemonic import should succeed");
+
+    let signed = sign_message(
+      wallet.meta.name,
+      default_btc_mainnet_chain_id().to_string(),
+      "hello world".to_string(),
+      fixtures::TEST_PASSWORD.to_string(),
+      vault_path,
+    )
+    .expect("bitcoin message signing should succeed");
+
+    assert_eq!(signed.format, Some("base64".to_string()));
+    let decoded = base64::decode(&signed.signature).expect("signature should be valid base64");
+    assert!(!decoded.is_empty());
+
+    let _ = fs::remove_dir_all(vault_dir);
+  }
+
+  #[test]
+  fn sign_transaction_rejects_invalid_bitcoin_psbt() {
+    let vault_dir = fixtures::temp_vault_dir("sign-btc-tx-invalid");
+    let vault_path = vault_dir.to_string_lossy().into_owned();
+    let wallet = import_wallet_mnemonic(
+      "Imported mnemonic".to_string(),
+      fixtures::TEST_MNEMONIC.to_string(),
+      fixtures::TEST_PASSWORD.to_string(),
+      vault_path.clone(),
+      None,
+    )
+    .expect("mnemonic import should succeed");
+
+    let err = sign_transaction(
+      wallet.meta.name,
+      default_btc_mainnet_chain_id().to_string(),
+      "notapsbt".to_string(),
+      fixtures::TEST_PASSWORD.to_string(),
+      vault_path,
+    )
+    .expect_err("invalid psbt should fail");
+
+    assert!(!err.to_string().is_empty());
 
     let _ = fs::remove_dir_all(vault_dir);
   }
