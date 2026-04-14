@@ -2,11 +2,10 @@ use rlp::Rlp;
 use tcx_common::{keccak256, parse_u64, utf8_or_hex_to_bytes, FromHex, ToHex};
 use tcx_constants::CurveType;
 use tcx_eth::address::EthAddress;
-use tcx_eth::transaction::{
-  AccessList as TcxEthAccessList, EthTxInput as TcxEthTxInput, EthTxOutput as TcxEthTxOutput,
-};
+use tcx_eth::transaction::{AccessList as TcxEthAccessList, EthTxInput as TcxEthTxInput};
+use tcx_eth::transaction_types::{Signature, Transaction};
 use tcx_keystore::keystore::IdentityNetwork;
-use tcx_keystore::{Keystore as TcxKeystore, SignatureParameters, Signer, TransactionSigner};
+use tcx_keystore::{Keystore as TcxKeystore, Signer};
 
 use crate::chain::Caip2ChainId;
 use crate::chain::ChainSigner;
@@ -88,17 +87,17 @@ impl ChainSigner for EthereumSigner {
     derivation_path: &str,
     tx_hex: &str,
   ) -> CoreResult<SignedTransactionResult> {
-    let tx = prepare_eth_transaction(tx_hex, &resolved.chain_id)?;
-    let params = SignatureParameters {
-      curve: CurveType::SECP256k1,
-      derivation_path: derivation_path.to_string(),
-      chain_type: "ETHEREUM".to_string(),
-      network: resolved.network.to_string(),
-      seg_wit: String::new(),
-    };
-    let signed: TcxEthTxOutput = keystore.sign_transaction(&params, &tx).map_core_err()?;
+    let tx_input = prepare_eth_transaction(tx_hex, &resolved.chain_id)?;
+    let tx: Transaction = (&tx_input).try_into().map_core_err()?;
+    let signature = Signature::from_slice(
+      &keystore
+        .secp256k1_ecdsa_sign_recoverable(&tx.sighash(), derivation_path)
+        .map_core_err()?,
+    )
+    .map_core_err()?;
+    let signed_tx = tx.to_signed_tx(signature);
     Ok(SignedTransactionResult {
-      signature: signed.signature,
+      signature: signed_tx.raw().to_hex(),
     })
   }
 }

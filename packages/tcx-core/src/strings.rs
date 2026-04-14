@@ -8,10 +8,3 @@ pub(crate) fn sanitize_optional_text(value: Option<String>) -> Option<String> {
     }
   })
 }
-
-pub(crate) fn strip_hex_prefix(value: &str) -> &str {
-  value
-    .strip_prefix("0x")
-    .or_else(|| value.strip_prefix("0X"))
-    .unwrap_or(value)
-}
