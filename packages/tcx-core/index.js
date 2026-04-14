@@ -582,7 +582,6 @@ module.exports.createWallet = nativeBinding.createWallet
 module.exports.deletePolicy = nativeBinding.deletePolicy
 module.exports.deleteWallet = nativeBinding.deleteWallet
 module.exports.deriveAccounts = nativeBinding.deriveAccounts
-module.exports.EthMessageSignatureType = nativeBinding.EthMessageSignatureType
 module.exports.exportWallet = nativeBinding.exportWallet
 module.exports.getApiKey = nativeBinding.getApiKey
 module.exports.getPolicy = nativeBinding.getPolicy

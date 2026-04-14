@@ -97,51 +97,12 @@ export interface EncPairData {
   nonce: string
 }
 
-/** Ethereum access list item used for EIP-2930/EIP-1559 transactions. */
-export interface EthAccessListItem {
-  /** Accessed contract address. */
-  address: string
-  /** Accessed storage keys. */
-  storageKeys: Array<string>
-}
-
-/** Ethereum message signing payload. */
-export interface EthMessageInput {
-  /** UTF-8 text or a hex string prefixed with `0x`. */
-  message: string
-  /** Signing mode. Defaults to `PERSONAL_SIGN`. */
-  signatureType?: EthMessageSignatureType
-}
-
-/** Ethereum message signing mode. */
-export declare const enum EthMessageSignatureType {
-  /** Prefix with the `Ethereum Signed Message` header before hashing. */
-  PersonalSign = 'PERSONAL_SIGN',
-  /** Hash the raw payload bytes with keccak256 before signing. */
-  EcSign = 'EC_SIGN'
-}
-
 /** Ethereum signed transaction result. */
 export interface EthSignedTransaction {
   /** Serialized signed transaction payload. */
   signature: string
   /** Transaction hash. */
   txHash: string
-}
-
-/** Ethereum transaction signing payload. */
-export interface EthTransactionInput {
-  nonce: string
-  gasPrice: string
-  gasLimit: string
-  to: string
-  value: string
-  data: string
-  chainId: string
-  txType: string
-  maxFeePerGas: string
-  maxPriorityFeePerGas: string
-  accessList: Array<EthAccessListItem>
 }
 
 /**

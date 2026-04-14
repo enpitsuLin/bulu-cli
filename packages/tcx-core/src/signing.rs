@@ -194,7 +194,7 @@ mod tests {
   use crate::api_key;
   use crate::chain::{Chain, SignedTransaction};
   use crate::policy::create_policy;
-  use crate::types::{EthTransactionInput, PolicyCreateInput, PolicyRule};
+  use crate::types::{PolicyCreateInput, PolicyRule};
   use crate::wallet::{import_wallet_mnemonic, import_wallet_private_key};
 
   const TEST_PASSWORD: &str = "imToken";
@@ -224,9 +224,8 @@ mod tests {
     vault_dir.join("policies").join(format!("{policy_id}.json"))
   }
 
-  fn encode_unsigned_eth_transaction(input: EthTransactionInput) -> String {
-    let tx = TcxEthTransaction::try_from(&TcxEthTxInput::from(input))
-      .expect("transaction input should encode");
+  fn encode_unsigned_eth_transaction(input: TcxEthTxInput) -> String {
+    let tx = TcxEthTransaction::try_from(&input).expect("transaction input should encode");
     tx.encode(None).to_hex()
   }
 
@@ -327,7 +326,7 @@ mod tests {
     )
     .expect("private key import should succeed");
 
-    let tx_hex = encode_unsigned_eth_transaction(EthTransactionInput {
+    let tx_hex = encode_unsigned_eth_transaction(TcxEthTxInput {
       nonce: "8".to_string(),
       gas_price: "20000000008".to_string(),
       gas_limit: "189000".to_string(),
@@ -379,7 +378,7 @@ mod tests {
     )
     .expect("private key import should succeed");
 
-    let tx_hex = encode_unsigned_eth_transaction(EthTransactionInput {
+    let tx_hex = encode_unsigned_eth_transaction(TcxEthTxInput {
       nonce: "8".to_string(),
       gas_price: "20000000008".to_string(),
       gas_limit: "189000".to_string(),
@@ -423,7 +422,7 @@ mod tests {
     )
     .expect("mnemonic import should succeed");
 
-    let tx_hex = encode_unsigned_eth_transaction(EthTransactionInput {
+    let tx_hex = encode_unsigned_eth_transaction(TcxEthTxInput {
       nonce: "8".to_string(),
       gas_price: String::new(),
       gas_limit: "4286".to_string(),
@@ -528,7 +527,7 @@ mod tests {
     )
     .expect("API key creation should succeed");
 
-    let tx_hex = encode_unsigned_eth_transaction(EthTransactionInput {
+    let tx_hex = encode_unsigned_eth_transaction(TcxEthTxInput {
       nonce: "8".to_string(),
       gas_price: "20000000008".to_string(),
       gas_limit: "189000".to_string(),
