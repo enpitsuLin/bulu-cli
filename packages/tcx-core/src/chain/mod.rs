@@ -53,5 +53,4 @@ pub(crate) fn resolve_signer(chain_id: &Caip2ChainId) -> CoreResult<&'static dyn
 mod caip2;
 pub(crate) mod ethereum;
 mod network;
-mod spec;
 pub(crate) mod tron;
