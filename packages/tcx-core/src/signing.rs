@@ -32,7 +32,7 @@ pub(crate) fn sign_message(
     vault_path,
     PolicyOperation::SignMessage,
     move |unlocked_keystore, request| {
-      request.resolved.chain.sign_message(
+      request.resolved.chain.signer().sign_message(
         unlocked_keystore,
         &request.resolved,
         &request.derivation_path,
@@ -59,7 +59,7 @@ pub(crate) fn sign_transaction(
     vault_path,
     PolicyOperation::SignTransaction,
     move |unlocked_keystore, request| {
-      request.resolved.chain.sign_transaction(
+      request.resolved.chain.signer().sign_transaction(
         unlocked_keystore,
         &request.resolved,
         &request.derivation_path,

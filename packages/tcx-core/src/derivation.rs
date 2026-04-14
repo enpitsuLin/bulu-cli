@@ -1,7 +1,7 @@
 use tcx_keystore::keystore::IdentityNetwork;
 use tcx_keystore::Keystore as TcxKeystore;
 
-use crate::chain::{resolve_network, Caip2ChainId, Chain, ChainSigner};
+use crate::chain::{resolve_network, Caip2ChainId, Chain};
 use crate::error::CoreResult;
 use crate::strings::sanitize_optional_text;
 use crate::types::{DerivationInput, WalletAccount};
@@ -57,7 +57,7 @@ pub(crate) fn resolve_derivation(
   let chain = Chain::from_caip2(&chain_id)?;
   let derivation_path = if derivable {
     sanitize_optional_text(derivation.derivation_path)
-      .unwrap_or_else(|| chain.default_derivation_path(0))
+      .unwrap_or_else(|| chain.signer().default_derivation_path(0))
   } else {
     String::new()
   };
@@ -84,10 +84,10 @@ fn default_derivations(
         resolved: ResolvedDerivation {
           chain,
           network,
-          chain_id: Caip2ChainId::parse(chain.default_chain_id(network))?,
+          chain_id: Caip2ChainId::parse(chain.signer().default_chain_id(network))?,
         },
         derivation_path: if derivable {
-          chain.default_derivation_path(index)
+          chain.signer().default_derivation_path(index)
         } else {
           String::new()
         },
@@ -101,7 +101,7 @@ fn derive_account(
   request: &DerivationRequest,
 ) -> CoreResult<WalletAccount> {
   let chain_id = request.resolved.chain_id.to_string();
-  let address = request.resolved.chain.derive_address(
+  let address = request.resolved.chain.signer().derive_address(
     keystore,
     &request.derivation_path,
     &request.resolved.network.to_string(),

@@ -7,11 +7,14 @@ use tcx_eth::transaction::{
   EthMessageOutput as TcxEthMessageOutput, EthTxInput as TcxEthTxInput,
   EthTxOutput as TcxEthTxOutput, SignatureType as TcxEthSignatureType,
 };
+use tcx_keystore::keystore::IdentityNetwork;
 use tcx_keystore::{
   Keystore as TcxKeystore, MessageSigner, SignatureParameters, TransactionSigner,
 };
 
 use crate::chain::Caip2ChainId;
+use crate::chain::ChainSigner;
+use crate::derivation::ResolvedDerivation;
 use crate::error::{CoreError, CoreResult, ResultExt};
 use crate::types::{SignedMessage, SignedTransactionResult};
 
@@ -48,7 +51,71 @@ impl From<EthMessageInput> for TcxEthMessageInput {
   }
 }
 
-pub(crate) fn derive_eth_address(
+pub(crate) struct EthereumSigner;
+pub(crate) const ETHEREUM_SIGNER: EthereumSigner = EthereumSigner;
+
+impl ChainSigner for EthereumSigner {
+  fn coin_name(&self) -> &'static str {
+    "ETHEREUM"
+  }
+
+  fn namespace(&self) -> &'static str {
+    "eip155"
+  }
+
+  fn default_chain_id(&self, network: IdentityNetwork) -> &'static str {
+    match network {
+      IdentityNetwork::Mainnet => "eip155:1",
+      IdentityNetwork::Testnet => "eip155:11155111",
+    }
+  }
+
+  fn default_derivation_path(&self, index: u32) -> String {
+    format!("m/44'/60'/0'/0/{index}")
+  }
+
+  fn derive_address(
+    &self,
+    keystore: &mut TcxKeystore,
+    derivation_path: &str,
+    network: &str,
+  ) -> CoreResult<String> {
+    derive_eth_address(keystore, derivation_path, network)
+  }
+
+  fn sign_message(
+    &self,
+    keystore: &mut TcxKeystore,
+    resolved: &ResolvedDerivation,
+    derivation_path: &str,
+    message: &str,
+  ) -> CoreResult<SignedMessage> {
+    sign_eth_message(
+      keystore,
+      derivation_path,
+      &resolved.network.to_string(),
+      message,
+    )
+  }
+
+  fn sign_transaction(
+    &self,
+    keystore: &mut TcxKeystore,
+    resolved: &ResolvedDerivation,
+    derivation_path: &str,
+    tx_hex: &str,
+  ) -> CoreResult<SignedTransactionResult> {
+    sign_eth_transaction(
+      keystore,
+      derivation_path,
+      &resolved.network.to_string(),
+      &resolved.chain_id,
+      tx_hex,
+    )
+  }
+}
+
+fn derive_eth_address(
   keystore: &mut TcxKeystore,
   derivation_path: &str,
   network: &str,
@@ -68,7 +135,7 @@ pub(crate) fn derive_eth_address(
   Ok(account.address)
 }
 
-pub(crate) fn sign_eth_message(
+fn sign_eth_message(
   keystore: &mut TcxKeystore,
   derivation_path: &str,
   network: &str,
@@ -95,7 +162,7 @@ pub(crate) fn sign_eth_message(
   })
 }
 
-pub(crate) fn sign_eth_transaction(
+fn sign_eth_transaction(
   keystore: &mut TcxKeystore,
   derivation_path: &str,
   network: &str,

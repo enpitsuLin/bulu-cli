@@ -322,19 +322,23 @@ mod tests {
   }
 
   fn default_eth_mainnet_chain_id() -> &'static str {
-    Chain::Ethereum.default_chain_id(IdentityNetwork::Mainnet)
+    Chain::Ethereum
+      .signer()
+      .default_chain_id(IdentityNetwork::Mainnet)
   }
 
   fn default_tron_mainnet_chain_id() -> &'static str {
-    Chain::Tron.default_chain_id(IdentityNetwork::Mainnet)
+    Chain::Tron
+      .signer()
+      .default_chain_id(IdentityNetwork::Mainnet)
   }
 
   fn default_eth_derivation_path(index: u32) -> String {
-    Chain::Ethereum.default_derivation_path(index)
+    Chain::Ethereum.signer().default_derivation_path(index)
   }
 
   fn default_tron_derivation_path(index: u32) -> String {
-    Chain::Tron.default_derivation_path(index)
+    Chain::Tron.signer().default_derivation_path(index)
   }
 
   #[test]
