@@ -25,3 +25,22 @@ console.log(wallets)
 - Create wallets from new mnemonics, existing mnemonics, private keys, or keystore JSON
 - Load, list, and delete persisted wallets in a vault directory
 - Derive accounts and sign Ethereum or Tron messages and transactions
+- Create declarative signing policies and API keys for agent-mode access
+
+## Agent Mode
+
+```ts
+import { createApiKey, createPolicy, signTransaction } from '@bulu-cli/tcx-core'
+
+const policy = createPolicy(
+  {
+    name: 'BSC only',
+    rules: [{ type: 'allowed_chains', chainIds: ['eip155:56'] }],
+  },
+  '.bulu',
+)
+
+const created = createApiKey('agent', ['main'], [policy.id], 'wallet-passphrase', undefined, '.bulu')
+
+const signed = signTransaction('main', 'eip155:56', '<unsigned-tx-hex>', created.token, '.bulu')
+```

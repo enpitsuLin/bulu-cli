@@ -293,7 +293,7 @@ function readCargoTomlVersion(content) {
       continue
     }
 
-    if (inPackage && /^\[/.test(line)) {
+    if (inPackage && line.startsWith('[')) {
       inPackage = false
     }
 
@@ -323,7 +323,7 @@ function updateCargoTomlVersion(content, nextVersion) {
       continue
     }
 
-    if (inPackage && /^\[/.test(line)) {
+    if (inPackage && line.startsWith('[')) {
       inPackage = false
     }
 
@@ -649,7 +649,7 @@ function getCurrentBranch() {
       throw new Error('missing branch name')
     }
     return branch
-  } catch (error) {
+  } catch {
     throw new Error('HEAD is detached; check out a branch before bumping versions')
   }
 }
@@ -805,7 +805,7 @@ function runGitLive(args) {
       cwd: rootDir,
       stdio: 'inherit',
     })
-  } catch (error) {
+  } catch {
     throw new Error(`command failed: ${formatCommand(['git', ...args])}`)
   }
 }

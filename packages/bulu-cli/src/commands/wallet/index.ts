@@ -10,5 +10,6 @@ export default defineCommand({
     delete: () => import('./delete').then((m) => m.default),
     list: () => import('./list').then((m) => m.default),
     switch: () => import('./switch').then((m) => m.default),
+    policy: () => import('./policy/index').then((m) => m.default),
   },
 })
