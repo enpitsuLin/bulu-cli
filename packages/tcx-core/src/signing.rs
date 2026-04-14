@@ -3,17 +3,13 @@ use tcx_keystore::{Keystore as TcxKeystore, KeystoreGuard};
 use crate::api_key::{
   decrypt_derived_key, invalid_credential_error, parse_api_token, API_KEY_TOKEN_PREFIX,
 };
-use crate::chain::{
-  prepare_transaction, sign_message as sign_chain_message,
-  sign_transaction as sign_chain_transaction, Caip2ChainId,
-};
+use crate::chain::Caip2ChainId;
 use crate::derivation::{resolve_derivation, DerivationRequest};
 use crate::error::{require_non_empty, require_trimmed, CoreError, CoreResult, ResultExt};
 use crate::policy_engine::{
   evaluate_policy, timestamp_is_expired, PolicyEvaluationContext, PolicyOperation,
 };
-use crate::types::SignedTransactionResult;
-use crate::types::{DerivationInput, SignedMessage};
+use crate::types::{DerivationInput, SignedMessage, SignedTransactionResult};
 use crate::utils::now_timestamp;
 use crate::vault::VaultRepository;
 use crate::wallet::{stored_keystore, with_unlocked_keystore};
@@ -35,7 +31,7 @@ pub(crate) fn sign_message(
     vault_path,
     PolicyOperation::SignMessage,
     move |unlocked_keystore, request| {
-      sign_chain_message(
+      request.resolved.signer.sign_message(
         unlocked_keystore,
         &request.resolved,
         &request.derivation_path,
@@ -62,12 +58,11 @@ pub(crate) fn sign_transaction(
     vault_path,
     PolicyOperation::SignTransaction,
     move |unlocked_keystore, request| {
-      let tx_data = prepare_transaction(&request.resolved, &normalized_tx_hex)?;
-      sign_chain_transaction(
+      request.resolved.signer.sign_transaction(
         unlocked_keystore,
         &request.resolved,
         &request.derivation_path,
-        tx_data,
+        &normalized_tx_hex,
       )
     },
   )
@@ -193,7 +188,7 @@ mod tests {
 
   use super::{sign_message, sign_transaction};
   use crate::api_key;
-  use crate::chain::Chain;
+  use crate::chain::{ethereum::ETHEREUM_SIGNER, tron::TRON_SIGNER, ChainSigner};
   use crate::policy::create_policy;
   use crate::types::{PolicyCreateInput, PolicyRule};
   use crate::wallet::{import_wallet_mnemonic, import_wallet_private_key};
@@ -231,11 +226,11 @@ mod tests {
   }
 
   fn default_eth_mainnet_chain_id() -> &'static str {
-    Chain::Ethereum.default_chain_id(IdentityNetwork::Mainnet)
+    ETHEREUM_SIGNER.default_chain_id(IdentityNetwork::Mainnet)
   }
 
   fn default_tron_mainnet_chain_id() -> &'static str {
-    Chain::Tron.default_chain_id(IdentityNetwork::Mainnet)
+    TRON_SIGNER.default_chain_id(IdentityNetwork::Mainnet)
   }
 
   fn allowed_chain_rule(chain_id: &str) -> PolicyRule {

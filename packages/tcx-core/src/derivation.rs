@@ -1,19 +1,24 @@
-use tcx_constants::{CoinInfo, CurveType};
-use tcx_eth::address::EthAddress;
 use tcx_keystore::keystore::IdentityNetwork;
 use tcx_keystore::Keystore as TcxKeystore;
-use tcx_tron::TronAddress;
 
-use crate::chain::{resolve_network, Caip2ChainId, Chain};
-use crate::error::{CoreResult, ResultExt};
+use crate::chain::{resolve_network, resolve_signer, Caip2ChainId, ChainSigner, ALL_SIGNERS};
+use crate::error::CoreResult;
 use crate::strings::sanitize_optional_text;
 use crate::types::{DerivationInput, WalletAccount};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub(crate) struct ResolvedDerivation {
-  pub(crate) chain: Chain,
+  pub(crate) signer: &'static dyn ChainSigner,
   pub(crate) network: IdentityNetwork,
   pub(crate) chain_id: Caip2ChainId,
+}
+
+impl PartialEq for ResolvedDerivation {
+  fn eq(&self, other: &Self) -> bool {
+    self.signer.coin_name() == other.signer.coin_name()
+      && self.network == other.network
+      && self.chain_id == other.chain_id
+  }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -57,17 +62,17 @@ pub(crate) fn resolve_derivation(
   derivable: bool,
 ) -> CoreResult<DerivationRequest> {
   let chain_id = Caip2ChainId::parse_input(derivation.chain_id)?;
-  let chain = Chain::from_caip2(&chain_id)?;
+  let signer = resolve_signer(&chain_id)?;
   let derivation_path = if derivable {
     sanitize_optional_text(derivation.derivation_path)
-      .unwrap_or_else(|| chain.default_derivation_path(0))
+      .unwrap_or_else(|| signer.default_derivation_path(0))
   } else {
     String::new()
   };
 
   Ok(DerivationRequest {
     resolved: ResolvedDerivation {
-      chain,
+      signer,
       network: resolve_network(wallet_network, derivation.network)?,
       chain_id,
     },
@@ -80,17 +85,17 @@ fn default_derivations(
   derivable: bool,
   index: u32,
 ) -> CoreResult<Vec<DerivationRequest>> {
-  Chain::ALL
-    .into_iter()
-    .map(|chain| {
+  ALL_SIGNERS
+    .iter()
+    .map(|signer| {
       Ok(DerivationRequest {
         resolved: ResolvedDerivation {
-          chain,
+          signer: *signer,
           network,
-          chain_id: Caip2ChainId::parse(chain.default_chain_id(network))?,
+          chain_id: Caip2ChainId::parse(signer.default_chain_id(network))?,
         },
         derivation_path: if derivable {
-          chain.default_derivation_path(index)
+          signer.default_derivation_path(index)
         } else {
           String::new()
         },
@@ -104,28 +109,17 @@ fn derive_account(
   request: &DerivationRequest,
 ) -> CoreResult<WalletAccount> {
   let chain_id = request.resolved.chain_id.to_string();
-  let coin_info = CoinInfo {
-    chain_id: chain_id.clone(),
-    coin: request.resolved.chain.coin_name().to_string(),
-    derivation_path: request.derivation_path.clone(),
-    curve: CurveType::SECP256k1,
-    network: request.resolved.network.to_string(),
-    seg_wit: String::new(),
-    contract_code: String::new(),
-  };
-
-  let account = match request.resolved.chain {
-    Chain::Ethereum => keystore.derive_coin::<EthAddress>(&coin_info),
-    Chain::Tron => keystore.derive_coin::<TronAddress>(&coin_info),
-  }
-  .map_core_err()?;
-  let address = account.address;
+  let address = request.resolved.signer.derive_address(
+    keystore,
+    &request.derivation_path,
+    &request.resolved.network.to_string(),
+  )?;
 
   Ok(WalletAccount {
     account_id: format!("{chain_id}:{address}"),
     chain_id,
     address,
-    derivation_path: account.derivation_path,
+    derivation_path: request.derivation_path.clone(),
   })
 }
 
@@ -139,7 +133,7 @@ mod tests {
   use tcx_keystore::keystore::IdentityNetwork;
 
   use super::resolve_derivation;
-  use crate::chain::Chain;
+  use crate::chain::{ethereum::ETHEREUM_SIGNER, tron::TRON_SIGNER, ChainSigner};
   use crate::types::DerivationInput;
   use crate::wallet::{derive_accounts, import_wallet_mnemonic};
 
@@ -173,15 +167,15 @@ mod tests {
   }
 
   fn default_eth_mainnet_chain_id() -> &'static str {
-    Chain::Ethereum.default_chain_id(IdentityNetwork::Mainnet)
+    ETHEREUM_SIGNER.default_chain_id(IdentityNetwork::Mainnet)
   }
 
   fn default_eth_derivation_path(index: u32) -> String {
-    Chain::Ethereum.default_derivation_path(index)
+    ETHEREUM_SIGNER.default_derivation_path(index)
   }
 
   fn default_tron_derivation_path(index: u32) -> String {
-    Chain::Tron.default_derivation_path(index)
+    TRON_SIGNER.default_derivation_path(index)
   }
 
   #[test]

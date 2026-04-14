@@ -1,63 +1,57 @@
-use tcx_eth::transaction::EthTxInput as TcxEthTxInput;
-use tcx_keystore::Keystore as TcxKeystore;
-use tcx_tron::transaction::TronTxInput;
-
 use crate::derivation::ResolvedDerivation;
-use crate::error::{CoreError, CoreResult};
+use crate::error::CoreResult;
 use crate::types::{SignedMessage, SignedTransactionResult};
 
 pub(crate) use caip2::Caip2ChainId;
 pub(crate) use network::resolve_network;
-pub(crate) use spec::Chain;
 
-pub(crate) enum PreparedTransaction {
-  Ethereum(Box<TcxEthTxInput>),
-  Tron(TronTxInput),
+pub(crate) trait ChainSigner: std::fmt::Debug {
+  fn coin_name(&self) -> &'static str;
+  fn namespace(&self) -> &'static str;
+  fn default_chain_id(&self, network: tcx_keystore::keystore::IdentityNetwork) -> &'static str;
+  fn default_derivation_path(&self, index: u32) -> String;
+
+  fn derive_address(
+    &self,
+    keystore: &mut tcx_keystore::Keystore,
+    derivation_path: &str,
+    network: &str,
+  ) -> CoreResult<String>;
+
+  fn sign_message(
+    &self,
+    keystore: &mut tcx_keystore::Keystore,
+    resolved: &ResolvedDerivation,
+    derivation_path: &str,
+    message: &str,
+  ) -> CoreResult<SignedMessage>;
+
+  fn sign_transaction(
+    &self,
+    keystore: &mut tcx_keystore::Keystore,
+    resolved: &ResolvedDerivation,
+    derivation_path: &str,
+    tx_hex: &str,
+  ) -> CoreResult<SignedTransactionResult>;
 }
 
-pub(crate) fn prepare_transaction(
-  resolved: &ResolvedDerivation,
-  tx_hex: &str,
-) -> CoreResult<PreparedTransaction> {
-  match resolved.chain {
-    Chain::Ethereum => ethereum::prepare_transaction(tx_hex, &resolved.chain_id)
-      .map(Box::new)
-      .map(PreparedTransaction::Ethereum),
-    Chain::Tron => tron::prepare_transaction(tx_hex).map(PreparedTransaction::Tron),
-  }
-}
+pub(crate) const ALL_SIGNERS: &[&'static dyn ChainSigner] =
+  &[&ethereum::ETHEREUM_SIGNER, &tron::TRON_SIGNER];
 
-pub(crate) fn sign_message(
-  keystore: &mut TcxKeystore,
-  resolved: &ResolvedDerivation,
-  derivation_path: &str,
-  message: &str,
-) -> CoreResult<SignedMessage> {
-  match resolved.chain {
-    Chain::Ethereum => ethereum::sign_message(keystore, resolved, derivation_path, message),
-    Chain::Tron => tron::sign_message(keystore, resolved, derivation_path, message),
-  }
-}
-
-pub(crate) fn sign_transaction(
-  keystore: &mut TcxKeystore,
-  resolved: &ResolvedDerivation,
-  derivation_path: &str,
-  tx_data: PreparedTransaction,
-) -> CoreResult<SignedTransactionResult> {
-  match (resolved.chain, tx_data) {
-    (Chain::Ethereum, PreparedTransaction::Ethereum(tx)) => {
-      ethereum::sign_transaction(keystore, resolved, derivation_path, *tx)
+pub(crate) fn resolve_signer(chain_id: &Caip2ChainId) -> CoreResult<&'static dyn ChainSigner> {
+  match chain_id.namespace() {
+    namespace if namespace == ethereum::ETHEREUM_SIGNER.namespace() => {
+      Ok(&ethereum::ETHEREUM_SIGNER)
     }
-    (Chain::Tron, PreparedTransaction::Tron(tx)) => {
-      tron::sign_transaction(keystore, resolved, derivation_path, tx)
-    }
-    _ => Err(CoreError::new("prepared transaction does not match chain")),
+    namespace if namespace == tron::TRON_SIGNER.namespace() => Ok(&tron::TRON_SIGNER),
+    namespace => Err(crate::error::CoreError::new(format!(
+      "unsupported chainId namespace `{namespace}`"
+    ))),
   }
 }
 
 mod caip2;
-mod ethereum;
+pub(crate) mod ethereum;
 mod network;
 mod spec;
-mod tron;
+pub(crate) mod tron;

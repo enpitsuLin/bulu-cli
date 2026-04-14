@@ -1,23 +1,132 @@
 use rlp::Rlp;
 use tcx_common::{parse_u64, FromHex, ToHex};
 use tcx_constants::CurveType;
+use tcx_eth::address::EthAddress;
 use tcx_eth::transaction::{
   AccessList as TcxEthAccessList, EthMessageInput as TcxEthMessageInput,
   EthMessageOutput as TcxEthMessageOutput, EthTxInput as TcxEthTxInput,
-  EthTxOutput as TcxEthTxOutput,
+  EthTxOutput as TcxEthTxOutput, SignatureType as TcxEthSignatureType,
 };
+use tcx_keystore::keystore::IdentityNetwork;
 use tcx_keystore::{
   Keystore as TcxKeystore, MessageSigner, SignatureParameters, TransactionSigner,
 };
 
 use crate::chain::Caip2ChainId;
+use crate::chain::ChainSigner;
 use crate::derivation::ResolvedDerivation;
 use crate::error::{CoreError, CoreResult, ResultExt};
-use crate::types::{
-  EthMessageInput, EthMessageSignatureType, SignedMessage, SignedTransactionResult,
-};
+use crate::types::{SignedMessage, SignedTransactionResult};
 
-pub(crate) fn prepare_transaction(
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct EthMessageInput {
+  pub(crate) message: String,
+}
+
+impl From<EthMessageInput> for TcxEthMessageInput {
+  fn from(value: EthMessageInput) -> Self {
+    Self {
+      message: value.message,
+      signature_type: TcxEthSignatureType::PersonalSign as i32,
+    }
+  }
+}
+
+#[derive(Debug)]
+pub(crate) struct EthereumSigner;
+pub(crate) const ETHEREUM_SIGNER: EthereumSigner = EthereumSigner;
+
+impl ChainSigner for EthereumSigner {
+  fn coin_name(&self) -> &'static str {
+    "ETHEREUM"
+  }
+
+  fn namespace(&self) -> &'static str {
+    "eip155"
+  }
+
+  fn default_chain_id(&self, network: IdentityNetwork) -> &'static str {
+    match network {
+      IdentityNetwork::Mainnet => "eip155:1",
+      IdentityNetwork::Testnet => "eip155:11155111",
+    }
+  }
+
+  fn default_derivation_path(&self, index: u32) -> String {
+    format!("m/44'/60'/0'/0/{index}")
+  }
+
+  fn derive_address(
+    &self,
+    keystore: &mut TcxKeystore,
+    derivation_path: &str,
+    network: &str,
+  ) -> CoreResult<String> {
+    let coin_info = tcx_constants::CoinInfo {
+      chain_id: String::new(),
+      coin: "ETHEREUM".to_string(),
+      derivation_path: derivation_path.to_string(),
+      curve: CurveType::SECP256k1,
+      network: network.to_string(),
+      seg_wit: String::new(),
+      contract_code: String::new(),
+    };
+    let account = keystore
+      .derive_coin::<EthAddress>(&coin_info)
+      .map_core_err()?;
+    Ok(account.address)
+  }
+
+  fn sign_message(
+    &self,
+    keystore: &mut TcxKeystore,
+    resolved: &ResolvedDerivation,
+    derivation_path: &str,
+    message: &str,
+  ) -> CoreResult<SignedMessage> {
+    let params = SignatureParameters {
+      curve: CurveType::SECP256k1,
+      derivation_path: derivation_path.to_string(),
+      chain_type: "ETHEREUM".to_string(),
+      network: resolved.network.to_string(),
+      seg_wit: String::new(),
+    };
+    let signed: TcxEthMessageOutput = keystore
+      .sign_message(
+        &params,
+        &TcxEthMessageInput::from(EthMessageInput {
+          message: message.to_string(),
+        }),
+      )
+      .map_core_err()?;
+    Ok(SignedMessage {
+      signature: signed.signature,
+    })
+  }
+
+  fn sign_transaction(
+    &self,
+    keystore: &mut TcxKeystore,
+    resolved: &ResolvedDerivation,
+    derivation_path: &str,
+    tx_hex: &str,
+  ) -> CoreResult<SignedTransactionResult> {
+    let tx = prepare_eth_transaction(tx_hex, &resolved.chain_id)?;
+    let params = SignatureParameters {
+      curve: CurveType::SECP256k1,
+      derivation_path: derivation_path.to_string(),
+      chain_type: "ETHEREUM".to_string(),
+      network: resolved.network.to_string(),
+      seg_wit: String::new(),
+    };
+    let signed: TcxEthTxOutput = keystore.sign_transaction(&params, &tx).map_core_err()?;
+    Ok(SignedTransactionResult {
+      signature: signed.signature,
+    })
+  }
+}
+
+fn prepare_eth_transaction(
   tx_hex: &str,
   request_chain_id: &Caip2ChainId,
 ) -> CoreResult<TcxEthTxInput> {
@@ -33,52 +142,6 @@ pub(crate) fn prepare_transaction(
   }
 }
 
-pub(crate) fn sign_message(
-  keystore: &mut TcxKeystore,
-  resolved: &ResolvedDerivation,
-  derivation_path: &str,
-  message: &str,
-) -> CoreResult<SignedMessage> {
-  let params = SignatureParameters {
-    curve: CurveType::SECP256k1,
-    derivation_path: derivation_path.to_string(),
-    chain_type: resolved.chain.coin_name().to_string(),
-    network: resolved.network.to_string(),
-    seg_wit: String::new(),
-  };
-  let signed: TcxEthMessageOutput = keystore
-    .sign_message(
-      &params,
-      &TcxEthMessageInput::from(EthMessageInput {
-        message: message.to_string(),
-        signature_type: Some(EthMessageSignatureType::PersonalSign),
-      }),
-    )
-    .map_core_err()?;
-  Ok(SignedMessage {
-    signature: signed.signature,
-  })
-}
-
-pub(crate) fn sign_transaction(
-  keystore: &mut TcxKeystore,
-  resolved: &ResolvedDerivation,
-  derivation_path: &str,
-  tx: TcxEthTxInput,
-) -> CoreResult<SignedTransactionResult> {
-  let params = SignatureParameters {
-    curve: CurveType::SECP256k1,
-    derivation_path: derivation_path.to_string(),
-    chain_type: resolved.chain.coin_name().to_string(),
-    network: resolved.network.to_string(),
-    seg_wit: String::new(),
-  };
-  let signed: TcxEthTxOutput = keystore.sign_transaction(&params, &tx).map_core_err()?;
-  Ok(SignedTransactionResult {
-    signature: signed.signature,
-  })
-}
-
 fn parse_legacy_transaction(
   tx_bytes: &[u8],
   request_chain_id: &Caip2ChainId,
@@ -92,7 +155,6 @@ fn parse_legacy_transaction(
   let chain_id = match item_count {
     6 => request_chain_id.ethereum_reference()?,
     9 => {
-      // Verify unsigned transaction (no signature placeholders)
       let r = tx
         .at(7)
         .map_core_err()?
@@ -200,8 +262,6 @@ fn parse_eip1559_transaction(
   })
 }
 
-/// Convert RLP item at index to hex string.
-/// If `is_uint` is true, empty bytes become "0x0", otherwise empty string.
 fn rlp_bytes_to_hex(rlp: &Rlp, index: usize, is_uint: bool) -> CoreResult<String> {
   let bytes = rlp
     .at(index)
