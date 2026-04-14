@@ -5,13 +5,14 @@ use crate::api_key::{
 };
 use crate::chain::{
   prepare_transaction, sign_message as sign_chain_message,
-  sign_transaction as sign_chain_transaction, Caip2ChainId, SignedTransaction,
+  sign_transaction as sign_chain_transaction, Caip2ChainId,
 };
 use crate::derivation::{resolve_derivation, DerivationRequest};
 use crate::error::{require_non_empty, require_trimmed, CoreError, CoreResult, ResultExt};
 use crate::policy_engine::{
   evaluate_policy, timestamp_is_expired, PolicyEvaluationContext, PolicyOperation,
 };
+use crate::types::SignedTransactionResult;
 use crate::types::{DerivationInput, SignedMessage};
 use crate::utils::now_timestamp;
 use crate::vault::VaultRepository;
@@ -50,7 +51,7 @@ pub(crate) fn sign_transaction(
   tx_hex: String,
   credential: String,
   vault_path: String,
-) -> CoreResult<SignedTransaction> {
+) -> CoreResult<SignedTransactionResult> {
   require_non_empty(&credential, "credential")?;
   let normalized_tx_hex = require_trimmed(tx_hex, "txHex")?;
 
@@ -192,7 +193,7 @@ mod tests {
 
   use super::{sign_message, sign_transaction};
   use crate::api_key;
-  use crate::chain::{Chain, SignedTransaction};
+  use crate::chain::Chain;
   use crate::policy::create_policy;
   use crate::types::{PolicyCreateInput, PolicyRule};
   use crate::wallet::{import_wallet_mnemonic, import_wallet_private_key};
@@ -349,14 +350,6 @@ mod tests {
     )
     .expect("ethereum transaction signing should succeed");
 
-    let SignedTransaction::Ethereum(signed) = signed else {
-      panic!("expected an Ethereum signed transaction");
-    };
-
-    assert_eq!(
-      signed.tx_hash,
-      "0x1a3c3947ea626e00d6ff1493bcf929b9320d15ff088046990ef88a45f7d37623"
-    );
     assert_eq!(
       signed.signature,
       "f868088504a817c8088302e248943535353535353535353535353535353535353535820200808194a003479f1d6be72af58b1d60750e155c435e435726b5b690f4d3e59f34bd55e578a0314d2b03d29dc3f87ff95c3427658952add3cf718d3b6b8604068fc3105e4442"
@@ -445,14 +438,6 @@ mod tests {
     )
     .expect("eip1559 transaction signing should succeed");
 
-    let SignedTransaction::Ethereum(signed) = signed else {
-      panic!("expected an Ethereum signed transaction");
-    };
-
-    assert_eq!(
-      signed.tx_hash,
-      "0x9a427f295369171f686d83a05b92d8849b822f1fa1c9ccb853e81de545f4625b"
-    );
     assert_eq!(
       signed.signature,
       "02f875010881e285faac6c45d88210be943535353535353535353535353535353535353535833542398a200184c0486d5f082a27c001a0602501c9cfedf145810f9b54558de6cf866a89b7a65890ccde19dd6cec1fe32ca02769f3382ee526a372241238922da39f6283a9613215fd98c8ce37a0d03fa3bb"
@@ -483,16 +468,9 @@ mod tests {
     )
     .expect("tron transaction signing should succeed");
 
-    let SignedTransaction::Tron(signed) = signed else {
-      panic!("expected a Tron signed transaction");
-    };
-
     assert_eq!(
-      signed.signatures,
-      vec![
-        "c65b4bde808f7fcfab7b0ef9c1e3946c83311f8ac0a5e95be2d8b6d2400cfe8b5e24dc8f0883132513e422f2aaad8a4ecc14438eae84b2683eefa626e3adffc601"
-          .to_string()
-      ]
+      signed.signature,
+      "c65b4bde808f7fcfab7b0ef9c1e3946c83311f8ac0a5e95be2d8b6d2400cfe8b5e24dc8f0883132513e422f2aaad8a4ecc14438eae84b2683eefa626e3adffc601"
     );
 
     let _ = fs::remove_dir_all(vault_dir);
@@ -549,9 +527,7 @@ mod tests {
       vault_path.clone(),
     )
     .expect("transaction signing should succeed");
-    let SignedTransaction::Ethereum(_) = signed else {
-      panic!("expected Ethereum signed transaction");
-    };
+    assert!(!signed.signature.is_empty());
 
     api_key::revoke_api_key(created.api_key.id.clone(), vault_path.clone())
       .expect("API key revoke should succeed");

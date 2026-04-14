@@ -43,21 +43,10 @@ pub struct SignedMessage {
 
 #[napi(object)]
 #[derive(Clone, Debug, PartialEq, Eq)]
-/// Ethereum signed transaction result.
-pub struct EthSignedTransaction {
-  /// Serialized signed transaction payload.
+/// Unified signed transaction result.
+pub struct SignedTransactionResult {
+  /// Hex-encoded signature.
   pub signature: String,
-  /// Transaction hash.
-  #[napi(js_name = "txHash")]
-  pub tx_hash: String,
-}
-
-#[napi(object)]
-#[derive(Clone, Debug, PartialEq, Eq)]
-/// Tron signed transaction result.
-pub struct TronSignedTransaction {
-  /// Array of hex-encoded signatures.
-  pub signatures: Vec<String>,
 }
 
 impl From<EthMessageSignatureType> for i32 {

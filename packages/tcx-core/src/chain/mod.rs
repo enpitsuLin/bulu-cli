@@ -4,7 +4,7 @@ use tcx_tron::transaction::TronTxInput;
 
 use crate::derivation::ResolvedDerivation;
 use crate::error::{CoreError, CoreResult};
-use crate::types::{EthSignedTransaction, SignedMessage, TronSignedTransaction};
+use crate::types::{SignedMessage, SignedTransactionResult};
 
 pub(crate) use caip2::Caip2ChainId;
 pub(crate) use network::resolve_network;
@@ -13,12 +13,6 @@ pub(crate) use spec::Chain;
 pub(crate) enum PreparedTransaction {
   Ethereum(Box<TcxEthTxInput>),
   Tron(TronTxInput),
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) enum SignedTransaction {
-  Ethereum(EthSignedTransaction),
-  Tron(TronSignedTransaction),
 }
 
 pub(crate) fn prepare_transaction(
@@ -50,7 +44,7 @@ pub(crate) fn sign_transaction(
   resolved: &ResolvedDerivation,
   derivation_path: &str,
   tx_data: PreparedTransaction,
-) -> CoreResult<SignedTransaction> {
+) -> CoreResult<SignedTransactionResult> {
   match (resolved.chain, tx_data) {
     (Chain::Ethereum, PreparedTransaction::Ethereum(tx)) => {
       ethereum::sign_transaction(keystore, resolved, derivation_path, *tx)

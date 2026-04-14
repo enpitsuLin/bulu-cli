@@ -1,11 +1,10 @@
-use napi::{Either, Result};
+use napi::Result;
 use napi_derive::napi;
 
-use crate::chain::SignedTransaction;
 use crate::error::CoreResultExt;
 use crate::types::{
-  ApiKeyInfo, CreatedApiKey, DerivationInput, EthSignedTransaction, PolicyCreateInput, PolicyInfo,
-  SignedMessage, TronSignedTransaction, WalletAccount, WalletInfo,
+  ApiKeyInfo, CreatedApiKey, DerivationInput, PolicyCreateInput, PolicyInfo, SignedMessage,
+  SignedTransactionResult, WalletAccount, WalletInfo,
 };
 
 // ------------------------------------------------------------------
@@ -237,12 +236,6 @@ pub fn sign_transaction(
   tx_hex: String,
   credential: String,
   vault_path: String,
-) -> Result<Either<EthSignedTransaction, TronSignedTransaction>> {
-  let signed =
-    crate::signing::sign_transaction(name, chain_id, tx_hex, credential, vault_path).into_napi()?;
-
-  Ok(match signed {
-    SignedTransaction::Ethereum(result) => Either::A(result),
-    SignedTransaction::Tron(result) => Either::B(result),
-  })
+) -> Result<SignedTransactionResult> {
+  crate::signing::sign_transaction(name, chain_id, tx_hex, credential, vault_path).into_napi()
 }

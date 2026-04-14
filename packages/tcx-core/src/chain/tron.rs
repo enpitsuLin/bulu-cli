@@ -10,9 +10,7 @@ use tcx_tron::transaction::{
 use crate::derivation::ResolvedDerivation;
 use crate::error::{CoreResult, ResultExt};
 use crate::strings::strip_hex_prefix;
-use crate::types::{SignedMessage, TronMessageInput, TronSignedTransaction};
-
-use super::SignedTransaction;
+use crate::types::{SignedMessage, SignedTransactionResult, TronMessageInput};
 
 pub(crate) fn prepare_transaction(tx_hex: &str) -> CoreResult<TronTxInput> {
   // Tron transactions are passed as raw hex bytes without additional parsing
@@ -54,7 +52,7 @@ pub(crate) fn sign_transaction(
   resolved: &ResolvedDerivation,
   derivation_path: &str,
   tx: TronTxInput,
-) -> CoreResult<SignedTransaction> {
+) -> CoreResult<SignedTransactionResult> {
   let params = SignatureParameters {
     curve: CurveType::SECP256k1,
     derivation_path: derivation_path.to_string(),
@@ -63,7 +61,8 @@ pub(crate) fn sign_transaction(
     seg_wit: String::new(),
   };
   let signed: TcxTronTxOutput = keystore.sign_transaction(&params, &tx).map_core_err()?;
-  Ok(SignedTransaction::Tron(TronSignedTransaction {
-    signatures: signed.signatures,
-  }))
+  let signature = signed.signatures.first().cloned().ok_or_else(|| {
+    crate::error::CoreError::new("tron transaction signing produced no signatures")
+  })?;
+  Ok(SignedTransactionResult { signature })
 }

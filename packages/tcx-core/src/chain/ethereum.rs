@@ -13,9 +13,9 @@ use tcx_keystore::{
 use crate::chain::Caip2ChainId;
 use crate::derivation::ResolvedDerivation;
 use crate::error::{CoreError, CoreResult, ResultExt};
-use crate::types::{EthMessageInput, EthMessageSignatureType, EthSignedTransaction, SignedMessage};
-
-use super::SignedTransaction;
+use crate::types::{
+  EthMessageInput, EthMessageSignatureType, SignedMessage, SignedTransactionResult,
+};
 
 pub(crate) fn prepare_transaction(
   tx_hex: &str,
@@ -65,7 +65,7 @@ pub(crate) fn sign_transaction(
   resolved: &ResolvedDerivation,
   derivation_path: &str,
   tx: TcxEthTxInput,
-) -> CoreResult<SignedTransaction> {
+) -> CoreResult<SignedTransactionResult> {
   let params = SignatureParameters {
     curve: CurveType::SECP256k1,
     derivation_path: derivation_path.to_string(),
@@ -74,10 +74,9 @@ pub(crate) fn sign_transaction(
     seg_wit: String::new(),
   };
   let signed: TcxEthTxOutput = keystore.sign_transaction(&params, &tx).map_core_err()?;
-  Ok(SignedTransaction::Ethereum(EthSignedTransaction {
+  Ok(SignedTransactionResult {
     signature: signed.signature,
-    tx_hash: signed.tx_hash,
-  }))
+  })
 }
 
 fn parse_legacy_transaction(
