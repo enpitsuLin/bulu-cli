@@ -32,7 +32,7 @@ export default defineCommand({
 
     try {
       const result = signMessage(args.wallet, args['chain-id'], args.message, passphrase, vaultPath)
-      out.data({ signature: result.signature })
+      out.data({ signature: result.signature, format: result.format })
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       out.warn(`Error: ${message}`)

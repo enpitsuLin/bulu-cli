@@ -222,7 +222,9 @@ mod tests {
     create_wallet, delete_wallet, export_wallet, get_wallet, import_wallet_keystore,
     import_wallet_mnemonic, import_wallet_private_key, list_wallets, load_wallet,
   };
-  use crate::chain::{ethereum::ETHEREUM_SIGNER, tron::TRON_SIGNER, ChainSigner};
+  use crate::chain::{
+    bitcoin::BITCOIN_SIGNER, ethereum::ETHEREUM_SIGNER, tron::TRON_SIGNER, ChainSigner,
+  };
   use crate::test_utils::fixtures;
   use crate::types::{DerivationInput, KeystoreData, WalletInfo};
 
@@ -258,12 +260,20 @@ mod tests {
     TRON_SIGNER.default_chain_id(IdentityNetwork::Mainnet)
   }
 
+  fn default_btc_mainnet_chain_id() -> &'static str {
+    BITCOIN_SIGNER.default_chain_id(IdentityNetwork::Mainnet)
+  }
+
   fn default_eth_derivation_path(index: u32) -> String {
     ETHEREUM_SIGNER.default_derivation_path(index)
   }
 
   fn default_tron_derivation_path(index: u32) -> String {
     TRON_SIGNER.default_derivation_path(index)
+  }
+
+  fn default_btc_derivation_path(index: u32) -> String {
+    BITCOIN_SIGNER.default_derivation_path(index)
   }
 
   #[test]
@@ -279,9 +289,10 @@ mod tests {
 
     assert_eq!(wallet.meta.source, "NEW_MNEMONIC");
     assert_eq!(wallet.meta.network, "MAINNET");
-    assert_eq!(wallet.accounts.len(), 2);
+    assert_eq!(wallet.accounts.len(), 3);
     assert_eq!(wallet.accounts[0].chain_id, default_eth_mainnet_chain_id());
     assert_eq!(wallet.accounts[1].chain_id, default_tron_mainnet_chain_id());
+    assert_eq!(wallet.accounts[2].chain_id, default_btc_mainnet_chain_id());
     assert_eq!(wallet.meta.version, 12000);
     assert!(wallet.meta.derivable);
     assert_eq!(wallet.keystore.version, 12000);
@@ -345,6 +356,18 @@ mod tests {
         wallet.accounts[1].address
       )
     );
+    assert_eq!(
+      persisted["accounts"][2]["chainId"],
+      default_btc_mainnet_chain_id()
+    );
+    assert_eq!(
+      persisted["accounts"][2]["accountId"],
+      format!(
+        "{}:{}",
+        default_btc_mainnet_chain_id(),
+        wallet.accounts[2].address
+      )
+    );
 
     let _ = fs::remove_dir_all(vault_dir);
   }
@@ -363,7 +386,7 @@ mod tests {
 
     assert_eq!(wallet.meta.source, "MNEMONIC");
     assert_eq!(wallet.meta.network, "MAINNET");
-    assert_eq!(wallet.accounts.len(), 2);
+    assert_eq!(wallet.accounts.len(), 3);
     assert_eq!(wallet.accounts[0].chain_id, default_eth_mainnet_chain_id());
     assert_eq!(
       wallet.accounts[0].account_id,
@@ -380,6 +403,15 @@ mod tests {
         "{}:{}",
         default_tron_mainnet_chain_id(),
         wallet.accounts[1].address
+      )
+    );
+    assert_eq!(wallet.accounts[2].chain_id, default_btc_mainnet_chain_id());
+    assert_eq!(
+      wallet.accounts[2].account_id,
+      format!(
+        "{}:{}",
+        default_btc_mainnet_chain_id(),
+        wallet.accounts[2].address
       )
     );
 
@@ -417,6 +449,10 @@ mod tests {
       indexed_wallet.accounts[1].derivation_path,
       default_tron_derivation_path(1)
     );
+    assert_eq!(
+      indexed_wallet.accounts[2].derivation_path,
+      default_btc_derivation_path(1)
+    );
     assert_ne!(
       indexed_wallet.accounts[0].address,
       default_wallet.accounts[0].address
@@ -429,6 +465,10 @@ mod tests {
     assert_eq!(
       persisted["accounts"][1]["derivationPath"],
       default_tron_derivation_path(1)
+    );
+    assert_eq!(
+      persisted["accounts"][2]["derivationPath"],
+      default_btc_derivation_path(1)
     );
 
     let _ = fs::remove_dir_all(default_vault_dir);
@@ -449,7 +489,7 @@ mod tests {
 
     assert_eq!(wallet.meta.source, "PRIVATE");
     assert_eq!(wallet.meta.network, "MAINNET");
-    assert_eq!(wallet.accounts.len(), 2);
+    assert_eq!(wallet.accounts.len(), 3);
     assert_eq!(wallet.accounts[0].chain_id, default_eth_mainnet_chain_id());
     assert_eq!(wallet.accounts[1].chain_id, default_tron_mainnet_chain_id());
     assert_eq!(
@@ -599,7 +639,7 @@ mod tests {
 
     assert_eq!(wallet.meta.name, "Imported keystore");
     assert_eq!(wallet.keystore.meta.name, "Imported keystore");
-    assert_eq!(wallet.accounts.len(), 2);
+    assert_eq!(wallet.accounts.len(), 3);
     assert_eq!(persisted["meta"]["name"], "Imported keystore");
     assert_eq!(
       persisted["keystore"]["imTokenMeta"]["name"],

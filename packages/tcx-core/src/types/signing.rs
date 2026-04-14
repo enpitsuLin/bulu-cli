@@ -6,6 +6,8 @@ use napi_derive::napi;
 pub struct SignedMessage {
   /// Hex-encoded recoverable signature.
   pub signature: String,
+  /// Signature format identifier (e.g. "base64").
+  pub format: Option<String>,
 }
 
 #[napi(object)]
@@ -14,4 +16,6 @@ pub struct SignedMessage {
 pub struct SignedTransactionResult {
   /// Hex-encoded recoverable signature (65 bytes).
   pub signature: String,
+  /// Signature format identifier (e.g. "base64").
+  pub format: Option<String>,
 }

@@ -33,8 +33,10 @@ const MNEMONIC = 'inject kidney empty canal shadow pact comfort wife crush horse
 const PRIVATE_KEY = 'a392604efc2fad9c0b3da43b5f698a2e3f270f170d859912be0d54742275c5f6'
 const ETH_MAINNET_CHAIN_ID = 'eip155:1'
 const TRON_MAINNET_CHAIN_ID = 'tron:0x2b6653dc'
+const BTC_MAINNET_CHAIN_ID = 'bip122:000000000019d6689c085ae165831e93'
 const ETH_ACCOUNT_1_DERIVATION_PATH = "m/44'/60'/0'/0/1"
 const TRON_ACCOUNT_1_DERIVATION_PATH = "m/44'/195'/0'/0/1"
+const BTC_ACCOUNT_1_DERIVATION_PATH = "m/84'/0'/0'/0/1"
 
 function withTempVault(run: (tempDir: string) => void) {
   const tempDir = mkdtempSync(join(tmpdir(), 'tcx-core-wallet-'))
@@ -143,8 +145,12 @@ test('createWallet returns keystore json and default accounts', () => {
     expect(wallet.meta.source).toBe('NEW_MNEMONIC')
     expect(wallet.meta.network).toBe('MAINNET')
     expect(wallet.meta.derivable).toBe(true)
-    expect(wallet.accounts).toHaveLength(2)
-    expect(wallet.accounts.map((account) => account.chainId)).toEqual([ETH_MAINNET_CHAIN_ID, TRON_MAINNET_CHAIN_ID])
+    expect(wallet.accounts).toHaveLength(3)
+    expect(wallet.accounts.map((account) => account.chainId)).toEqual([
+      ETH_MAINNET_CHAIN_ID,
+      TRON_MAINNET_CHAIN_ID,
+      BTC_MAINNET_CHAIN_ID,
+    ])
     expect(wallet.keystore.version).toBe(12000)
   })
 })
@@ -176,8 +182,12 @@ test('importWalletMnemonic returns default accounts', () => {
 
     expect(wallet).not.toHaveProperty('mnemonic')
     expect(wallet.meta.source).toBe('MNEMONIC')
-    expect(wallet.accounts).toHaveLength(2)
-    expect(wallet.accounts.map((account) => account.chainId)).toEqual([ETH_MAINNET_CHAIN_ID, TRON_MAINNET_CHAIN_ID])
+    expect(wallet.accounts).toHaveLength(3)
+    expect(wallet.accounts.map((account) => account.chainId)).toEqual([
+      ETH_MAINNET_CHAIN_ID,
+      TRON_MAINNET_CHAIN_ID,
+      BTC_MAINNET_CHAIN_ID,
+    ])
   })
 })
 
@@ -191,12 +201,14 @@ test('importWalletMnemonic derives the requested default account index and persi
     expect(indexedWallet.accounts.map((account) => account.derivationPath)).toEqual([
       ETH_ACCOUNT_1_DERIVATION_PATH,
       TRON_ACCOUNT_1_DERIVATION_PATH,
+      BTC_ACCOUNT_1_DERIVATION_PATH,
     ])
     expect(indexedWallet.accounts[0]?.address).not.toBe(defaultWallet.accounts[0]?.address)
     expect(persisted.keystore).toEqual(indexedWallet.keystore)
     expect(persisted.accounts.map((account) => account.derivationPath)).toEqual([
       ETH_ACCOUNT_1_DERIVATION_PATH,
       TRON_ACCOUNT_1_DERIVATION_PATH,
+      BTC_ACCOUNT_1_DERIVATION_PATH,
     ])
   })
 })
@@ -208,10 +220,15 @@ test('importWalletPrivateKey returns a non-derivable wallet', () => {
     expect(wallet).not.toHaveProperty('mnemonic')
     expect(wallet.meta.source).toBe('PRIVATE')
     expect(wallet.meta.derivable).toBe(false)
-    expect(wallet.accounts).toHaveLength(2)
-    expect(wallet.accounts.map((account) => account.chainId)).toEqual([ETH_MAINNET_CHAIN_ID, TRON_MAINNET_CHAIN_ID])
+    expect(wallet.accounts).toHaveLength(3)
+    expect(wallet.accounts.map((account) => account.chainId)).toEqual([
+      ETH_MAINNET_CHAIN_ID,
+      TRON_MAINNET_CHAIN_ID,
+      BTC_MAINNET_CHAIN_ID,
+    ])
     expect(wallet.accounts[0]?.derivationPath).toBe('')
     expect(wallet.accounts[1]?.derivationPath).toBe('')
+    expect(wallet.accounts[2]?.derivationPath).toBe('')
     expect(wallet.accounts[0]).not.toHaveProperty('extPubKey')
     expect(wallet.accounts[0]).not.toHaveProperty('publicKey')
     expect(wallet.meta.curve).toBe('secp256k1')
@@ -228,12 +245,14 @@ test('importWalletPrivateKey persists WalletInfo and ignores index for non-deriv
     expect(wallet.meta.derivable).toBe(false)
     expect(wallet.accounts[0]?.derivationPath).toBe('')
     expect(wallet.accounts[1]?.derivationPath).toBe('')
+    expect(wallet.accounts[2]?.derivationPath).toBe('')
     expect(wallet.accounts[0]).not.toHaveProperty('extPubKey')
     expect(wallet.accounts[0]).not.toHaveProperty('publicKey')
     expect(persisted.keystore.id).toBe(wallet.keystore.id)
     expect(persisted.keystore.version).toBe(wallet.keystore.version)
     expect(persisted.accounts[0]?.derivationPath).toBe('')
     expect(persisted.accounts[1]?.derivationPath).toBe('')
+    expect(persisted.accounts[2]?.derivationPath).toBe('')
     expect(persisted.accounts[0]).not.toHaveProperty('extPubKey')
     expect(persisted.accounts[0]).not.toHaveProperty('publicKey')
   } finally {
@@ -268,7 +287,11 @@ test('importWalletKeystore renames and persists imported keystores', () => {
 
     expect(wallet.meta.name).toBe('Imported Keystore')
     expect(wallet.keystore.imTokenMeta.name).toBe('Imported Keystore')
-    expect(wallet.accounts.map((account) => account.chainId)).toEqual([ETH_MAINNET_CHAIN_ID, TRON_MAINNET_CHAIN_ID])
+    expect(wallet.accounts.map((account) => account.chainId)).toEqual([
+      ETH_MAINNET_CHAIN_ID,
+      TRON_MAINNET_CHAIN_ID,
+      BTC_MAINNET_CHAIN_ID,
+    ])
     expect(persisted.meta.name).toBe('Imported Keystore')
     expect(persisted.keystore.imTokenMeta.name).toBe('Imported Keystore')
   })

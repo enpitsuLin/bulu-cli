@@ -76,6 +76,7 @@ impl ChainSigner for TronSigner {
 
     Ok(SignedMessage {
       signature: format!("0x{}", sign_result.to_hex()),
+      format: None,
     })
   }
 
@@ -92,6 +93,7 @@ impl ChainSigner for TronSigner {
       .map_core_err()?;
     Ok(SignedTransactionResult {
       signature: signature.to_hex(),
+      format: None,
     })
   }
 }

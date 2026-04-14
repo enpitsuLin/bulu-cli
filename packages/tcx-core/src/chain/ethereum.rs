@@ -75,6 +75,7 @@ impl ChainSigner for EthereumSigner {
 
     Ok(SignedMessage {
       signature: format!("0x{}", sign_result.to_hex()),
+      format: None,
     })
   }
 
@@ -92,6 +93,7 @@ impl ChainSigner for EthereumSigner {
       .map_core_err()?;
     Ok(SignedTransactionResult {
       signature: format!("0x{}", sign_result.to_hex()),
+      format: None,
     })
   }
 }
