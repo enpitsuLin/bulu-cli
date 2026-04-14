@@ -22,7 +22,7 @@ pub(crate) trait ChainSigner: std::fmt::Debug + Send + Sync {
     &self,
     keystore: &mut tcx_keystore::Keystore,
     derivation_path: &str,
-    message: &str,
+    message: &[u8],
   ) -> CoreResult<SignedMessage>;
 
   fn sign_transaction(
@@ -30,14 +30,14 @@ pub(crate) trait ChainSigner: std::fmt::Debug + Send + Sync {
     keystore: &mut tcx_keystore::Keystore,
     resolved: &ResolvedDerivation,
     derivation_path: &str,
-    tx_hex: &str,
+    tx_bytes: &[u8],
   ) -> CoreResult<SignedTransactionResult>;
 
   fn encode_signed_transaction(
     &self,
     _resolved: &ResolvedDerivation,
-    _tx_hex: &str,
-    _signature: &str,
+    _tx_bytes: &[u8],
+    _signature: &[u8],
   ) -> CoreResult<Option<String>> {
     Ok(None)
   }

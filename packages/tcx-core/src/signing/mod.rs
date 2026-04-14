@@ -1,6 +1,8 @@
 pub(crate) mod auth;
 
-use crate::error::{require_non_empty, require_trimmed, CoreResult};
+use tcx_common::{utf8_or_hex_to_bytes, FromHex};
+
+use crate::error::{require_non_empty, require_trimmed, CoreResult, ResultExt};
 use crate::policy::engine::PolicyOperation;
 use crate::signing::auth::with_signing_request;
 use crate::types::{SignedMessage, SignedTransactionResult};
@@ -14,6 +16,7 @@ pub(crate) fn sign_message(
 ) -> CoreResult<SignedMessage> {
   require_non_empty(&credential, "credential")?;
   require_non_empty(&message, "message")?;
+  let message_bytes = utf8_or_hex_to_bytes(&message).map_core_err()?;
 
   with_signing_request(
     name,
@@ -22,10 +25,11 @@ pub(crate) fn sign_message(
     vault_path,
     PolicyOperation::SignMessage,
     move |unlocked_keystore, request| {
-      request
-        .resolved
-        .signer
-        .sign_message(unlocked_keystore, &request.derivation_path, &message)
+      request.resolved.signer.sign_message(
+        unlocked_keystore,
+        &request.derivation_path,
+        &message_bytes,
+      )
     },
   )
 }
@@ -39,6 +43,7 @@ pub(crate) fn sign_transaction(
 ) -> CoreResult<SignedTransactionResult> {
   require_non_empty(&credential, "credential")?;
   let normalized_tx_hex = require_trimmed(tx_hex, "txHex")?;
+  let tx_bytes = Vec::from_hex_auto(&normalized_tx_hex).map_core_err()?;
 
   with_signing_request(
     name,
@@ -51,12 +56,13 @@ pub(crate) fn sign_transaction(
         unlocked_keystore,
         &request.resolved,
         &request.derivation_path,
-        &normalized_tx_hex,
+        &tx_bytes,
       )?;
+      let signature_bytes = Vec::from_hex_auto(&signed.signature).map_core_err()?;
       let raw_tx = request.resolved.signer.encode_signed_transaction(
         &request.resolved,
-        &normalized_tx_hex,
-        &signed.signature,
+        &tx_bytes,
+        &signature_bytes,
       )?;
       Ok(SignedTransactionResult {
         signature: signed.signature,

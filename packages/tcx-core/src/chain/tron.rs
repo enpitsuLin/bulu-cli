@@ -1,4 +1,4 @@
-use tcx_common::{keccak256, sha256, FromHex, ToHex};
+use tcx_common::{keccak256, sha256, ToHex};
 use tcx_constants::CurveType;
 use tcx_keystore::keystore::IdentityNetwork;
 use tcx_keystore::{Keystore as TcxKeystore, Signer};
@@ -58,22 +58,16 @@ impl ChainSigner for TronSigner {
     &self,
     keystore: &mut TcxKeystore,
     derivation_path: &str,
-    message: &str,
+    message: &[u8],
   ) -> CoreResult<SignedMessage> {
     // tcx-tron's MessageSigner implementation is incompatible with tronWeb.trx.verifyMessageV2.
     // For version 1 it hardcodes '\n32' in the header regardless of actual message length.
     // For version 2 it omits the length entirely.
     // tronWeb expects: keccak256('\x19TRON Signed Message:\n' + len(message) + message).
     // We bypass tcx-tron and hash/sign manually to match tronWeb's standard behavior.
-    let data = if message.to_lowercase().starts_with("0x") {
-      Vec::from_hex_auto(message).map_core_err()?
-    } else {
-      message.as_bytes().to_vec()
-    };
-
     let prefix = "\x19TRON Signed Message:\n";
-    let len_str = data.len().to_string();
-    let to_hash = [prefix.as_bytes(), len_str.as_bytes(), &data].concat();
+    let len_str = message.len().to_string();
+    let to_hash = [prefix.as_bytes(), len_str.as_bytes(), message].concat();
     let hash = keccak256(&to_hash);
 
     let mut sign_result = keystore
@@ -91,10 +85,9 @@ impl ChainSigner for TronSigner {
     keystore: &mut TcxKeystore,
     _resolved: &ResolvedDerivation,
     derivation_path: &str,
-    tx_hex: &str,
+    tx_bytes: &[u8],
   ) -> CoreResult<SignedTransactionResult> {
-    let data = Vec::from_hex_auto(tx_hex).map_core_err()?;
-    let hash = sha256(&data);
+    let hash = sha256(tx_bytes);
     let signature = keystore
       .secp256k1_ecdsa_sign_recoverable(&hash, derivation_path)
       .map_core_err()?;

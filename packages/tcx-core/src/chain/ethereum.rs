@@ -1,5 +1,5 @@
 use rlp::Rlp;
-use tcx_common::{keccak256, parse_u64, utf8_or_hex_to_bytes, FromHex, ToHex};
+use tcx_common::{keccak256, parse_u64, ToHex};
 use tcx_constants::CurveType;
 use tcx_eth::address::EthAddress;
 use tcx_eth::transaction::{AccessList as TcxEthAccessList, EthTxInput as TcxEthTxInput};
@@ -62,12 +62,11 @@ impl ChainSigner for EthereumSigner {
     &self,
     keystore: &mut TcxKeystore,
     derivation_path: &str,
-    message: &str,
+    message: &[u8],
   ) -> CoreResult<SignedMessage> {
-    let data = utf8_or_hex_to_bytes(message).map_core_err()?;
     let prefix = "\x19Ethereum Signed Message:\n";
-    let len_str = data.len().to_string();
-    let to_hash = [prefix.as_bytes(), len_str.as_bytes(), &data].concat();
+    let len_str = message.len().to_string();
+    let to_hash = [prefix.as_bytes(), len_str.as_bytes(), message].concat();
     let hash = keccak256(&to_hash);
 
     let mut sign_result = keystore
@@ -85,9 +84,9 @@ impl ChainSigner for EthereumSigner {
     keystore: &mut TcxKeystore,
     resolved: &ResolvedDerivation,
     derivation_path: &str,
-    tx_hex: &str,
+    tx_bytes: &[u8],
   ) -> CoreResult<SignedTransactionResult> {
-    let tx_input = prepare_eth_transaction(tx_hex, &resolved.chain_id)?;
+    let tx_input = prepare_eth_transaction(tx_bytes, &resolved.chain_id)?;
     let tx: Transaction = (&tx_input).try_into().map_core_err()?;
     let sign_result = keystore
       .secp256k1_ecdsa_sign_recoverable(&tx.sighash(), derivation_path)
@@ -101,23 +100,21 @@ impl ChainSigner for EthereumSigner {
   fn encode_signed_transaction(
     &self,
     resolved: &ResolvedDerivation,
-    tx_hex: &str,
-    signature: &str,
+    tx_bytes: &[u8],
+    signature: &[u8],
   ) -> CoreResult<Option<String>> {
-    let tx_input = prepare_eth_transaction(tx_hex, &resolved.chain_id)?;
+    let tx_input = prepare_eth_transaction(tx_bytes, &resolved.chain_id)?;
     let tx: Transaction = (&tx_input).try_into().map_core_err()?;
-    let sign_bytes = Vec::from_hex_auto(signature).map_core_err()?;
-    let sig = Signature::from_slice(&sign_bytes).map_core_err()?;
+    let sig = Signature::from_slice(signature).map_core_err()?;
     let signed_tx = tx.to_signed_tx(sig);
     Ok(Some(signed_tx.raw().to_hex()))
   }
 }
 
 fn prepare_eth_transaction(
-  tx_hex: &str,
+  tx_bytes: &[u8],
   request_chain_id: &Caip2ChainId,
 ) -> CoreResult<TcxEthTxInput> {
-  let tx_bytes = Vec::from_hex_auto(tx_hex).map_core_err()?;
   if tx_bytes.is_empty() {
     return Err(CoreError::new("txHex must not be empty"));
   }
@@ -125,7 +122,7 @@ fn prepare_eth_transaction(
   match tx_bytes[0] {
     0x01 => parse_eip2930_transaction(&tx_bytes[1..], request_chain_id),
     0x02 => parse_eip1559_transaction(&tx_bytes[1..], request_chain_id),
-    _ => parse_legacy_transaction(&tx_bytes, request_chain_id),
+    _ => parse_legacy_transaction(tx_bytes, request_chain_id),
   }
 }
 
