@@ -788,6 +788,7 @@ dependencies = [
 [[package]]
 name = "ed25519-dalek-bip32"
 version = "0.3.0"
+source = "git+https://github.com/enpitsuLin/token-core-monorepo#ae69f92d4bdaf3ed241e6a2a7c9442d248278759"
 dependencies = [
  "derivation-path",
  "ed25519-dalek",
@@ -2516,6 +2517,7 @@ checksum = "55937e1799185b12863d447f42597ed69d9928686b8d88a1df17376a097d8369"
 [[package]]
 name = "tcx-btc-kin"
 version = "0.1.0"
+source = "git+https://github.com/enpitsuLin/token-core-monorepo#ae69f92d4bdaf3ed241e6a2a7c9442d248278759"
 dependencies = [
  "anyhow",
  "base64 0.13.1",
@@ -2547,6 +2549,7 @@ dependencies = [
 [[package]]
 name = "tcx-common"
 version = "0.1.0"
+source = "git+https://github.com/enpitsuLin/token-core-monorepo#ae69f92d4bdaf3ed241e6a2a7c9442d248278759"
 dependencies = [
  "aes",
  "anyhow",
@@ -2565,6 +2568,7 @@ dependencies = [
 [[package]]
 name = "tcx-constants"
 version = "0.1.0"
+source = "git+https://github.com/enpitsuLin/token-core-monorepo#ae69f92d4bdaf3ed241e6a2a7c9442d248278759"
 dependencies = [
  "anyhow",
  "lazy_static",
@@ -2577,6 +2581,7 @@ dependencies = [
 [[package]]
 name = "tcx-crypto"
 version = "0.1.0"
+source = "git+https://github.com/enpitsuLin/token-core-monorepo#ae69f92d4bdaf3ed241e6a2a7c9442d248278759"
 dependencies = [
  "aes",
  "anyhow",
@@ -2606,6 +2611,7 @@ dependencies = [
 [[package]]
 name = "tcx-eth"
 version = "0.1.0"
+source = "git+https://github.com/enpitsuLin/token-core-monorepo#ae69f92d4bdaf3ed241e6a2a7c9442d248278759"
 dependencies = [
  "anyhow",
  "ethereum-types",
@@ -2624,6 +2630,7 @@ dependencies = [
 [[package]]
 name = "tcx-keystore"
 version = "0.1.0"
+source = "git+https://github.com/enpitsuLin/token-core-monorepo#ae69f92d4bdaf3ed241e6a2a7c9442d248278759"
 dependencies = [
  "anyhow",
  "bitcoin",
@@ -2653,6 +2660,7 @@ dependencies = [
 [[package]]
 name = "tcx-primitive"
 version = "0.1.0"
+source = "git+https://github.com/enpitsuLin/token-core-monorepo#ae69f92d4bdaf3ed241e6a2a7c9442d248278759"
 dependencies = [
  "anyhow",
  "bitcoin",
@@ -2686,6 +2694,7 @@ dependencies = [
 [[package]]
 name = "tcx-tron"
 version = "0.1.0"
+source = "git+https://github.com/enpitsuLin/token-core-monorepo#ae69f92d4bdaf3ed241e6a2a7c9442d248278759"
 dependencies = [
  "anyhow",
  "bitcoin",
