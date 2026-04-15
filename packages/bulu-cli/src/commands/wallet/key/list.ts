@@ -1,0 +1,36 @@
+import { listApiKey, type ApiKeyInfo } from '@bulu-cli/tcx-core'
+import { defineCommand } from 'citty'
+import { getVaultPath } from '../../../core/config'
+import { createOutput, resolveOutputOptions } from '../../../core/output'
+import { withDefaultArgs } from '../../../core/args-def'
+
+function formatApiKeysForTable(apiKeys: ApiKeyInfo[]) {
+  return apiKeys.map((k) => ({
+    Name: k.name,
+    ID: k.id,
+    Wallets: k.walletIds.length,
+    Policies: k.policyIds.length,
+    Expires: k.expiresAt ? new Date(k.expiresAt * 1000).toISOString() : 'Never',
+  }))
+}
+
+export default defineCommand({
+  meta: { name: 'list', description: 'List all API keys' },
+  args: withDefaultArgs({}),
+  async run({ args }) {
+    const vaultPath = getVaultPath()
+    const apiKeys = listApiKey(vaultPath)
+    const output = createOutput(resolveOutputOptions(args))
+
+    if (apiKeys.length === 0) {
+      output.warn('No API keys found')
+      return
+    }
+
+    const rows = formatApiKeysForTable(apiKeys)
+    output.table(rows, {
+      columns: ['Name', 'ID', 'Wallets', 'Policies', 'Expires'],
+      title: `API Keys (${apiKeys.length})`,
+    })
+  },
+})

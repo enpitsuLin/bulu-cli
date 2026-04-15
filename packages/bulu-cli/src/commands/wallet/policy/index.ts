@@ -4,5 +4,6 @@ export default defineCommand({
   meta: { name: 'policy', description: 'Manage OWS signing policies' },
   subCommands: {
     create: () => import('./create').then((m) => m.default),
+    list: () => import('./list').then((m) => m.default),
   },
 })

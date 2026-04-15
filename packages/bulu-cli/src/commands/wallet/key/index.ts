@@ -4,5 +4,6 @@ export default defineCommand({
   meta: { name: 'key', description: 'Manage API keys for agent-mode signing' },
   subCommands: {
     create: () => import('./create').then((m) => m.default),
+    list: () => import('./list').then((m) => m.default),
   },
 })
