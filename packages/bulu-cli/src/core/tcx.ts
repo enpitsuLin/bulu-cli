@@ -1,8 +1,14 @@
 import { password } from '@clack/prompts'
 
 export async function resolveTCXPassphrase(): Promise<string> {
-  if (process.env.TCX_PASSPHRASE) {
-    return process.env.TCX_PASSPHRASE
+  const passphrase = process.env.TCX_PASSPHRASE || process.env.BULU_PASSPHRASE
+  if (passphrase) {
+    return passphrase
+  }
+
+  const apiKey = process.env.TCX_APIKEY || process.env.BULU_APIKEY
+  if (apiKey) {
+    return apiKey
   }
 
   const result = await password({

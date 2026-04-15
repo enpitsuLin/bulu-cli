@@ -122,7 +122,7 @@ pnpm --filter @bulu-cli/tcx-core test
 - **TypeScript**: Single quotes, no semicolons, 2-space indent, trailing commas, 120 print width, arrow parens always. Enforced via Prettier configuration in root `package.json`.
 - **Rust**: 2-space indent (see `rustfmt.toml`), formatted with `cargo fmt`, linted with `cargo clippy -p bulu_cli_tcx_core --all-targets`.
 - **TOML**: Formatted with `taplo format`.
-- **Comments**: Explain *why*, not *what* or *how*. Only add comments when the reason is non-obvious.
+- **Comments**: Explain _why_, not _what_ or _how_. Only add comments when the reason is non-obvious.
 
 ## Git Hooks
 
@@ -192,6 +192,7 @@ Use `pnpm run bump` (runs `scripts/bump-version.mjs`). It interactively bumps:
 - `Cargo.lock`
 
 The script:
+
 1. Ensures all sources are in sync.
 2. Prompts for the next semver version.
 3. Runs `pnpm build` and auto-stages generated napi artifacts (`index.js`, `index.d.ts`, `browser.js`).
@@ -201,7 +202,7 @@ Options include `--dry-run`, `--yes`, `--no-commit`, `--no-tag`, and `--no-push`
 
 ## Security Considerations
 
-- **Passphrases** are resolved via environment variable (`BULU_PASSPHRASE`) or an interactive `@clack/prompts` prompt. They are never persisted to disk.
+- **Credentials** (passphrase or API key) are resolved via environment variables (`TCX_PASSPHRASE` / `BULU_PASSPHRASE` for passphrases, `TCX_APIKEY` / `BULU_APIKEY` for API keys) or an interactive `@clack/prompts` prompt. They are never persisted to disk.
 - **Vault data** (wallets, policies, API keys) is stored as JSON files in the local vault directory (`~/.bulu/vault/` by default, configurable via `bulu config`). Keystores are encrypted; the vault does not store raw private keys in plaintext.
 - **Agent mode** allows creating revocable API keys and declarative signing policies. This enables automated/scripted signing without exposing the master passphrase.
 - **Static linking on Windows** (`+crt-static`) ensures the native module does not depend on a specific MSVC runtime being present on the target machine.
