@@ -11,6 +11,7 @@ import {
   createWallet,
   deleteWallet,
   deriveAccounts,
+  exportEthKeystoreV3,
   getWallet,
   importWalletKeystore,
   importWalletMnemonic,
@@ -296,6 +297,42 @@ test('deriveAccounts batches arbitrary derivations through a single unlock flow'
     expect(accounts[1]?.derivationPath).toBe("m/44'/60'/0'/0/1")
     expect(accounts[2]?.chainId).toBe(TRON_MAINNET_CHAIN_ID)
     expect(accounts[0]?.address).not.toBe(accounts[1]?.address)
+  })
+})
+
+test('exportEthKeystoreV3 exports the first Ethereum account as a valid keystore V3', () => {
+  withTempVault((tempDir) => {
+    const wallet = importWalletMnemonic('Eth Export', MNEMONIC, PASSWORD, tempDir)
+    const ethAccount = wallet.accounts.find((a) => a.chainId === ETH_MAINNET_CHAIN_ID)!
+
+    const exported = exportEthKeystoreV3(wallet.meta.name, PASSWORD, 'keystore-pass', tempDir)
+    const parsed = JSON.parse(exported) as {
+      version: number
+      id: string
+      address: string
+      crypto: Record<string, unknown>
+    }
+
+    expect(parsed.version).toBe(3)
+    expect(parsed.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i)
+    expect(parsed.address).toBe(stripHexPrefix(ethAccount.address).toLowerCase())
+    expect(parsed.crypto).toBeDefined()
+    expect(parsed.crypto.ciphertext).toBeDefined()
+    expect(parsed.crypto.mac).toBeDefined()
+  })
+})
+
+test('exportEthKeystoreV3 throws when wallet has no Ethereum account', () => {
+  withTempVault((tempDir) => {
+    const wallet = importWalletMnemonic('No Eth', MNEMONIC, PASSWORD, tempDir)
+    const walletPath = join(tempDir, 'wallets', `${wallet.meta.id}.json`)
+    const persisted: WalletInfo = JSON.parse(readFileSync(walletPath, 'utf-8'))
+    persisted.accounts = persisted.accounts.filter((a) => !a.chainId.startsWith('eip155:'))
+    writeFileSync(walletPath, JSON.stringify(persisted))
+
+    expect(() => exportEthKeystoreV3(wallet.meta.name, PASSWORD, PASSWORD, tempDir)).toThrow(
+      /wallet has no Ethereum account/,
+    )
   })
 })
 

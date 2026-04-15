@@ -40,6 +40,9 @@ importers:
       console-table-printer:
         specifier: ^2.15.0
         version: 2.15.0
+      uqr:
+        specifier: ^0.1.0
+        version: 0.1.3
     devDependencies:
       '@types/node':
         specifier: ^25.5.0
@@ -1964,6 +1967,10 @@ packages:
       synckit:
         optional: true
 
+  uqr@0.1.3:
+    resolution:
+      { integrity: sha512-0rjE8iEJe4YmT9TOhwsZtqCMRLc5DXZUI2UEYUUg63ikBkqqE5EYWaI0etFe/5KUcmcYwLih2RND1kq+hrUJXA== }
+
   vite@8.0.7:
     resolution:
       { integrity: sha512-P1PbweD+2/udplnThz3btF4cf6AgPky7kk23RtHUkJIU5BIxwPprhRGmOAHs6FTI7UiGbTNrgNP6jSYD6JaRnw== }
@@ -3351,6 +3358,8 @@ snapshots:
     transitivePeerDependencies:
       - '@emnapi/core'
       - '@emnapi/runtime'
+
+  uqr@0.1.3: {}
 
   vite@8.0.7(@types/node@25.5.2)(jiti@2.6.1)(yaml@2.8.3):
     dependencies:

@@ -22,6 +22,7 @@ tcx-keystore  = { git = "https://github.com/consenlabs/token-core-monorepo", bra
 tcx-primitive = { git = "https://github.com/consenlabs/token-core-monorepo", branch = "feat/keyless", default-features = false }
 tcx-tron      = { git = "https://github.com/consenlabs/token-core-monorepo", branch = "feat/keyless" }
 thiserror     = "1"
+uuid          = { version = "1", features = ["v4"] }
 
 [build-dependencies]
 napi-build = "2"

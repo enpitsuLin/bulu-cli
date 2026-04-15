@@ -96,6 +96,14 @@ export interface EncPairData {
 }
 
 /**
+ * Exports the first Ethereum account of the wallet as a standard keystore V3 JSON.
+ *
+ * `wallet_password` decrypts the vault keystore. `keystore_password` encrypts the exported
+ * V3 keystore. If the wallet has no Ethereum account, an error is returned.
+ */
+export declare function exportEthKeystoreV3(nameOrId: string, walletPassword: string, keystorePassword: string, vaultPath: string): string
+
+/**
  * Exports the wallet's mnemonic or private key.
  *
  * Returns the mnemonic phrase for HD wallets or the private key for private key wallets.

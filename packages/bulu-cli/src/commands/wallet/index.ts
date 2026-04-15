@@ -6,6 +6,7 @@ export default defineCommand({
     create: () => import('./create').then((m) => m.default),
     import: () => import('./import').then((m) => m.default),
     export: () => import('./export').then((m) => m.default),
+    'export-keystore': () => import('./export-keystore').then((m) => m.default),
     info: () => import('./info').then((m) => m.default),
     delete: () => import('./delete').then((m) => m.default),
     list: () => import('./list').then((m) => m.default),

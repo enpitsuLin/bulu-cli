@@ -127,6 +127,21 @@ pub fn export_wallet(name_or_id: String, password: String, vault_path: String) -
   crate::wallet::export_wallet(name_or_id, password, vault_path).into_napi()
 }
 
+#[napi(js_name = "exportEthKeystoreV3")]
+/// Exports the first Ethereum account of the wallet as a standard keystore V3 JSON.
+///
+/// `wallet_password` decrypts the vault keystore. `keystore_password` encrypts the exported
+/// V3 keystore. If the wallet has no Ethereum account, an error is returned.
+pub fn export_eth_keystore_v3(
+  name_or_id: String,
+  wallet_password: String,
+  keystore_password: String,
+  vault_path: String,
+) -> Result<String> {
+  crate::wallet::export_eth_keystore_v3(name_or_id, wallet_password, keystore_password, vault_path)
+    .into_napi()
+}
+
 // ------------------------------------------------------------------
 // API Key
 // ------------------------------------------------------------------
