@@ -6,6 +6,7 @@ use tcx_tron::TronAddress;
 
 use crate::chain::ChainSigner;
 use crate::error::{CoreResult, ResultExt};
+use crate::typed_data::TypedData;
 use crate::types::{SignedMessage, SignedTransactionResult};
 
 #[derive(Debug)]
@@ -92,6 +93,25 @@ impl ChainSigner for TronSigner {
       .map_core_err()?;
     Ok(SignedTransactionResult {
       signature: signature.to_hex(),
+    })
+  }
+
+  fn sign_typed_data(
+    &self,
+    keystore: &mut TcxKeystore,
+    derivation_path: &str,
+    typed_data_json: &str,
+  ) -> CoreResult<SignedMessage> {
+    let typed_data: TypedData = serde_json::from_str(typed_data_json).map_core_err()?;
+    let hash = typed_data.hash()?;
+
+    let mut sign_result = keystore
+      .secp256k1_ecdsa_sign_recoverable(&hash, derivation_path)
+      .map_core_err()?;
+    sign_result[64] += 27;
+
+    Ok(SignedMessage {
+      signature: format!("0x{}", sign_result.to_hex()),
     })
   }
 }
