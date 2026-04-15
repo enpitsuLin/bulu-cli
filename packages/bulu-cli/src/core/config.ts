@@ -24,11 +24,8 @@ export const CONFIG_DEFAULTS: BuluConfig = {
     format: 'table',
   },
   chains: {
-    ethereum: { rpc: 'https://1rpc.io/eth' },
-    arbitrum: { rpc: 'https://arb1.arbitrum.io/rpc' },
-    optimism: { rpc: 'https://mainnet.optimism.io' },
-    polygon: { rpc: 'https://polygon-bor-rpc.publicnode.com' },
-    base: { rpc: 'https://mainnet.base.org' },
+    'eip155:1': { rpc: 'https://1rpc.io/eth' },
+    'eip155:11155111': { rpc: 'https://1rpc.io/sepolia' },
   },
 }
 
