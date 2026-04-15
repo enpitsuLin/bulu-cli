@@ -302,6 +302,16 @@ export declare function signMessage(name: string, chainId: string, message: stri
  */
 export declare function signTransaction(name: string, chainId: string, txHex: string, credential: string, vaultPath: string): SignedTransactionResult
 
+/**
+ * Signs typed structured data (EIP-712 for Ethereum, TIP-712 for Tron).
+ *
+ * `typed_data_json` must be a valid EIP-712 JSON object containing
+ * `types`, `domain`, `primaryType`, and `message`.
+ * `credential` accepts either the wallet passphrase (owner mode) or a
+ * `bulu_key_...` API token (agent mode).
+ */
+export declare function signTypedData(name: string, chainId: string, typedDataJson: string, credential: string, vaultPath: string): SignedMessage
+
 /** A derived account returned to JavaScript. */
 export interface WalletAccount {
   /** CAIP-2 chain id of the derived account. */

@@ -597,3 +597,4 @@ module.exports.loadWallet = nativeBinding.loadWallet
 module.exports.revokeApiKey = nativeBinding.revokeApiKey
 module.exports.signMessage = nativeBinding.signMessage
 module.exports.signTransaction = nativeBinding.signTransaction
+module.exports.signTypedData = nativeBinding.signTypedData

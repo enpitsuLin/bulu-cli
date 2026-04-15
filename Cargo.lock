@@ -151,9 +151,11 @@ dependencies = [
 name = "bulu_cli_tcx_core"
 version = "0.0.3"
 dependencies = [
+ "ethereum-types",
  "napi",
  "napi-build",
  "napi-derive",
+ "num-bigint",
  "rlp",
  "serde",
  "serde_json",
