@@ -9,19 +9,22 @@ version = "0.0.3"
 crate-type = ["cdylib"]
 
 [dependencies]
-napi          = "3.0.0"
-napi-derive   = "3.0.0"
-rlp           = "=0.5.2"
-serde         = { version = "1", features = ["derive"] }
-serde_json    = "1"
-tcx-common    = { git = "https://github.com/consenlabs/token-core-monorepo", branch = "feat/keyless" }
-tcx-constants = { git = "https://github.com/consenlabs/token-core-monorepo", branch = "feat/keyless" }
-tcx-crypto    = { git = "https://github.com/consenlabs/token-core-monorepo", branch = "feat/keyless" }
-tcx-eth       = { git = "https://github.com/consenlabs/token-core-monorepo", branch = "feat/keyless", default-features = false }
-tcx-keystore  = { git = "https://github.com/consenlabs/token-core-monorepo", branch = "feat/keyless", default-features = false }
-tcx-primitive = { git = "https://github.com/consenlabs/token-core-monorepo", branch = "feat/keyless", default-features = false }
-tcx-tron      = { git = "https://github.com/consenlabs/token-core-monorepo", branch = "feat/keyless" }
-thiserror     = "1"
+ethereum-types = "0.14.0"
+napi           = "3.0.0"
+napi-derive    = "3.0.0"
+num-bigint     = "0.4"
+rlp            = "=0.5.2"
+serde          = { version = "1", features = ["derive"] }
+serde_json     = "1"
+tcx-common     = { git = "https://github.com/consenlabs/token-core-monorepo", branch = "feat/keyless" }
+tcx-constants  = { git = "https://github.com/consenlabs/token-core-monorepo", branch = "feat/keyless" }
+tcx-crypto     = { git = "https://github.com/consenlabs/token-core-monorepo", branch = "feat/keyless" }
+tcx-eth        = { git = "https://github.com/consenlabs/token-core-monorepo", branch = "feat/keyless", default-features = false }
+tcx-keystore   = { git = "https://github.com/consenlabs/token-core-monorepo", branch = "feat/keyless", default-features = false }
+tcx-primitive  = { git = "https://github.com/consenlabs/token-core-monorepo", branch = "feat/keyless", default-features = false }
+tcx-tron       = { git = "https://github.com/consenlabs/token-core-monorepo", branch = "feat/keyless" }
+thiserror      = "1"
+uuid           = { version = "1", features = ["v4"] }
 
 [build-dependencies]
 napi-build = "2"

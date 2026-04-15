@@ -127,6 +127,21 @@ pub fn export_wallet(name_or_id: String, password: String, vault_path: String) -
   crate::wallet::export_wallet(name_or_id, password, vault_path).into_napi()
 }
 
+#[napi(js_name = "exportEthKeystoreV3")]
+/// Exports the first Ethereum account of the wallet as a standard keystore V3 JSON.
+///
+/// `wallet_password` decrypts the vault keystore. `keystore_password` encrypts the exported
+/// V3 keystore. If the wallet has no Ethereum account, an error is returned.
+pub fn export_eth_keystore_v3(
+  name_or_id: String,
+  wallet_password: String,
+  keystore_password: String,
+  vault_path: String,
+) -> Result<String> {
+  crate::wallet::export_eth_keystore_v3(name_or_id, wallet_password, keystore_password, vault_path)
+    .into_napi()
+}
+
 // ------------------------------------------------------------------
 // API Key
 // ------------------------------------------------------------------
@@ -238,4 +253,22 @@ pub fn sign_transaction(
   vault_path: String,
 ) -> Result<SignedTransactionResult> {
   crate::signing::sign_transaction(name, chain_id, tx_hex, credential, vault_path).into_napi()
+}
+
+#[napi(js_name = "signTypedData")]
+/// Signs typed structured data (EIP-712 for Ethereum, TIP-712 for Tron).
+///
+/// `typed_data_json` must be a valid EIP-712 JSON object containing
+/// `types`, `domain`, `primaryType`, and `message`.
+/// `credential` accepts either the wallet passphrase (owner mode) or a
+/// `bulu_key_...` API token (agent mode).
+pub fn sign_typed_data(
+  name: String,
+  chain_id: String,
+  typed_data_json: String,
+  credential: String,
+  vault_path: String,
+) -> Result<SignedMessage> {
+  crate::signing::sign_typed_data(name, chain_id, typed_data_json, credential, vault_path)
+    .into_napi()
 }

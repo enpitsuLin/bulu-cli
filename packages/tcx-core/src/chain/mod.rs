@@ -1,4 +1,4 @@
-use crate::error::CoreResult;
+use crate::error::{CoreError, CoreResult};
 use crate::types::{SignedMessage, SignedTransactionResult};
 
 pub(crate) use caip2::Caip2ChainId;
@@ -41,6 +41,20 @@ pub(crate) trait ChainSigner: std::fmt::Debug + Send + Sync {
     derivation_path: &str,
     tx_bytes: &[u8],
   ) -> CoreResult<SignedTransactionResult>;
+
+  /// Sign typed structured data according to EIP-712 / TIP-712.
+  /// The default implementation returns an unsupported error.
+  fn sign_typed_data(
+    &self,
+    _keystore: &mut tcx_keystore::Keystore,
+    _derivation_path: &str,
+    _typed_data_json: &str,
+  ) -> CoreResult<SignedMessage> {
+    Err(CoreError::new(format!(
+      "typed data signing is not supported for {}",
+      self.coin_name()
+    )))
+  }
 }
 
 pub(crate) const ALL_SIGNERS: &[&'static (dyn ChainSigner + Send + Sync)] =

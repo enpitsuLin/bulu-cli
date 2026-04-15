@@ -96,6 +96,14 @@ export interface EncPairData {
 }
 
 /**
+ * Exports the first Ethereum account of the wallet as a standard keystore V3 JSON.
+ *
+ * `wallet_password` decrypts the vault keystore. `keystore_password` encrypts the exported
+ * V3 keystore. If the wallet has no Ethereum account, an error is returned.
+ */
+export declare function exportEthKeystoreV3(nameOrId: string, walletPassword: string, keystorePassword: string, vaultPath: string): string
+
+/**
  * Exports the wallet's mnemonic or private key.
  *
  * Returns the mnemonic phrase for HD wallets or the private key for private key wallets.
@@ -293,6 +301,16 @@ export declare function signMessage(name: string, chainId: string, message: stri
  * `bulu_key_...` API token (agent mode).
  */
 export declare function signTransaction(name: string, chainId: string, txHex: string, credential: string, vaultPath: string): SignedTransactionResult
+
+/**
+ * Signs typed structured data (EIP-712 for Ethereum, TIP-712 for Tron).
+ *
+ * `typed_data_json` must be a valid EIP-712 JSON object containing
+ * `types`, `domain`, `primaryType`, and `message`.
+ * `credential` accepts either the wallet passphrase (owner mode) or a
+ * `bulu_key_...` API token (agent mode).
+ */
+export declare function signTypedData(name: string, chainId: string, typedDataJson: string, credential: string, vaultPath: string): SignedMessage
 
 /** A derived account returned to JavaScript. */
 export interface WalletAccount {

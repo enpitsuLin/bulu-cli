@@ -38,6 +38,7 @@
     "@bulu-cli/tcx-core": "workspace:*",
     "@clack/prompts": "^1.2.0",
     "citty": "^0.2.2",
-    "console-table-printer": "^2.15.0"
+    "console-table-printer": "^2.15.0",
+    "uqr": "^0.1.0"
   }
 }

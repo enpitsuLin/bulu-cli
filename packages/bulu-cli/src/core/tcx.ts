@@ -1,4 +1,4 @@
-import { password } from '@clack/prompts'
+import { isCancel, password } from '@clack/prompts'
 
 export async function resolveTCXPassphrase(): Promise<string> {
   const passphrase = process.env.TCX_PASSPHRASE || process.env.BULU_PASSPHRASE
@@ -15,8 +15,8 @@ export async function resolveTCXPassphrase(): Promise<string> {
     message: 'Enter wallet passphrase:',
   })
 
-  if (typeof result === 'symbol') {
-    throw new Error('Passphrase input was cancelled')
+  if (isCancel(result)) {
+    process.exit(0)
   }
 
   return result

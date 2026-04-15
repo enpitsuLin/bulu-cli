@@ -1,7 +1,14 @@
 pub(crate) mod keystore;
 
+use serde::{Deserialize, Serialize};
+use tcx_constants::{coin_info_from_param, CurveType};
+use tcx_crypto::Crypto;
+use tcx_eth::address::EthAddress;
 use tcx_keystore::keystore::IdentityNetwork;
-use tcx_keystore::{Keystore as TcxKeystore, Source};
+use tcx_keystore::{Address, Keystore as TcxKeystore, Source};
+use tcx_primitive::PrivateKey;
+use tcx_primitive::{Secp256k1PrivateKey, TypedPublicKey};
+use uuid::Uuid;
 
 use crate::derivation::derive_accounts_for_wallet;
 
@@ -204,6 +211,67 @@ pub(crate) fn export_wallet(
   })
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct EthKeystoreV3 {
+  version: i32,
+  id: String,
+  address: String,
+  crypto: Crypto,
+}
+
+pub(crate) fn export_eth_keystore_v3(
+  name_or_id: String,
+  wallet_password: String,
+  keystore_password: String,
+  vault_path: String,
+) -> CoreResult<String> {
+  require_non_empty(&wallet_password, "walletPassword")?;
+  require_non_empty(&keystore_password, "keystorePassword")?;
+
+  let wallet = VaultRepository::new(vault_path.clone())?.get_wallet(&name_or_id)?;
+  let mut keystore = stored_keystore(&wallet)?;
+
+  let eth_account = wallet
+    .accounts
+    .into_iter()
+    .find(|acc| acc.chain_id.starts_with("eip155:"))
+    .ok_or_else(|| CoreError::new("wallet has no Ethereum account"))?;
+
+  with_unlocked_keystore(&mut keystore, &wallet_password, move |unlocked_keystore| {
+    let private_key = unlocked_keystore
+      .get_private_key(CurveType::SECP256k1, &eth_account.derivation_path)
+      .map_core_err()?;
+    let private_key_bytes = private_key.as_secp256k1().map_core_err()?.to_bytes();
+
+    let crypto = Crypto::new(&keystore_password, &private_key_bytes);
+
+    let sec_key = Secp256k1PrivateKey::from_slice(&private_key_bytes).map_core_err()?;
+    let pub_key = TypedPublicKey::Secp256k1(sec_key.public_key());
+    let coin_info =
+      coin_info_from_param("ETHEREUM", "", "", CurveType::SECP256k1.as_str()).map_core_err()?;
+    let checksumed_address = EthAddress::from_public_key(&pub_key, &coin_info)
+      .map_core_err()?
+      .to_string();
+    let address = checksumed_address
+      .to_lowercase()
+      .strip_prefix("0x")
+      .unwrap_or(&checksumed_address)
+      .to_string();
+
+    let id = Uuid::new_v4().to_string();
+
+    let keystore_v3 = EthKeystoreV3 {
+      version: 3,
+      id,
+      address,
+      crypto,
+    };
+
+    serde_json::to_string_pretty(&keystore_v3).map_core_err()
+  })
+}
+
 #[cfg(test)]
 mod tests {
   use std::fs;
@@ -213,8 +281,9 @@ mod tests {
   use tcx_keystore::keystore::IdentityNetwork;
 
   use super::{
-    create_wallet, delete_wallet, export_wallet, get_wallet, import_wallet_keystore,
-    import_wallet_mnemonic, import_wallet_private_key, list_wallets, load_wallet,
+    create_wallet, delete_wallet, export_eth_keystore_v3, export_wallet, get_wallet,
+    import_wallet_keystore, import_wallet_mnemonic, import_wallet_private_key, list_wallets,
+    load_wallet,
   };
   use crate::chain::{ethereum::ETHEREUM_SIGNER, tron::TRON_SIGNER, ChainSigner};
   use crate::test_utils::fixtures;
@@ -890,6 +959,134 @@ mod tests {
     .expect("export wallet by id prefix should succeed");
 
     assert_eq!(exported, fixtures::TEST_MNEMONIC);
+
+    let _ = fs::remove_dir_all(vault_dir);
+  }
+
+  #[test]
+  fn export_eth_keystore_v3_from_hd_wallet() {
+    let (vault_dir, vault_path) = fixtures::temp_vault("export-eth-v3-hd");
+    let wallet = import_wallet_mnemonic(
+      "Eth wallet".to_string(),
+      fixtures::TEST_MNEMONIC.to_string(),
+      fixtures::TEST_PASSWORD.to_string(),
+      vault_path.clone(),
+      None,
+    )
+    .expect("mnemonic import should succeed");
+
+    let eth_account = wallet
+      .accounts
+      .iter()
+      .find(|a| a.chain_id == default_eth_mainnet_chain_id())
+      .expect("should have eth account");
+
+    let exported = export_eth_keystore_v3(
+      wallet.meta.name.clone(),
+      fixtures::TEST_PASSWORD.to_string(),
+      fixtures::TEST_PASSWORD.to_string(),
+      vault_path.clone(),
+    )
+    .expect("export eth keystore v3 should succeed");
+
+    let parsed: Value = serde_json::from_str(&exported).expect("should parse as json");
+    assert_eq!(parsed["version"], 3);
+    assert!(
+      parsed["id"].as_str().unwrap().contains('-'),
+      "id should be a uuid"
+    );
+    assert_eq!(
+      parsed["address"].as_str().unwrap().to_lowercase(),
+      eth_account
+        .address
+        .to_lowercase()
+        .strip_prefix("0x")
+        .unwrap_or(&eth_account.address)
+    );
+    assert!(parsed["crypto"].is_object());
+
+    let _ = fs::remove_dir_all(vault_dir);
+  }
+
+  #[test]
+  fn export_eth_keystore_v3_from_private_key_wallet() {
+    let (vault_dir, vault_path) = fixtures::temp_vault("export-eth-v3-pk");
+    let wallet = import_wallet_private_key(
+      "PK wallet".to_string(),
+      fixtures::TEST_PRIVATE_KEY.to_string(),
+      fixtures::TEST_PASSWORD.to_string(),
+      vault_path.clone(),
+      None,
+    )
+    .expect("private key import should succeed");
+
+    let eth_account = wallet
+      .accounts
+      .iter()
+      .find(|a| a.chain_id == default_eth_mainnet_chain_id())
+      .expect("should have eth account");
+
+    let exported = export_eth_keystore_v3(
+      wallet.meta.name.clone(),
+      fixtures::TEST_PASSWORD.to_string(),
+      "keystore-pass".to_string(),
+      vault_path.clone(),
+    )
+    .expect("export eth keystore v3 should succeed");
+
+    let parsed: Value = serde_json::from_str(&exported).expect("should parse as json");
+    assert_eq!(parsed["version"], 3);
+    assert!(
+      parsed["address"].as_str().unwrap().to_lowercase()
+        == eth_account
+          .address
+          .to_lowercase()
+          .strip_prefix("0x")
+          .unwrap_or(&eth_account.address)
+    );
+    assert!(parsed["crypto"].is_object());
+
+    let _ = fs::remove_dir_all(vault_dir);
+  }
+
+  #[test]
+  fn export_eth_keystore_v3_rejects_wallet_without_eth_account() {
+    let (vault_dir, vault_path) = fixtures::temp_vault("export-eth-v3-no-eth");
+    let wallet = import_wallet_mnemonic(
+      "No eth wallet".to_string(),
+      fixtures::TEST_MNEMONIC.to_string(),
+      fixtures::TEST_PASSWORD.to_string(),
+      vault_path.clone(),
+      None,
+    )
+    .expect("mnemonic import should succeed");
+
+    let wallet_path = wallet_vault_path(&vault_dir, &wallet.meta.id);
+    let mut vault_json = read_vault_json(&wallet_path);
+    let accounts = vault_json["accounts"]
+      .as_array_mut()
+      .expect("accounts array");
+    accounts.retain(|acc| {
+      acc["chainId"]
+        .as_str()
+        .map(|id| !id.starts_with("eip155:"))
+        .unwrap_or(true)
+    });
+    fs::write(
+      &wallet_path,
+      serde_json::to_string_pretty(&vault_json).expect("serialize"),
+    )
+    .expect("write vault");
+
+    let err = export_eth_keystore_v3(
+      wallet.meta.name.clone(),
+      fixtures::TEST_PASSWORD.to_string(),
+      fixtures::TEST_PASSWORD.to_string(),
+      vault_path.clone(),
+    )
+    .expect_err("should fail without eth account");
+
+    assert!(err.to_string().contains("wallet has no Ethereum account"));
 
     let _ = fs::remove_dir_all(vault_dir);
   }

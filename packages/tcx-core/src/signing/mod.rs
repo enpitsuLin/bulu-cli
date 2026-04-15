@@ -65,6 +65,32 @@ pub(crate) fn sign_transaction(
   )
 }
 
+pub(crate) fn sign_typed_data(
+  name: String,
+  chain_id: String,
+  typed_data_json: String,
+  credential: String,
+  vault_path: String,
+) -> CoreResult<SignedMessage> {
+  require_non_empty(&credential, "credential")?;
+  require_non_empty(&typed_data_json, "typedDataJson")?;
+
+  with_signing_request(
+    name,
+    chain_id,
+    credential,
+    vault_path,
+    PolicyOperation::SignTypedData,
+    move |unlocked_keystore, request| {
+      request.resolved.signer.sign_typed_data(
+        unlocked_keystore,
+        &request.derivation_path,
+        &typed_data_json,
+      )
+    },
+  )
+}
+
 #[cfg(test)]
 mod tests {
   use std::fs;
@@ -75,7 +101,7 @@ mod tests {
   use tcx_eth::transaction_types::Transaction as TcxEthTransaction;
   use tcx_keystore::keystore::IdentityNetwork;
 
-  use super::{sign_message, sign_transaction};
+  use super::{sign_message, sign_transaction, sign_typed_data};
   use crate::api_key;
   use crate::chain::{ethereum::ETHEREUM_SIGNER, tron::TRON_SIGNER, ChainSigner};
   use crate::policy::create_policy;
@@ -621,6 +647,156 @@ mod tests {
       err.to_string(),
       "API key \"expired-key\" expired at 946684800"
     );
+
+    let _ = fs::remove_dir_all(vault_dir);
+  }
+
+  #[test]
+  fn sign_typed_data_signs_ethereum_eip712_messages() {
+    let vault_dir = fixtures::temp_vault_dir("sign-eth-typed-data");
+    let vault_path = vault_dir.to_string_lossy().into_owned();
+    let wallet = import_wallet_mnemonic(
+      "Imported mnemonic".to_string(),
+      fixtures::TEST_MNEMONIC.to_string(),
+      fixtures::TEST_PASSWORD.to_string(),
+      vault_path.clone(),
+      None,
+    )
+    .expect("mnemonic import should succeed");
+
+    let typed_data_json = r#"{
+      "types": {
+        "EIP712Domain": [],
+        "Message": [
+          {"name": "content", "type": "string"}
+        ]
+      },
+      "primaryType": "Message",
+      "domain": {},
+      "message": {"content": "hello world"}
+    }"#;
+
+    let signed = sign_typed_data(
+      wallet.meta.name,
+      default_eth_mainnet_chain_id().to_string(),
+      typed_data_json.to_string(),
+      fixtures::TEST_PASSWORD.to_string(),
+      vault_path,
+    )
+    .expect("ethereum typed data signing should succeed");
+
+    assert_eq!(
+      signed.signature,
+      "0x062302dea6a96465926da30e3c03c42a628772473fbccea530217bd7ac4280611ff4064d45f6d6df109c7a5c175dbe7b7a44d123eec3d551058d030bb26802e01c"
+    );
+
+    let _ = fs::remove_dir_all(vault_dir);
+  }
+
+  #[test]
+  fn sign_typed_data_signs_tron_tip712_messages() {
+    let vault_dir = fixtures::temp_vault_dir("sign-tron-typed-data");
+    let vault_path = vault_dir.to_string_lossy().into_owned();
+    let wallet = import_wallet_mnemonic(
+      "Imported mnemonic".to_string(),
+      fixtures::TEST_MNEMONIC.to_string(),
+      fixtures::TEST_PASSWORD.to_string(),
+      vault_path.clone(),
+      None,
+    )
+    .expect("mnemonic import should succeed");
+
+    let typed_data_json = r#"{
+      "types": {
+        "EIP712Domain": [],
+        "Message": [
+          {"name": "content", "type": "string"}
+        ]
+      },
+      "primaryType": "Message",
+      "domain": {},
+      "message": {"content": "hello world"}
+    }"#;
+
+    let signed = sign_typed_data(
+      wallet.meta.name,
+      default_tron_mainnet_chain_id().to_string(),
+      typed_data_json.to_string(),
+      fixtures::TEST_PASSWORD.to_string(),
+      vault_path,
+    )
+    .expect("tron typed data signing should succeed");
+
+    assert_eq!(
+      signed.signature,
+      "0xbb4cc6bcc98543ef7cde93584f59006940606aed36cea993838bce37f60a33ec42edb7517db5c7576322364e0b94c01de91816174bd51aac93eaa5351e9b16561c"
+    );
+
+    let _ = fs::remove_dir_all(vault_dir);
+  }
+
+  #[test]
+  fn sign_typed_data_accepts_api_key_and_respects_policy() {
+    let (vault_dir, vault_path) = fixtures::temp_vault("api-key-typed-data");
+    let wallet = import_wallet_private_key(
+      "Signer".to_string(),
+      fixtures::TEST_PRIVATE_KEY.to_string(),
+      fixtures::TEST_PASSWORD.to_string(),
+      vault_path.clone(),
+      None,
+    )
+    .expect("private key import should succeed");
+
+    let policy = create_policy(
+      PolicyCreateInput {
+        name: "ETH only".to_string(),
+        rules: vec![allowed_chain_rule(default_eth_mainnet_chain_id())],
+      },
+      vault_path.clone(),
+    )
+    .expect("policy creation should succeed");
+
+    let created = api_key::create_api_key(
+      "typed-data-agent".to_string(),
+      vec![wallet.meta.name.clone()],
+      vec![policy.id],
+      fixtures::TEST_PASSWORD.to_string(),
+      None,
+      Some(vault_path.clone()),
+    )
+    .expect("API key creation should succeed");
+
+    let typed_data_json = r#"{
+      "types": {
+        "EIP712Domain": [],
+        "Message": [{"name":"x","type":"string"}]
+      },
+      "primaryType": "Message",
+      "domain": {},
+      "message": {"x":"y"}
+    }"#;
+
+    let signed = sign_typed_data(
+      wallet.meta.name.clone(),
+      default_eth_mainnet_chain_id().to_string(),
+      typed_data_json.to_string(),
+      created.token.clone(),
+      vault_path.clone(),
+    )
+    .expect("typed data signing with API key should succeed");
+    assert!(!signed.signature.is_empty());
+
+    let chain_err = sign_typed_data(
+      wallet.meta.name,
+      default_tron_mainnet_chain_id().to_string(),
+      typed_data_json.to_string(),
+      created.token,
+      vault_path.clone(),
+    )
+    .expect_err("disallowed chain should fail");
+    assert!(chain_err
+      .to_string()
+      .contains("chainId `tron:0x2b6653dc` is not allowed"));
 
     let _ = fs::remove_dir_all(vault_dir);
   }
