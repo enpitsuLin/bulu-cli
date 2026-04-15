@@ -11,5 +11,6 @@ export default defineCommand({
     list: () => import('./list').then((m) => m.default),
     switch: () => import('./switch').then((m) => m.default),
     policy: () => import('./policy/index').then((m) => m.default),
+    key: () => import('./key/index').then((m) => m.default),
   },
 })
