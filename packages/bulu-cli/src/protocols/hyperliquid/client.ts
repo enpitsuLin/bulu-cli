@@ -1,5 +1,5 @@
 import { $fetch } from 'ofetch'
-import type { AssetCtx, AssetMeta, Candle } from './types'
+import type { AssetCtx, AssetMeta, Candle, ClearinghouseState, SpotClearinghouseState } from './types'
 
 export const VALID_PERIODS = ['1m', '5m', '15m', '1h', '4h', '1d'] as const
 
@@ -47,5 +47,19 @@ export async function fetchCandles(
       type: 'candleSnapshot',
       req: { coin, interval, startTime, endTime },
     },
+  })
+}
+
+export async function fetchClearinghouseState(user: string): Promise<ClearinghouseState> {
+  return $fetch<ClearinghouseState>(HYPERLIQUID_API, {
+    method: 'POST',
+    body: { type: 'clearinghouseState', user },
+  })
+}
+
+export async function fetchSpotClearinghouseState(user: string): Promise<SpotClearinghouseState> {
+  return $fetch<SpotClearinghouseState>(HYPERLIQUID_API, {
+    method: 'POST',
+    body: { type: 'spotClearinghouseState', user },
   })
 }

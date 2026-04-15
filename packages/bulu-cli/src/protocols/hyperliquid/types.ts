@@ -31,3 +31,46 @@ export interface Candle {
   v: string
   n: number
 }
+
+export interface PerpPosition {
+  coin: string
+  szi: string
+  entryPx?: string
+  positionValue: string
+  unrealizedPnl: string
+  leverage: { type: 'cross'; value: number } | { type: 'isolated'; value: number; rawUsd: string }
+  liquidationPx?: string
+  marginUsed: string
+  returnOnEquity: string
+}
+
+export interface AssetPosition {
+  type: 'oneWay'
+  position: PerpPosition
+}
+
+export interface MarginSummary {
+  accountValue: string
+  totalMarginUsed: string
+  totalNtlPos: string
+  totalRawUsd: string
+}
+
+export interface ClearinghouseState {
+  assetPositions: AssetPosition[]
+  crossMaintenanceMarginUsed: string
+  crossMarginSummary: MarginSummary
+  marginSummary: MarginSummary
+  time: number
+}
+
+export interface SpotBalance {
+  coin: string
+  total: string
+  hold: string
+  entryNtl: string
+}
+
+export interface SpotClearinghouseState {
+  balances: SpotBalance[]
+}
