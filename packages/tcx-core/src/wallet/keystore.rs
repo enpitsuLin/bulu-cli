@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use tcx_keystore::{Keystore as TcxKeystore, KeystoreGuard};
 
 use crate::derivation::derive_accounts_for_wallet;
@@ -29,7 +31,7 @@ pub(crate) fn with_unlocked_keystore<T>(
 }
 
 pub(crate) fn load_tcx_keystore(keystore_json: String) -> CoreResult<TcxKeystore> {
-  let normalized_keystore_json = crate::error::require_trimmed(keystore_json, "keystoreJson")?;
+  let normalized_keystore_json = crate::error::require_trimmed(&keystore_json, "keystoreJson")?;
   TcxKeystore::from_json(&normalized_keystore_json).map_core_err()
 }
 
@@ -48,13 +50,11 @@ pub(crate) fn resolve_wallets(
     });
   }
 
-  let mut resolved = Vec::new();
+  let mut seen = HashSet::with_capacity(wallet_ids.len());
+  let mut resolved = Vec::with_capacity(wallet_ids.len());
   for wallet_id in wallet_ids {
     let wallet = vault.get_wallet(&wallet_id)?;
-    if !resolved
-      .iter()
-      .any(|existing: &WalletInfo| existing.meta.id == wallet.meta.id)
-    {
+    if seen.insert(wallet.meta.id.clone()) {
       resolved.push(wallet);
     }
   }

@@ -35,7 +35,7 @@ pub(crate) fn create_api_key(
 ) -> CoreResult<CreatedApiKey> {
   require_non_empty(&passphrase, "passphrase")?;
 
-  let normalized_name = require_trimmed(name, "name")?;
+  let normalized_name = require_trimmed(&name, "name")?;
   let vault_path = resolve_optional_vault_path(vault_path_opt);
   let vault = VaultRepository::new(vault_path)?;
   if vault.api_key_name_exists(&normalized_name)? {
@@ -101,11 +101,12 @@ fn resolve_optional_vault_path(vault_path_opt: Option<String>) -> String {
 }
 
 fn resolve_policy_ids(vault: &VaultRepository, policy_ids: Vec<String>) -> CoreResult<Vec<String>> {
-  let mut resolved = Vec::new();
+  let mut seen = std::collections::HashSet::with_capacity(policy_ids.len());
+  let mut resolved = Vec::with_capacity(policy_ids.len());
 
   for policy_id in policy_ids {
     let policy = vault.get_policy(&policy_id)?;
-    if !resolved.iter().any(|existing| existing == &policy.id) {
+    if seen.insert(policy.id.clone()) {
       resolved.push(policy.id);
     }
   }

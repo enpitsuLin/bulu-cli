@@ -27,7 +27,7 @@ pub(crate) struct VaultRepository {
 
 impl VaultRepository {
   pub(crate) fn new(vault_path: String) -> CoreResult<Self> {
-    let vault_path = require_trimmed(vault_path, "vaultPath")?;
+    let vault_path = require_trimmed(&vault_path, "vaultPath")?;
     Ok(Self {
       wallets_dir: Path::new(&vault_path).join(WALLETS_DIR),
       policies_dir: Path::new(&vault_path).join(POLICIES_DIR),
@@ -49,6 +49,24 @@ impl VaultRepository {
   pub(crate) fn api_key_name_exists(&self, name: &str) -> CoreResult<bool> {
     let api_keys = self.list_stored_api_keys()?;
     Ok(api_keys.iter().any(|api_key| api_key.info.name == name))
+  }
+
+  pub(crate) fn is_wallet_referenced(&self, wallet_id: &str) -> CoreResult<bool> {
+    Ok(
+      self
+        .list_stored_api_keys()?
+        .iter()
+        .any(|api_key| api_key.info.wallet_ids.iter().any(|id| id == wallet_id)),
+    )
+  }
+
+  pub(crate) fn is_policy_referenced(&self, policy_id: &str) -> CoreResult<bool> {
+    Ok(
+      self
+        .list_stored_api_keys()?
+        .iter()
+        .any(|api_key| api_key.info.policy_ids.iter().any(|id| id == policy_id)),
+    )
   }
 
   pub(crate) fn save_wallet(&self, wallet_info: &WalletInfo) -> CoreResult<()> {
@@ -82,11 +100,13 @@ impl VaultRepository {
   }
 
   pub(crate) fn list_api_keys(&self) -> CoreResult<Vec<ApiKeyInfo>> {
-    self
-      .list_stored_api_keys()?
-      .into_iter()
-      .map(|api_key| api_key.into_public())
-      .collect()
+    Ok(
+      self
+        .list_stored_api_keys()?
+        .into_iter()
+        .map(|api_key| api_key.info)
+        .collect(),
+    )
   }
 
   pub(crate) fn list_stored_api_keys(&self) -> CoreResult<Vec<StoredApiKey>> {
@@ -94,7 +114,7 @@ impl VaultRepository {
   }
 
   pub(crate) fn get_wallet(&self, identifier: &str) -> CoreResult<WalletInfo> {
-    let normalized_identifier = require_trimmed(identifier.to_string(), "nameOrId")?;
+    let normalized_identifier = require_trimmed(identifier, "nameOrId")?;
     let wallets = self.list_wallets()?;
     let wallet = resolve_named_record(
       &normalized_identifier,
@@ -109,7 +129,7 @@ impl VaultRepository {
   }
 
   pub(crate) fn get_policy(&self, identifier: &str) -> CoreResult<PolicyInfo> {
-    let normalized_identifier = require_trimmed(identifier.to_string(), "nameOrId")?;
+    let normalized_identifier = require_trimmed(identifier, "nameOrId")?;
     let policies = self.list_policies()?;
     let policy = resolve_named_record(
       &normalized_identifier,
@@ -124,7 +144,7 @@ impl VaultRepository {
   }
 
   pub(crate) fn get_policy_by_id(&self, policy_id: &str) -> CoreResult<PolicyInfo> {
-    let normalized_policy_id = require_trimmed(policy_id.to_string(), "policyId")?;
+    let normalized_policy_id = require_trimmed(policy_id, "policyId")?;
     self.read_json_record(
       &self.json_file_path(&self.policies_dir, &normalized_policy_id),
       "policy vault",
@@ -132,11 +152,11 @@ impl VaultRepository {
   }
 
   pub(crate) fn get_api_key(&self, identifier: &str) -> CoreResult<ApiKeyInfo> {
-    self.get_stored_api_key(identifier)?.into_public()
+    Ok(self.get_stored_api_key(identifier)?.info)
   }
 
   pub(crate) fn get_stored_api_key(&self, identifier: &str) -> CoreResult<StoredApiKey> {
-    let normalized_identifier = require_trimmed(identifier.to_string(), "nameOrId")?;
+    let normalized_identifier = require_trimmed(identifier, "nameOrId")?;
     let api_keys = self.list_stored_api_keys()?;
     let api_key = resolve_named_record(
       &normalized_identifier,
@@ -151,7 +171,7 @@ impl VaultRepository {
   }
 
   pub(crate) fn get_stored_api_key_by_id(&self, api_key_id: &str) -> CoreResult<StoredApiKey> {
-    let normalized_api_key_id = require_trimmed(api_key_id.to_string(), "apiKeyId")?;
+    let normalized_api_key_id = require_trimmed(api_key_id, "apiKeyId")?;
     self.read_json_record(
       &self.json_file_path(&self.keys_dir, &normalized_api_key_id),
       "API key vault",
@@ -159,7 +179,7 @@ impl VaultRepository {
   }
 
   pub(crate) fn delete_wallet(&self, identifier: &str) -> CoreResult<()> {
-    let normalized_identifier = require_trimmed(identifier.to_string(), "nameOrId")?;
+    let normalized_identifier = require_trimmed(identifier, "nameOrId")?;
     let wallets = self.list_wallets()?;
     let wallet = resolve_named_record(
       &normalized_identifier,
@@ -174,7 +194,7 @@ impl VaultRepository {
   }
 
   pub(crate) fn delete_policy(&self, identifier: &str) -> CoreResult<()> {
-    let normalized_identifier = require_trimmed(identifier.to_string(), "nameOrId")?;
+    let normalized_identifier = require_trimmed(identifier, "nameOrId")?;
     let policies = self.list_policies()?;
     let policy = resolve_named_record(
       &normalized_identifier,
@@ -189,7 +209,7 @@ impl VaultRepository {
   }
 
   pub(crate) fn revoke_api_key(&self, identifier: &str) -> CoreResult<()> {
-    let normalized_identifier = require_trimmed(identifier.to_string(), "nameOrId")?;
+    let normalized_identifier = require_trimmed(identifier, "nameOrId")?;
     let api_keys = self.list_stored_api_keys()?;
     let api_key = resolve_named_record(
       &normalized_identifier,
@@ -330,16 +350,6 @@ impl VaultRepository {
 
   fn json_file_path(&self, dir: &Path, record_id: &str) -> PathBuf {
     dir.join(format!("{record_id}.{JSON_FILE_EXTENSION}"))
-  }
-}
-
-trait IntoPublicRecord<T> {
-  fn into_public(self) -> CoreResult<T>;
-}
-
-impl IntoPublicRecord<ApiKeyInfo> for StoredApiKey {
-  fn into_public(self) -> CoreResult<ApiKeyInfo> {
-    Ok(self.info)
   }
 }
 

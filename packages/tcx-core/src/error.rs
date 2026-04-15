@@ -102,7 +102,7 @@ pub(crate) fn require_non_empty(value: &str, field_name: &'static str) -> CoreRe
   Ok(())
 }
 
-pub(crate) fn require_trimmed(value: String, field_name: &'static str) -> CoreResult<String> {
+pub(crate) fn require_trimmed(value: &str, field_name: &'static str) -> CoreResult<String> {
   let trimmed = value.trim();
   if trimmed.is_empty() {
     return Err(CoreError::InvalidInput {

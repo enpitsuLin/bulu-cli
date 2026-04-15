@@ -42,7 +42,7 @@ pub(crate) fn sign_transaction(
   vault_path: String,
 ) -> CoreResult<SignedTransactionResult> {
   require_non_empty(&credential, "credential")?;
-  let normalized_tx_hex = require_trimmed(tx_hex, "txHex")?;
+  let normalized_tx_hex = require_trimmed(&tx_hex, "txHex")?;
   let tx_bytes = Vec::from_hex_auto(&normalized_tx_hex).map_core_err()?;
 
   with_signing_request(

@@ -14,7 +14,7 @@ pub(crate) fn parse_api_token(credential: &str) -> CoreResult<ParsedApiToken> {
     .split_once('_')
     .ok_or_else(invalid_credential_error)?;
 
-  let normalized_api_key_id = require_trimmed(api_key_id.to_string(), "credential")?;
+  let normalized_api_key_id = require_trimmed(api_key_id, "credential")?;
   let secret = Vec::from_hex(secret_hex.trim()).map_err(|_| invalid_credential_error())?;
   if secret.len() != 32 {
     return Err(invalid_credential_error());

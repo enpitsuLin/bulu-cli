@@ -25,13 +25,7 @@ pub(crate) fn delete_wallet(name_or_id: String, vault_path: String) -> CoreResul
   let vault = VaultRepository::new(vault_path)?;
   let wallet = vault.get_wallet(&name_or_id)?;
 
-  if vault.list_stored_api_keys()?.iter().any(|api_key| {
-    api_key
-      .info
-      .wallet_ids
-      .iter()
-      .any(|wallet_id| wallet_id == &wallet.meta.id)
-  }) {
+  if vault.is_wallet_referenced(&wallet.meta.id)? {
     return Err(CoreError::StillReferenced {
       resource: "Wallet",
       identifier: wallet.meta.name,
@@ -115,7 +109,7 @@ pub(crate) fn import_wallet_private_key(
 ) -> CoreResult<WalletInfo> {
   require_non_empty(&passphrase, "passphrase")?;
 
-  let normalized_private_key = require_trimmed(private_key, "privateKey")?;
+  let normalized_private_key = require_trimmed(&private_key, "privateKey")?;
   let vault = VaultRepository::new(vault_path)?;
   if vault.wallet_name_exists(&name)? {
     return Err(CoreError::AlreadyExists {
@@ -163,7 +157,7 @@ pub(crate) fn import_wallet_keystore(
 ) -> CoreResult<WalletInfo> {
   require_non_empty(&password, "password")?;
 
-  let normalized_name = require_trimmed(name, "name")?;
+  let normalized_name = require_trimmed(&name, "name")?;
   let vault = VaultRepository::new(vault_path)?;
   if vault.wallet_name_exists(&normalized_name)? {
     return Err(CoreError::new(format!(

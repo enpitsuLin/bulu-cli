@@ -14,7 +14,7 @@ pub(crate) struct Caip2ChainId {
 
 impl Caip2ChainId {
   pub(crate) fn parse_input(chain_id: String) -> CoreResult<Self> {
-    let trimmed = require_trimmed(chain_id, "chainId")?;
+    let trimmed = require_trimmed(&chain_id, "chainId")?;
     Self::parse(&trimmed)
   }
 

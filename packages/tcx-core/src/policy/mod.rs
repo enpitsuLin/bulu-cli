@@ -18,13 +18,7 @@ pub(crate) fn delete_policy(name_or_id: String, vault_path: String) -> CoreResul
   let vault = VaultRepository::new(vault_path)?;
   let policy = vault.get_policy(&name_or_id)?;
 
-  if vault.list_stored_api_keys()?.iter().any(|api_key| {
-    api_key
-      .info
-      .policy_ids
-      .iter()
-      .any(|policy_id| policy_id == &policy.id)
-  }) {
+  if vault.is_policy_referenced(&policy.id)? {
     return Err(CoreError::StillReferenced {
       resource: "Policy",
       identifier: policy.name,
@@ -39,7 +33,7 @@ pub(crate) fn create_policy(
   input: PolicyCreateInput,
   vault_path: String,
 ) -> CoreResult<PolicyInfo> {
-  let normalized_name = require_trimmed(input.name, "name")?;
+  let normalized_name = require_trimmed(&input.name, "name")?;
   let normalized_rules = validate_policy_rules(input.rules)?;
 
   let vault = VaultRepository::new(vault_path)?;
