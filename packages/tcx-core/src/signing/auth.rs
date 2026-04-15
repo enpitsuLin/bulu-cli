@@ -84,7 +84,6 @@ pub(crate) fn with_signing_request<T>(
           DerivationInput {
             chain_id: normalized_chain_id,
             derivation_path: None,
-            network: None,
           },
           network,
           unlocked_keystore.derivable(),
@@ -101,7 +100,6 @@ pub(crate) fn with_signing_request<T>(
       DerivationInput {
         chain_id: normalized_chain_id,
         derivation_path: None,
-        network: None,
       },
       network,
       unlocked_keystore.derivable(),

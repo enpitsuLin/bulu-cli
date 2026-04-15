@@ -77,8 +77,6 @@ export interface DerivationInput {
   chainId: string
   /** Derivation path to use for derivable wallets. */
   derivationPath?: string
-  /** Network to use for this derivation. Defaults to the wallet network. */
-  network?: 'MAINNET' | 'TESTNET'
 }
 
 /**
@@ -206,8 +204,6 @@ export interface KeystoreMetadata {
   timestamp: number
   /** Source of the wallet (e.g., "MNEMONIC", "PRIVATE"). */
   source: 'WIF' | 'PRIVATE' | 'KEYSTORE_V3' | 'SUBSTRATE_KEYSTORE' | 'MNEMONIC' | 'NEW_MNEMONIC'
-  /** Network type ("MAINNET" or "TESTNET"). */
-  network: 'MAINNET' | 'TESTNET'
   /** Optional identified chain types. */
   identifiedChainTypes?: Array<string>
 }
@@ -330,8 +326,6 @@ export interface WalletMeta {
   sourceFingerprint: string
   /** Source used to create or import the wallet. */
   source: 'WIF' | 'PRIVATE' | 'KEYSTORE_V3' | 'SUBSTRATE_KEYSTORE' | 'MNEMONIC' | 'NEW_MNEMONIC'
-  /** Wallet network stored in metadata. */
-  network: 'MAINNET' | 'TESTNET'
   /** Wallet name stored in metadata. */
   name: string
   /** Optional password hint stored in metadata. */

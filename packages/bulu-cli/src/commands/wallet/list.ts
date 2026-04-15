@@ -9,7 +9,6 @@ function formatWalletsForTable(wallets: WalletInfo[], activeWallet?: string) {
   return wallets.map((w) => ({
     Name: w.meta.name,
     Active: w.meta.name === activeWallet ? styleText('cyan', '●') : '',
-    Network: w.meta.network,
     Source: w.meta.source,
     Derivable: w.meta.derivable ? 'Yes' : 'No',
     Accounts: w.accounts.length,
@@ -32,7 +31,7 @@ export default defineCommand({
     const activeWallet = getActiveWallet()
     const rows = formatWalletsForTable(wallets, activeWallet)
     output.table(rows, {
-      columns: ['Name', 'Active', 'Network', 'Source', 'Derivable', 'Accounts'],
+      columns: ['Name', 'Active', 'Source', 'Derivable', 'Accounts'],
       title: `Wallets (${wallets.length})${activeWallet ? ` - Active: ${activeWallet}` : ''}`,
     })
   },

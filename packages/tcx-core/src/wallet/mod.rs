@@ -278,7 +278,6 @@ mod tests {
     .expect("create wallet should succeed");
 
     assert_eq!(wallet.meta.source, "NEW_MNEMONIC");
-    assert_eq!(wallet.meta.network, "MAINNET");
     assert_eq!(wallet.accounts.len(), 2);
     assert_eq!(wallet.accounts[0].chain_id, default_eth_mainnet_chain_id());
     assert_eq!(wallet.accounts[1].chain_id, default_tron_mainnet_chain_id());
@@ -362,7 +361,6 @@ mod tests {
     .expect("mnemonic import should succeed");
 
     assert_eq!(wallet.meta.source, "MNEMONIC");
-    assert_eq!(wallet.meta.network, "MAINNET");
     assert_eq!(wallet.accounts.len(), 2);
     assert_eq!(wallet.accounts[0].chain_id, default_eth_mainnet_chain_id());
     assert_eq!(
@@ -448,7 +446,6 @@ mod tests {
     .expect("private key import should succeed");
 
     assert_eq!(wallet.meta.source, "PRIVATE");
-    assert_eq!(wallet.meta.network, "MAINNET");
     assert_eq!(wallet.accounts.len(), 2);
     assert_eq!(wallet.accounts[0].chain_id, default_eth_mainnet_chain_id());
     assert_eq!(wallet.accounts[1].chain_id, default_tron_mainnet_chain_id());
@@ -527,13 +524,11 @@ mod tests {
       Some(vec![DerivationInput {
         chain_id: default_eth_mainnet_chain_id().to_string(),
         derivation_path: Some(default_eth_derivation_path(1)),
-        network: None,
       }]),
     )
     .expect("load wallet should succeed");
 
     assert_eq!(wallet.meta.source, "MNEMONIC");
-    assert_eq!(wallet.meta.network, "MAINNET");
     assert_eq!(wallet.accounts.len(), 1);
     assert_eq!(
       wallet.accounts[0].derivation_path,

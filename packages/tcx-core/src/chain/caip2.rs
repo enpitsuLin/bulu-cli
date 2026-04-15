@@ -1,6 +1,7 @@
 use std::fmt::{self, Display, Formatter};
 
 use tcx_common::parse_u64;
+use tcx_keystore::keystore::IdentityNetwork;
 
 use crate::error::{require_trimmed, CoreError, CoreResult};
 
@@ -77,6 +78,15 @@ impl Caip2ChainId {
 impl Display for Caip2ChainId {
   fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
     f.write_str(self.as_str())
+  }
+}
+
+impl From<&Caip2ChainId> for IdentityNetwork {
+  fn from(chain_id: &Caip2ChainId) -> Self {
+    match chain_id.to_string().as_str() {
+      "eip155:11155111" | "tron:0xcd8690dc" => IdentityNetwork::Testnet,
+      _ => IdentityNetwork::Mainnet,
+    }
   }
 }
 

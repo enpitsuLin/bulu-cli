@@ -1,7 +1,7 @@
 use tcx_keystore::keystore::IdentityNetwork;
 use tcx_keystore::Keystore as TcxKeystore;
 
-use crate::chain::{resolve_network, resolve_signer, Caip2ChainId, ChainSigner, ALL_SIGNERS};
+use crate::chain::{resolve_signer, Caip2ChainId, ChainSigner, ALL_SIGNERS};
 use crate::error::CoreResult;
 use crate::strings::sanitize_optional_text;
 use crate::types::{DerivationInput, WalletAccount};
@@ -58,7 +58,7 @@ fn resolve_derivations(
 
 pub(crate) fn resolve_derivation(
   derivation: DerivationInput,
-  wallet_network: IdentityNetwork,
+  _wallet_network: IdentityNetwork,
   derivable: bool,
 ) -> CoreResult<DerivationRequest> {
   let chain_id = Caip2ChainId::parse_input(derivation.chain_id)?;
@@ -73,7 +73,7 @@ pub(crate) fn resolve_derivation(
   Ok(DerivationRequest {
     resolved: ResolvedDerivation {
       signer,
-      network: resolve_network(wallet_network, derivation.network)?,
+      network: IdentityNetwork::from(&chain_id),
       chain_id,
     },
     derivation_path,
@@ -129,7 +129,6 @@ mod tests {
 
   use tcx_keystore::keystore::IdentityNetwork;
 
-  use super::resolve_derivation;
   use crate::chain::{ethereum::ETHEREUM_SIGNER, tron::TRON_SIGNER, ChainSigner};
   use crate::test_utils::fixtures;
   use crate::types::DerivationInput;
@@ -173,12 +172,10 @@ mod tests {
         DerivationInput {
           chain_id: default_eth_mainnet_chain_id().to_string(),
           derivation_path: Some(default_eth_derivation_path(0)),
-          network: None,
         },
         DerivationInput {
           chain_id: default_eth_mainnet_chain_id().to_string(),
           derivation_path: Some(default_eth_derivation_path(1)),
-          network: None,
         },
       ]),
     )
@@ -212,7 +209,6 @@ mod tests {
       Some(vec![DerivationInput {
         chain_id: "bip122:000000000019d6689c085ae165831e93".to_string(),
         derivation_path: None,
-        network: None,
       }]),
     )
     .expect_err("unsupported namespaces should fail");
@@ -220,22 +216,6 @@ mod tests {
     assert_eq!(err.to_string(), "unsupported chainId namespace `bip122`");
 
     let _ = fs::remove_dir_all(vault_dir);
-  }
-
-  #[test]
-  fn resolve_derivation_rejects_unknown_network_override() {
-    let err = resolve_derivation(
-      DerivationInput {
-        chain_id: default_eth_mainnet_chain_id().to_string(),
-        derivation_path: None,
-        network: Some("DEVNET".to_string()),
-      },
-      IdentityNetwork::Mainnet,
-      true,
-    )
-    .expect_err("unknown network should fail");
-
-    assert_eq!(err.to_string(), "unknown network: DEVNET");
   }
 
   #[test]

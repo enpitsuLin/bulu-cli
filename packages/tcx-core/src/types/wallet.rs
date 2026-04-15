@@ -14,9 +14,6 @@ pub struct DerivationInput {
   /// Derivation path to use for derivable wallets.
   #[napi(js_name = "derivationPath")]
   pub derivation_path: Option<String>,
-  /// Network to use for this derivation. Defaults to the wallet network.
-  #[napi(ts_type = "'MAINNET' | 'TESTNET'")]
-  pub network: Option<String>,
 }
 
 #[napi(object)]
@@ -54,9 +51,6 @@ pub struct WalletMeta {
     ts_type = "'WIF' | 'PRIVATE' | 'KEYSTORE_V3' | 'SUBSTRATE_KEYSTORE' | 'MNEMONIC' | 'NEW_MNEMONIC'"
   )]
   pub source: String,
-  /// Wallet network stored in metadata.
-  #[napi(ts_type = "'MAINNET' | 'TESTNET'")]
-  pub network: String,
   /// Wallet name stored in metadata.
   pub name: String,
   /// Optional password hint stored in metadata.
@@ -185,9 +179,6 @@ pub struct KeystoreMetadata {
     ts_type = "'WIF' | 'PRIVATE' | 'KEYSTORE_V3' | 'SUBSTRATE_KEYSTORE' | 'MNEMONIC' | 'NEW_MNEMONIC'"
   )]
   pub source: String,
-  /// Network type ("MAINNET" or "TESTNET").
-  #[napi(ts_type = "'MAINNET' | 'TESTNET'")]
-  pub network: String,
   /// Optional identified chain types.
   #[napi(js_name = "identifiedChainTypes")]
   #[serde(skip_serializing_if = "Option::is_none")]
@@ -268,7 +259,6 @@ impl From<&TcxKeystore> for WalletMeta {
       version: store.version,
       source_fingerprint: store.source_fingerprint.clone(),
       source: meta.source.to_string(),
-      network: meta.network.to_string(),
       name: meta.name.clone(),
       password_hint: meta.password_hint.clone(),
       timestamp: meta.timestamp,

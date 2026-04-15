@@ -141,7 +141,6 @@ test('createWallet returns keystore json and default accounts', () => {
 
     expect(wallet).not.toHaveProperty('mnemonic')
     expect(wallet.meta.source).toBe('NEW_MNEMONIC')
-    expect(wallet.meta.network).toBe('MAINNET')
     expect(wallet.meta.derivable).toBe(true)
     expect(wallet.accounts).toHaveLength(2)
     expect(wallet.accounts.map((account) => account.chainId)).toEqual([ETH_MAINNET_CHAIN_ID, TRON_MAINNET_CHAIN_ID])

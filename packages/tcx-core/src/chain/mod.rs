@@ -2,7 +2,6 @@ use crate::error::CoreResult;
 use crate::types::{SignedMessage, SignedTransactionResult};
 
 pub(crate) use caip2::Caip2ChainId;
-pub(crate) use network::resolve_network;
 
 pub(crate) trait ChainSigner: std::fmt::Debug + Send + Sync {
   /// Coin identifier used by the underlying tcx library (e.g. "ETHEREUM", "TRON").
@@ -63,5 +62,4 @@ pub(crate) fn resolve_signer(
 
 mod caip2;
 pub(crate) mod ethereum;
-mod network;
 pub(crate) mod tron;
