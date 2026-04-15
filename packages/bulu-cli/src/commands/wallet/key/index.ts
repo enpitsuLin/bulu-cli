@@ -5,5 +5,6 @@ export default defineCommand({
   subCommands: {
     create: () => import('./create').then((m) => m.default),
     list: () => import('./list').then((m) => m.default),
+    revoke: () => import('./revoke').then((m) => m.default),
   },
 })
