@@ -5,5 +5,6 @@ export default defineCommand({
   subCommands: {
     tx: () => import('./tx').then((m) => m.default),
     message: () => import('./message').then((m) => m.default),
+    'typed-data': () => import('./typed-data').then((m) => m.default),
   },
 })
