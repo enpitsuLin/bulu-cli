@@ -254,3 +254,21 @@ pub fn sign_transaction(
 ) -> Result<SignedTransactionResult> {
   crate::signing::sign_transaction(name, chain_id, tx_hex, credential, vault_path).into_napi()
 }
+
+#[napi(js_name = "signTypedData")]
+/// Signs typed structured data (EIP-712 for Ethereum, TIP-712 for Tron).
+///
+/// `typed_data_json` must be a valid EIP-712 JSON object containing
+/// `types`, `domain`, `primaryType`, and `message`.
+/// `credential` accepts either the wallet passphrase (owner mode) or a
+/// `bulu_key_...` API token (agent mode).
+pub fn sign_typed_data(
+  name: String,
+  chain_id: String,
+  typed_data_json: String,
+  credential: String,
+  vault_path: String,
+) -> Result<SignedMessage> {
+  crate::signing::sign_typed_data(name, chain_id, typed_data_json, credential, vault_path)
+    .into_napi()
+}

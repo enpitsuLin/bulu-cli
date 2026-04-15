@@ -3,9 +3,11 @@ use crate::error::{require_non_empty, CoreError, CoreResult};
 use crate::types::{PolicyInfo, PolicyRule};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[allow(clippy::enum_variant_names)]
 pub(crate) enum PolicyOperation {
   SignMessage,
   SignTransaction,
+  SignTypedData,
 }
 
 #[derive(Clone, Debug)]
