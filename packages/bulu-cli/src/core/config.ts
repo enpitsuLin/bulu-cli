@@ -15,6 +15,9 @@ export interface BuluConfig {
     format?: 'table' | 'csv' | 'json'
   }
   chains?: Record<string, { rpc?: string }>
+  hyperliquid?: {
+    apiUrl?: string
+  }
 }
 
 export const CONFIG_DEFAULTS: BuluConfig = {
@@ -26,6 +29,9 @@ export const CONFIG_DEFAULTS: BuluConfig = {
   chains: {
     'eip155:1': { rpc: 'https://1rpc.io/eth' },
     'eip155:11155111': { rpc: 'https://1rpc.io/sepolia' },
+  },
+  hyperliquid: {
+    apiUrl: 'https://api.hyperliquid.xyz/info',
   },
 }
 
@@ -175,4 +181,9 @@ export function setActiveWallet(name: string, cwd?: string): void {
   const userConfig = loadUserConfigSync(configDir)
   setConfigValueByPath(userConfig, 'default.wallet', name)
   saveUserConfigSync(userConfig, configDir)
+}
+
+export function getHyperliquidApiUrl(cwd?: string): string {
+  const config = loadBuluConfigSync(cwd)
+  return config.hyperliquid?.apiUrl ?? 'https://api.hyperliquid.xyz/info'
 }

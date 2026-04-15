@@ -1,11 +1,14 @@
 import { $fetch } from 'ofetch'
+import { getHyperliquidApiUrl } from '../../core/config'
 import type { AssetCtx, AssetMeta, Candle, ClearinghouseState, SpotClearinghouseState } from './types'
 
 export const VALID_PERIODS = ['1m', '5m', '15m', '1h', '4h', '1d'] as const
 
 export type Period = (typeof VALID_PERIODS)[number]
 
-const HYPERLIQUID_API = 'https://api.hyperliquid.xyz/info'
+function getApiUrl(): string {
+  return getHyperliquidApiUrl()
+}
 
 export function resolvePeriodMs(period: string): number {
   switch (period) {
@@ -27,7 +30,7 @@ export function resolvePeriodMs(period: string): number {
 }
 
 export async function fetchMetaAndAssetCtxs(): Promise<{ universe: AssetMeta[]; contexts: AssetCtx[] }> {
-  const data = await $fetch<[Record<string, unknown>, AssetCtx[]]>(HYPERLIQUID_API, {
+  const data = await $fetch<[Record<string, unknown>, AssetCtx[]]>(getApiUrl(), {
     method: 'POST',
     body: { type: 'metaAndAssetCtxs' },
   })
@@ -41,7 +44,7 @@ export async function fetchCandles(
   startTime: number,
   endTime: number,
 ): Promise<Candle[]> {
-  return $fetch<Candle[]>(HYPERLIQUID_API, {
+  return $fetch<Candle[]>(getApiUrl(), {
     method: 'POST',
     body: {
       type: 'candleSnapshot',
@@ -51,14 +54,14 @@ export async function fetchCandles(
 }
 
 export async function fetchClearinghouseState(user: string): Promise<ClearinghouseState> {
-  return $fetch<ClearinghouseState>(HYPERLIQUID_API, {
+  return $fetch<ClearinghouseState>(getApiUrl(), {
     method: 'POST',
     body: { type: 'clearinghouseState', user },
   })
 }
 
 export async function fetchSpotClearinghouseState(user: string): Promise<SpotClearinghouseState> {
-  return $fetch<SpotClearinghouseState>(HYPERLIQUID_API, {
+  return $fetch<SpotClearinghouseState>(getApiUrl(), {
     method: 'POST',
     body: { type: 'spotClearinghouseState', user },
   })
