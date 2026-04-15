@@ -21,6 +21,7 @@ import {
   loadWallet,
   signMessage,
   signTransaction,
+  signTypedData,
 } from '../index'
 import { Buffer } from 'node:buffer'
 
@@ -572,6 +573,56 @@ test('createApiKey and signTransaction reuse the original signing entrypoints', 
     revokeApiKey(created.apiKey.id, tempDir)
     expect(() => signTransaction('Agent Signer', 'eip155:56', txHex, created.token, tempDir)).toThrow(
       /credential is invalid/,
+    )
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true })
+  }
+})
+
+test('signTypedData signs Ethereum EIP-712 typed data', () => {
+  const tempDir = mkdtempSync(join(tmpdir(), 'tcx-core-wallet-'))
+  try {
+    importWalletMnemonic('Imported Mnemonic', MNEMONIC, PASSWORD, tempDir)
+
+    const typedDataJson = JSON.stringify({
+      types: {
+        EIP712Domain: [],
+        Message: [{ name: 'content', type: 'string' }],
+      },
+      primaryType: 'Message',
+      domain: {},
+      message: { content: 'hello world' },
+    })
+
+    const signed = signTypedData('Imported Mnemonic', ETH_MAINNET_CHAIN_ID, typedDataJson, PASSWORD, tempDir)
+
+    expect(signed.signature).toBe(
+      '0x062302dea6a96465926da30e3c03c42a628772473fbccea530217bd7ac4280611ff4064d45f6d6df109c7a5c175dbe7b7a44d123eec3d551058d030bb26802e01c',
+    )
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true })
+  }
+})
+
+test('signTypedData signs Tron TIP-712 typed data', () => {
+  const tempDir = mkdtempSync(join(tmpdir(), 'tcx-core-wallet-'))
+  try {
+    importWalletMnemonic('Imported Mnemonic', MNEMONIC, PASSWORD, tempDir)
+
+    const typedDataJson = JSON.stringify({
+      types: {
+        EIP712Domain: [],
+        Message: [{ name: 'content', type: 'string' }],
+      },
+      primaryType: 'Message',
+      domain: {},
+      message: { content: 'hello world' },
+    })
+
+    const signed = signTypedData('Imported Mnemonic', TRON_MAINNET_CHAIN_ID, typedDataJson, PASSWORD, tempDir)
+
+    expect(signed.signature).toBe(
+      '0xbb4cc6bcc98543ef7cde93584f59006940606aed36cea993838bce37f60a33ec42edb7517db5c7576322364e0b94c01de91816174bd51aac93eaa5351e9b16561c',
     )
   } finally {
     rmSync(tempDir, { recursive: true, force: true })
