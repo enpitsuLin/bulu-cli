@@ -1,8 +1,47 @@
+import { signTypedData } from '@bulu-cli/tcx-core'
 import { encode } from '@msgpack/msgpack'
 import { keccak_256 } from '@noble/hashes/sha3.js'
 import { bytesToHex, concatBytes, hexToBytes } from '@noble/hashes/utils.js'
+import { $fetch } from 'ofetch'
+import { getHyperliquidExchangeUrl } from '../../core/config'
+import type { OrderRequestBody, OrderResponse, OrderStatus } from './types'
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as const
+
+export function stripTrailingZeros(value: string): string {
+  if (!value.includes('.')) return value
+  return value.replace(/\.?0+$/, '')
+}
+
+export function formatSize(value: string, decimals: number): string {
+  if (!value.includes('.')) return value
+  const [intPart, fracPart] = value.split('.')
+  const trimmed = fracPart.slice(0, decimals)
+  const combined = `${intPart}.${trimmed}`
+  return stripTrailingZeros(combined)
+}
+
+export function formatOrderStatus(status: OrderStatus): string {
+  if (typeof status === 'string') return status
+  if ('resting' in status) return `resting (oid: ${status.resting.oid})`
+  if ('filled' in status) return `filled (sz: ${status.filled.totalSz}, avgPx: ${status.filled.avgPx})`
+  if ('error' in status) return `error: ${status.error}`
+  return 'unknown'
+}
+
+export function splitSignature(signature: `0x${string}`): { r: `0x${string}`; s: `0x${string}`; v: number } {
+  if (signature.length !== 132) {
+    throw new Error(`Expected 65-byte signature (132 hex chars), got ${signature.length}`)
+  }
+  const r = `0x${signature.slice(2, 66)}` as `0x${string}`
+  const s = `0x${signature.slice(66, 130)}` as `0x${string}`
+  let v = parseInt(signature.slice(130, 132), 16)
+  if (v === 0 || v === 1) v += 27
+  if (v !== 27 && v !== 28) {
+    throw new Error(`Invalid signature recovery value: ${v}, expected 27 or 28`)
+  }
+  return { r, s, v }
+}
 
 function toUint64Bytes(n: bigint | number): Uint8Array {
   const bytes = new Uint8Array(8)
@@ -110,4 +149,51 @@ export function buildHyperliquidTypedData(args: { hash: `0x${string}`; isTestnet
       connectionId: hash,
     },
   }
+}
+
+export function buildOrderAction(args: {
+  assetIndex: number
+  isBuy: boolean
+  size: string
+  price: string
+  reduceOnly: boolean
+  tif: 'Gtc' | 'FrontendMarket'
+}): OrderRequestBody['action'] {
+  const { assetIndex, isBuy, size, price, reduceOnly, tif } = args
+  return {
+    type: 'order',
+    orders: [
+      {
+        a: assetIndex,
+        b: isBuy,
+        p: price,
+        s: size,
+        r: reduceOnly,
+        t: { limit: { tif } },
+      },
+    ],
+    grouping: 'na',
+  }
+}
+
+export async function signAndSubmitL1Action(args: {
+  action: OrderRequestBody['action']
+  nonce: number
+  walletName: string
+  vaultPath: string
+  credential: string
+  isTestnet?: boolean
+}): Promise<OrderResponse> {
+  const { action, nonce, walletName, vaultPath, credential, isTestnet = false } = args
+
+  const hash = createL1ActionHash({ action, nonce })
+  const typedData = buildHyperliquidTypedData({ hash, isTestnet })
+  const signed = signTypedData(walletName, 'eip155:1', JSON.stringify(typedData), credential, vaultPath)
+  const signature = splitSignature(signed.signature as `0x${string}`)
+
+  const body: OrderRequestBody = { action, nonce, signature }
+  return $fetch<OrderResponse>(getHyperliquidExchangeUrl(), {
+    method: 'POST',
+    body,
+  })
 }

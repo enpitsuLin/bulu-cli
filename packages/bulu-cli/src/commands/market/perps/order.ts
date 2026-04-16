@@ -1,38 +1,17 @@
 import { defineCommand } from 'citty'
-import { getWallet, signTypedData } from '@bulu-cli/tcx-core'
+import { getWallet } from '@bulu-cli/tcx-core'
 import { getActiveWallet, getVaultPath } from '../../../core/config'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
 import { withDefaultArgs } from '../../../core/args-def'
 import { resolveTCXPassphrase } from '../../../core/tcx'
+import { fetchClearinghouseState, fetchMetaAndAssetCtxs } from '../../../protocols/hyperliquid/client'
 import {
-  fetchClearinghouseState,
-  fetchMetaAndAssetCtxs,
-  splitSignature,
-  submitExchangeRequest,
-} from '../../../protocols/hyperliquid/client'
-import { createL1ActionHash, buildHyperliquidTypedData } from '../../../protocols/hyperliquid/signing'
-import type { OrderRequestBody, OrderStatus } from '../../../protocols/hyperliquid/types'
-
-function stripTrailingZeros(value: string): string {
-  if (!value.includes('.')) return value
-  return value.replace(/\.?0+$/, '')
-}
-
-function formatSize(value: string, decimals: number): string {
-  if (!value.includes('.')) return value
-  const [intPart, fracPart] = value.split('.')
-  const trimmed = fracPart.slice(0, decimals)
-  const combined = `${intPart}.${trimmed}`
-  return stripTrailingZeros(combined)
-}
-
-function formatOrderStatus(status: OrderStatus): string {
-  if (typeof status === 'string') return status
-  if ('resting' in status) return `resting (oid: ${status.resting.oid})`
-  if ('filled' in status) return `filled (sz: ${status.filled.totalSz}, avgPx: ${status.filled.avgPx})`
-  if ('error' in status) return `error: ${status.error}`
-  return 'unknown'
-}
+  buildOrderAction,
+  formatOrderStatus,
+  formatSize,
+  signAndSubmitL1Action,
+  stripTrailingZeros,
+} from '../../../protocols/hyperliquid/exchange'
 
 export default defineCommand({
   meta: { name: 'order', description: 'Place a perp order on Hyperliquid (open or close)' },
@@ -146,88 +125,42 @@ export default defineCommand({
         sizeStr = position.position.szi.replace(/^-/, '')
       }
       isBuy = positionSize < 0
-    } else {
-      if (!sizeStr) {
-        out.warn('Size is required when opening a position')
-        process.exit(1)
-      }
+    } else if (!sizeStr) {
+      out.warn('Size is required when opening a position')
+      process.exit(1)
     }
 
     const formattedSize = formatSize(stripTrailingZeros(sizeStr), szDecimals)
-
     const userPriceStr = args.price ? stripTrailingZeros(String(args.price)) : undefined
-    let priceStr: string
-    let tif: 'Gtc' | 'Ioc' | 'FrontendMarket'
 
-    if (userPriceStr) {
-      priceStr = userPriceStr
-      tif = 'Gtc'
-    } else {
-      if (!markPrice) {
-        out.warn(`Could not fetch mark price for ${coin}`)
-        process.exit(1)
-      }
-      priceStr = stripTrailingZeros(markPrice)
-      tif = 'FrontendMarket'
+    const priceStr = userPriceStr ?? markPrice
+    if (!priceStr) {
+      out.warn(`Could not fetch mark price for ${coin}`)
+      process.exit(1)
     }
 
-    const action = {
-      type: 'order' as const,
-      orders: [
-        {
-          a: assetIndex,
-          b: isBuy,
-          p: priceStr,
-          s: formattedSize,
-          r: reduceOnly,
-          t: { limit: { tif } },
-        },
-      ],
-      grouping: 'na' as const,
-    }
+    const tif = userPriceStr ? 'Gtc' : 'FrontendMarket'
+    const action = buildOrderAction({
+      assetIndex,
+      isBuy,
+      size: formattedSize,
+      price: priceStr,
+      reduceOnly,
+      tif,
+    })
 
-    const nonce = Date.now()
     const credential = await resolveTCXPassphrase()
 
-    let hash: `0x${string}`
+    let response
     try {
-      hash = createL1ActionHash({ action, nonce })
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      out.warn(`Failed to create action hash: ${message}`)
-      process.exit(1)
-    }
-
-    const typedData = buildHyperliquidTypedData({ hash, isTestnet: args.testnet })
-
-    let signatureHex: string
-    try {
-      const signed = signTypedData(walletName, 'eip155:1', JSON.stringify(typedData), credential, vaultPath)
-      signatureHex = signed.signature
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      out.warn(`Failed to sign order: ${message}`)
-      process.exit(1)
-    }
-
-    let signature: ReturnType<typeof splitSignature>
-    try {
-      signature = splitSignature(signatureHex as `0x${string}`)
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      out.warn(`Failed to parse signature: ${message}`)
-      process.exit(1)
-    }
-
-    const body: OrderRequestBody = {
-      action,
-      nonce,
-      signature,
-    }
-
-    let response: import('../../../protocols/hyperliquid/types').OrderResponse
-    try {
-      response = await submitExchangeRequest(body)
+      response = await signAndSubmitL1Action({
+        action,
+        nonce: Date.now(),
+        walletName,
+        vaultPath,
+        credential,
+        isTestnet: args.testnet,
+      })
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       out.warn(`Failed to submit order: ${message}`)
@@ -250,7 +183,7 @@ export default defineCommand({
         coin,
         side: isBuy ? 'long' : 'short',
         size: formattedSize,
-        price: priceStr ?? 'market',
+        price: priceStr,
         reduceOnly,
         statuses: rows,
       })
@@ -267,7 +200,7 @@ export default defineCommand({
 
     out.table(rows, {
       columns: ['orderIndex', 'result'],
-      title: `Perp Order | ${walletName} | ${coin} ${isBuy ? 'LONG' : 'SHORT'} ${formattedSize} @ ${priceStr ?? 'MARKET'}`,
+      title: `Perp Order | ${walletName} | ${coin} ${isBuy ? 'LONG' : 'SHORT'} ${formattedSize} @ ${priceStr}`,
     })
   },
 })

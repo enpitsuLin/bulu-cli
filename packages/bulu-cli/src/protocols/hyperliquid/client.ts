@@ -1,14 +1,6 @@
 import { $fetch } from 'ofetch'
-import { getHyperliquidApiUrl, getHyperliquidExchangeUrl } from '../../core/config'
-import type {
-  AssetCtx,
-  AssetMeta,
-  Candle,
-  ClearinghouseState,
-  OrderRequestBody,
-  OrderResponse,
-  SpotClearinghouseState,
-} from './types'
+import { getHyperliquidApiUrl } from '../../core/config'
+import type { AssetCtx, AssetMeta, Candle, ClearinghouseState, SpotClearinghouseState } from './types'
 
 export const VALID_PERIODS = ['1m', '5m', '15m', '1h', '4h', '1d'] as const
 
@@ -72,35 +64,5 @@ export async function fetchSpotClearinghouseState(user: string): Promise<SpotCle
   return $fetch<SpotClearinghouseState>(getApiUrl(), {
     method: 'POST',
     body: { type: 'spotClearinghouseState', user },
-  })
-}
-
-export async function resolveAssetIndex(coin: string): Promise<number> {
-  const { universe } = await fetchMetaAndAssetCtxs()
-  const index = universe.findIndex((u) => u.name === coin)
-  if (index === -1) {
-    throw new Error(`Coin "${coin}" not found on Hyperliquid`)
-  }
-  return index
-}
-
-export function splitSignature(signature: `0x${string}`): { r: `0x${string}`; s: `0x${string}`; v: number } {
-  if (signature.length !== 132) {
-    throw new Error(`Expected 65-byte signature (132 hex chars), got ${signature.length}`)
-  }
-  const r = `0x${signature.slice(2, 66)}` as `0x${string}`
-  const s = `0x${signature.slice(66, 130)}` as `0x${string}`
-  let v = parseInt(signature.slice(130, 132), 16)
-  if (v === 0 || v === 1) v += 27
-  if (v !== 27 && v !== 28) {
-    throw new Error(`Invalid signature recovery value: ${v}, expected 27 or 28`)
-  }
-  return { r, s, v }
-}
-
-export async function submitExchangeRequest(body: OrderRequestBody): Promise<OrderResponse> {
-  return $fetch<OrderResponse>(getHyperliquidExchangeUrl(), {
-    method: 'POST',
-    body,
   })
 }
