@@ -17,6 +17,7 @@ export interface BuluConfig {
   chains?: Record<string, { rpc?: string }>
   hyperliquid?: {
     apiUrl?: string
+    exchangeUrl?: string
   }
 }
 
@@ -32,6 +33,7 @@ export const CONFIG_DEFAULTS: BuluConfig = {
   },
   hyperliquid: {
     apiUrl: 'https://api.hyperliquid.xyz/info',
+    exchangeUrl: 'https://api.hyperliquid.xyz/exchange',
   },
 }
 
@@ -186,4 +188,9 @@ export function setActiveWallet(name: string, cwd?: string): void {
 export function getHyperliquidApiUrl(cwd?: string): string {
   const config = loadBuluConfigSync(cwd)
   return config.hyperliquid?.apiUrl ?? 'https://api.hyperliquid.xyz/info'
+}
+
+export function getHyperliquidExchangeUrl(cwd?: string): string {
+  const config = loadBuluConfigSync(cwd)
+  return config.hyperliquid?.exchangeUrl ?? 'https://api.hyperliquid.xyz/exchange'
 }

@@ -74,3 +74,51 @@ export interface SpotBalance {
 export interface SpotClearinghouseState {
   balances: SpotBalance[]
 }
+
+export interface ExchangeSignature {
+  r: `0x${string}`
+  s: `0x${string}`
+  v: number
+}
+
+export interface OrderRequestBody {
+  action: {
+    type: 'order'
+    orders: Array<{
+      a: number
+      b: boolean
+      p: string
+      s: string
+      r: boolean
+      t: { limit: { tif: string } } | { trigger: { isMarket: boolean; triggerPx: string; tpsl: 'tp' | 'sl' } }
+      c?: `0x${string}`
+    }>
+    grouping: 'na' | 'normalTpsl' | 'positionTpsl'
+    builder?: {
+      b: `0x${string}`
+      f: number
+    }
+  }
+  nonce: number
+  signature: ExchangeSignature
+  vaultAddress?: `0x${string}`
+  expiresAfter?: number
+}
+
+export interface OrderResponse {
+  status: 'ok'
+  response: {
+    type: 'order'
+    data: {
+      statuses: Array<
+        | { resting: { oid: number; cloid?: `0x${string}` } }
+        | { filled: { totalSz: string; avgPx: string; oid: number; cloid?: `0x${string}` } }
+        | { error: string }
+        | 'waitingForFill'
+        | 'waitingForTrigger'
+      >
+    }
+  }
+}
+
+export type OrderStatus = OrderResponse['response']['data']['statuses'][number]
