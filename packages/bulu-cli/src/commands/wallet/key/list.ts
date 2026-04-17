@@ -3,6 +3,7 @@ import { defineCommand } from 'citty'
 import { getVaultPath } from '../../../core/config'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
 import { withDefaultArgs } from '../../../core/args-def'
+import { formatOptionalTimestamp } from '../../../core/time'
 
 function formatApiKeysForTable(apiKeys: ApiKeyInfo[]) {
   return apiKeys.map((k) => ({
@@ -10,7 +11,7 @@ function formatApiKeysForTable(apiKeys: ApiKeyInfo[]) {
     ID: k.id,
     Wallets: k.walletIds.length,
     Policies: k.policyIds.length,
-    Expires: k.expiresAt ? new Date(k.expiresAt * 1000).toISOString() : 'Never',
+    Expires: formatOptionalTimestamp(k.expiresAt),
   }))
 }
 

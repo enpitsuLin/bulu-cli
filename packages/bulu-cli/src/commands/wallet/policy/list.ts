@@ -3,6 +3,7 @@ import { defineCommand } from 'citty'
 import { getVaultPath } from '../../../core/config'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
 import { withDefaultArgs } from '../../../core/args-def'
+import { formatTimestamp } from '../../../core/time'
 
 function formatPoliciesForTable(policies: PolicyInfo[]) {
   return policies.map((p) => ({
@@ -10,7 +11,7 @@ function formatPoliciesForTable(policies: PolicyInfo[]) {
     ID: p.id,
     Rules: p.rules.length,
     Action: p.action,
-    Created: new Date(p.createdAt * 1000).toISOString(),
+    Created: formatTimestamp(p.createdAt),
   }))
 }
 

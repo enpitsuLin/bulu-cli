@@ -3,6 +3,8 @@ import { createOutput, resolveOutputOptions } from '../../../core/output'
 import { withDefaultArgs } from '../../../core/args-def'
 import { fetchOpenOrders } from '../../../protocols/hyperliquid'
 import { requireChainAccount, resolveWallet } from '../../../core/wallet'
+import { formatTimestamp } from '../../../core/time'
+import type { OpenOrder } from '../../../protocols/hyperliquid'
 
 function formatSide(side: 'A' | 'B'): string {
   return side === 'B' ? 'long' : 'short'
@@ -11,6 +13,27 @@ function formatSide(side: 'A' | 'B'): string {
 function formatTif(tif: string, isTrigger: boolean): string {
   if (isTrigger) return `trigger (${tif})`
   return tif
+}
+
+function mapOpenOrder(order: OpenOrder) {
+  return {
+    coin: order.coin,
+    side: formatSide(order.side),
+    size: order.sz,
+    origSize: order.origSz,
+    limitPx: order.limitPx,
+    tif: formatTif(order.tif, order.isTrigger),
+    reduceOnly: order.reduceOnly,
+    oid: order.oid,
+    timestamp: order.timestamp,
+  }
+}
+
+export function formatOpenOrderRows(orders: OpenOrder[]) {
+  return orders.map((order) => ({
+    ...mapOpenOrder(order),
+    timestamp: formatTimestamp(order.timestamp),
+  }))
 }
 
 export default defineCommand({
@@ -33,7 +56,7 @@ export default defineCommand({
     const ethAccount = requireChainAccount(wallet, 'eip155:1', out)
     const user = ethAccount.address.toLowerCase()
 
-    let orders
+    let orders: OpenOrder[] = []
     try {
       orders = await fetchOpenOrders(user, args.testnet)
     } catch (error) {
@@ -42,22 +65,13 @@ export default defineCommand({
       process.exit(1)
     }
 
-    const rows = (orders || []).map((o) => ({
-      coin: o.coin,
-      side: formatSide(o.side),
-      size: o.sz,
-      origSize: o.origSz,
-      limitPx: o.limitPx,
-      tif: formatTif(o.tif, o.isTrigger),
-      reduceOnly: o.reduceOnly,
-      oid: o.oid,
-      timestamp: o.timestamp,
-    }))
+    const rawRows = (orders || []).map(mapOpenOrder)
+    const displayRows = formatOpenOrderRows(orders || [])
 
     const isJson = args.json || args.format === 'json'
     const isCsv = args.format === 'csv'
 
-    if (rows.length === 0) {
+    if (rawRows.length === 0) {
       if (isJson) {
         out.data({ wallet: walletName, user, orders: [] })
       } else {
@@ -67,21 +81,21 @@ export default defineCommand({
     }
 
     if (isJson) {
-      out.data({ wallet: walletName, user, orders: rows })
+      out.data({ wallet: walletName, user, orders: rawRows })
       return
     }
 
     if (isCsv) {
       const header = 'coin,side,size,origSize,limitPx,tif,reduceOnly,oid,timestamp'
       out.data(header)
-      for (const row of rows) {
+      for (const row of displayRows) {
         const line = `${row.coin},${row.side},${row.size},${row.origSize},${row.limitPx},${row.tif},${row.reduceOnly},${row.oid},${row.timestamp}`
         out.data(line)
       }
       return
     }
 
-    out.table(rows, {
+    out.table(displayRows, {
       columns: ['coin', 'side', 'size', 'origSize', 'limitPx', 'tif', 'reduceOnly', 'oid', 'timestamp'],
       title: `Open Perp Orders | ${walletName} (${user})`,
     })

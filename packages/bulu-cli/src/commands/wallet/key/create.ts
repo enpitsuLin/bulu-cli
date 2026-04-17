@@ -4,6 +4,7 @@ import { getActiveWallet, getVaultPath } from '../../../core/config'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
 import { withDefaultArgs } from '../../../core/args-def'
 import { resolveTCXPassphrase } from '../../../core/tcx'
+import { formatTimestamp } from '../../../core/time'
 
 function splitIds(value?: string): string[] {
   if (!value) return []
@@ -64,7 +65,7 @@ export default defineCommand({
       out.data(`Wallets: ${result.apiKey.walletIds.join(', ') || '(none)'}`)
       out.data(`Policies: ${result.apiKey.policyIds.join(', ') || '(none)'}`)
       if (result.apiKey.expiresAt) {
-        out.data(`Expires at: ${result.apiKey.expiresAt}`)
+        out.data(`Expires at: ${formatTimestamp(result.apiKey.expiresAt)}`)
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
