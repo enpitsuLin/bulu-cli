@@ -45,14 +45,14 @@ function largeIntToBigInt(obj: unknown): unknown {
 }
 
 export function createL1ActionHash(args: {
-  action: Record<string, unknown> | unknown[]
+  action: object | unknown[]
   nonce: number
   vaultAddress?: `0x${string}`
   expiresAfter?: number
 }): `0x${string}` {
   const { action, nonce, vaultAddress, expiresAfter } = args
 
-  const cleaned = removeUndefinedKeys(action) as Record<string, unknown> | unknown[]
+  const cleaned = removeUndefinedKeys(action) as object | unknown[]
   const actionBytes = encode(largeIntToBigInt(cleaned))
   const nonceBytes = toUint64Bytes(nonce)
 

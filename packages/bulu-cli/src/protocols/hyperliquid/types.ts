@@ -91,6 +91,48 @@ export interface OpenOrder {
   triggerPx?: string
 }
 
+export interface FrontendOpenOrder extends OpenOrder {
+  cloid?: `0x${string}` | null
+  children?: unknown[]
+  isPositionTpsl?: boolean
+}
+
+export interface UserFill {
+  closedPnl?: string
+  coin: string
+  crossed?: boolean
+  dir?: string
+  fee?: string
+  feeToken?: string
+  hash?: `0x${string}`
+  oid: number
+  px: string
+  side: 'A' | 'B'
+  startPosition?: string
+  sz: string
+  tid?: number
+  time: number
+  [key: string]: unknown
+}
+
+export interface HistoricalOrder {
+  order: FrontendOpenOrder
+  status: string
+  statusTimestamp: number
+}
+
+export type OrderStatusInfo =
+  | HistoricalOrder
+  | { error: string }
+  | {
+      status?: string
+      order?: FrontendOpenOrder
+      statusTimestamp?: number
+      [key: string]: unknown
+    }
+  | string
+  | null
+
 export interface ExchangeSignature {
   r: `0x${string}`
   s: `0x${string}`
@@ -101,29 +143,93 @@ export type OrderSide = 'long' | 'short'
 
 export type OrderTimeInForce = 'Alo' | 'Ioc' | 'Gtc' | 'FrontendMarket'
 
-export interface OrderRequestBody {
-  action: {
-    type: 'order'
-    orders: Array<{
-      a: number
-      b: boolean
-      p: string
-      s: string
-      r: boolean
-      t: { limit: { tif: string } } | { trigger: { isMarket: boolean; triggerPx: string; tpsl: 'tp' | 'sl' } }
-      c?: `0x${string}`
-    }>
-    grouping: 'na' | 'normalTpsl' | 'positionTpsl'
-    builder?: {
-      b: `0x${string}`
-      f: number
-    }
+export type TriggerOrderKind = 'tp' | 'sl'
+
+export type OrderGrouping = 'na' | 'normalTpsl' | 'positionTpsl'
+
+export type HyperliquidOrderType =
+  | { limit: { tif: string } }
+  | { trigger: { isMarket: boolean; triggerPx: string; tpsl: TriggerOrderKind } }
+
+export interface HyperliquidOrderWire {
+  a: number
+  b: boolean
+  p: string
+  s: string
+  r: boolean
+  t: HyperliquidOrderType
+  c?: `0x${string}`
+}
+
+export interface ExchangeOrderAction {
+  type: 'order'
+  orders: HyperliquidOrderWire[]
+  grouping: OrderGrouping
+  builder?: {
+    b: `0x${string}`
+    f: number
   }
+}
+
+export interface ExchangeCancelAction {
+  type: 'cancel'
+  cancels: Array<{
+    a: number
+    o: number
+  }>
+}
+
+export interface ExchangeCancelByCloidAction {
+  type: 'cancelByCloid'
+  cancels: Array<{
+    asset: number
+    cloid: `0x${string}`
+  }>
+}
+
+export interface ExchangeModifyAction {
+  type: 'modify'
+  oid: number | `0x${string}`
+  order: HyperliquidOrderWire
+}
+
+export interface ExchangeUpdateLeverageAction {
+  type: 'updateLeverage'
+  asset: number
+  isCross: boolean
+  leverage: number
+}
+
+export interface ExchangeUpdateIsolatedMarginAction {
+  type: 'updateIsolatedMargin'
+  asset: number
+  isBuy: boolean
+  ntli: number
+}
+
+export interface ExchangeScheduleCancelAction {
+  type: 'scheduleCancel'
+  time?: number
+}
+
+export type ExchangeAction =
+  | ExchangeOrderAction
+  | ExchangeCancelAction
+  | ExchangeCancelByCloidAction
+  | ExchangeModifyAction
+  | ExchangeUpdateLeverageAction
+  | ExchangeUpdateIsolatedMarginAction
+  | ExchangeScheduleCancelAction
+
+export interface ExchangeRequestBody<TAction extends ExchangeAction = ExchangeAction> {
+  action: TAction
   nonce: number
   signature: ExchangeSignature
   vaultAddress?: `0x${string}`
   expiresAfter?: number
 }
+
+export type OrderRequestBody = ExchangeRequestBody<ExchangeOrderAction>
 
 export interface OrderResponse {
   status: 'ok'
@@ -143,6 +249,14 @@ export interface OrderResponse {
 
 export type OrderStatus = OrderResponse['response']['data']['statuses'][number]
 
+export interface DefaultExchangeResponse {
+  status: 'ok'
+  response: {
+    type: 'default'
+    [key: string]: unknown
+  }
+}
+
 export interface HyperliquidMarketAsset {
   assetIndex: number
   meta: AssetMeta
@@ -150,12 +264,16 @@ export interface HyperliquidMarketAsset {
 }
 
 export interface ResolvedPerpOrder {
-  action: OrderRequestBody['action']
+  action: ExchangeOrderAction
   assetIndex: number
   side: OrderSide
   size: string
   price: string
   reduceOnly: boolean
-  tif: OrderTimeInForce
+  tif?: OrderTimeInForce
+  triggerPx?: string
+  triggerKind?: TriggerOrderKind
+  isTrigger: boolean
+  grouping: OrderGrouping
   market: HyperliquidMarketAsset
 }

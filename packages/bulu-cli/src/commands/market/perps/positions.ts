@@ -1,9 +1,7 @@
 import { defineCommand } from 'citty'
-import { createOutput, resolveOutputOptions } from '../../../core/output'
-import { withDefaultArgs } from '../../../core/args-def'
 import { fetchClearinghouseState } from '../../../protocols/hyperliquid'
 import type { PerpPosition } from '../../../protocols/hyperliquid'
-import { requireChainAccount, resolveWallet } from '../../../core/wallet'
+import { resolvePerpOutput, resolvePerpQueryArgs, resolvePerpUserContext } from './shared'
 
 function formatLeverage(leverage: PerpPosition['leverage']): string {
   if (typeof leverage === 'object' && leverage !== null) {
@@ -15,22 +13,14 @@ function formatLeverage(leverage: PerpPosition['leverage']): string {
 
 export default defineCommand({
   meta: { name: 'positions', description: 'Show perp positions' },
-  args: withDefaultArgs({
-    wallet: {
-      type: 'positional',
-      description: 'Wallet name or id (defaults to active wallet)',
-      required: false,
-    },
-  }),
+  args: resolvePerpQueryArgs(),
   async run({ args }) {
-    const out = createOutput(resolveOutputOptions(args))
-    const { walletName, wallet } = resolveWallet(args.wallet, out)
-    const ethAccount = requireChainAccount(wallet, 'eip155:1', out)
-    const user = ethAccount.address.toLowerCase()
+    const out = resolvePerpOutput(args)
+    const { walletName, user } = resolvePerpUserContext(args, out)
 
     let state
     try {
-      state = await fetchClearinghouseState(user)
+      state = await fetchClearinghouseState(user, args.testnet)
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       out.warn(`Failed to fetch positions: ${message}`)

@@ -4,9 +4,13 @@ import type {
   AssetMeta,
   Candle,
   ClearinghouseState,
+  FrontendOpenOrder,
+  HistoricalOrder,
   HyperliquidMarketAsset,
   OpenOrder,
+  OrderStatusInfo,
   SpotClearinghouseState,
+  UserFill,
 } from './types'
 
 export const VALID_PERIODS = ['1m', '5m', '15m', '1h', '4h', '1d'] as const
@@ -72,6 +76,47 @@ export async function fetchSpotClearinghouseState(user: string, isTestnet?: bool
 
 export async function fetchOpenOrders(user: string, isTestnet?: boolean): Promise<OpenOrder[]> {
   return postHyperliquidInfo<OpenOrder[]>({ type: 'openOrders', user }, isTestnet)
+}
+
+export async function fetchFrontendOpenOrders(user: string, isTestnet?: boolean): Promise<FrontendOpenOrder[]> {
+  return postHyperliquidInfo<FrontendOpenOrder[]>({ type: 'frontendOpenOrders', user }, isTestnet)
+}
+
+export async function fetchUserFills(user: string, aggregateByTime = false, isTestnet?: boolean): Promise<UserFill[]> {
+  return postHyperliquidInfo<UserFill[]>({ type: 'userFills', user, aggregateByTime }, isTestnet)
+}
+
+export async function fetchUserFillsByTime(args: {
+  user: string
+  startTime: number
+  endTime?: number
+  aggregateByTime?: boolean
+  isTestnet?: boolean
+}): Promise<UserFill[]> {
+  const { user, startTime, endTime, aggregateByTime = false, isTestnet } = args
+  return postHyperliquidInfo<UserFill[]>(
+    {
+      type: 'userFillsByTime',
+      user,
+      startTime,
+      endTime,
+      aggregateByTime,
+    },
+    isTestnet,
+  )
+}
+
+export async function fetchOrderStatus(args: {
+  user: string
+  oid: number | string
+  isTestnet?: boolean
+}): Promise<OrderStatusInfo> {
+  const { user, oid, isTestnet } = args
+  return postHyperliquidInfo<OrderStatusInfo>({ type: 'orderStatus', user, oid }, isTestnet)
+}
+
+export async function fetchHistoricalOrders(user: string, isTestnet?: boolean): Promise<HistoricalOrder[]> {
+  return postHyperliquidInfo<HistoricalOrder[]>({ type: 'historicalOrders', user }, isTestnet)
 }
 
 export function resolveMarketPrice(context?: Pick<AssetCtx, 'markPx' | 'midPx' | 'oraclePx'>): string | undefined {

@@ -5,7 +5,18 @@ import { describe, expect, test } from 'vitest'
 import { createL1ActionHash } from '../src/protocols/hyperliquid/crypto'
 import { normalizeDecimalInput } from '../src/protocols/hyperliquid/format'
 import { findMarketAsset, resolveMarketPrice } from '../src/protocols/hyperliquid/market'
-import { findPerpPosition, resolvePerpOrder } from '../src/protocols/hyperliquid/trade'
+import {
+  buildCancelAction,
+  buildModifyAction,
+  buildScheduleCancelAction,
+  buildUpdateIsolatedMarginAction,
+  buildUpdateLeverageAction,
+  findPerpPosition,
+  parseOrderIdentifier,
+  resolvePerpOrder,
+  resolvePerpTpslOrder,
+  resolveTriggerKindFromOrder,
+} from '../src/protocols/hyperliquid/trade'
 
 function toUint64Bytes(n: bigint | number): Uint8Array {
   const bytes = new Uint8Array(8)
@@ -189,5 +200,85 @@ describe('perp order helpers', () => {
       r: true,
       s: '0.333',
     })
+  })
+
+  test('resolvePerpTpslOrder builds a reduce-only trigger order', () => {
+    const order = resolvePerpTpslOrder({
+      coin: 'BTC',
+      market,
+      triggerPrice: '91000',
+      state: {
+        assetPositions: [
+          {
+            type: 'oneWay',
+            position: {
+              coin: 'BTC',
+              szi: '0.75',
+              positionValue: '60000',
+              unrealizedPnl: '200',
+              leverage: { type: 'cross', value: 4 },
+              marginUsed: '500',
+              returnOnEquity: '0.3',
+            },
+          },
+        ],
+      },
+      tpsl: 'sl',
+    })
+
+    expect(order.side).toBe('short')
+    expect(order.reduceOnly).toBe(true)
+    expect(order.grouping).toBe('positionTpsl')
+    expect(order.action.orders[0]).toMatchObject({
+      b: false,
+      p: '91000',
+      r: true,
+      t: {
+        trigger: {
+          isMarket: true,
+          triggerPx: '91000',
+          tpsl: 'sl',
+        },
+      },
+    })
+  })
+})
+
+describe('exchange action helpers', () => {
+  test('build action helpers return expected payloads', () => {
+    expect(buildCancelAction([{ a: 1, o: 2 }])).toEqual({ type: 'cancel', cancels: [{ a: 1, o: 2 }] })
+    expect(
+      buildModifyAction({ oid: 42, order: { a: 0, b: true, p: '1', s: '2', r: false, t: { limit: { tif: 'Gtc' } } } }),
+    ).toEqual({
+      type: 'modify',
+      oid: 42,
+      order: { a: 0, b: true, p: '1', s: '2', r: false, t: { limit: { tif: 'Gtc' } } },
+    })
+    expect(buildUpdateLeverageAction({ asset: 1, leverage: 5, isCross: true })).toEqual({
+      type: 'updateLeverage',
+      asset: 1,
+      leverage: 5,
+      isCross: true,
+    })
+    expect(buildUpdateIsolatedMarginAction({ asset: 1, ntli: 1_500_000 })).toEqual({
+      type: 'updateIsolatedMargin',
+      asset: 1,
+      isBuy: true,
+      ntli: 1_500_000,
+    })
+    expect(buildScheduleCancelAction()).toEqual({ type: 'scheduleCancel' })
+    expect(buildScheduleCancelAction(1_700_000_000_000)).toEqual({ type: 'scheduleCancel', time: 1_700_000_000_000 })
+  })
+})
+
+describe('order identifier helpers', () => {
+  test('parseOrderIdentifier supports oid and cloid values', () => {
+    expect(parseOrderIdentifier('42')).toBe(42)
+    expect(parseOrderIdentifier('0x1234567890abcdef1234567890abcdef')).toBe('0x1234567890abcdef1234567890abcdef')
+  })
+
+  test('resolveTriggerKindFromOrder infers trigger type from metadata', () => {
+    expect(resolveTriggerKindFromOrder({ triggerCondition: 'Tp', orderType: 'Take Profit Market' })).toBe('tp')
+    expect(resolveTriggerKindFromOrder({ triggerCondition: undefined, orderType: 'Stop Market' })).toBe('sl')
   })
 })

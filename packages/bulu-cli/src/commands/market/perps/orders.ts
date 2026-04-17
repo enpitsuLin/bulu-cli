@@ -1,35 +1,32 @@
 import { defineCommand } from 'citty'
-import { createOutput, resolveOutputOptions } from '../../../core/output'
-import { withDefaultArgs } from '../../../core/args-def'
-import { fetchOpenOrders } from '../../../protocols/hyperliquid'
-import { requireChainAccount, resolveWallet } from '../../../core/wallet'
+import { fetchFrontendOpenOrders, resolveOrderSide } from '../../../protocols/hyperliquid'
 import { formatTimestamp } from '../../../core/time'
-import type { OpenOrder } from '../../../protocols/hyperliquid'
-
-function formatSide(side: 'A' | 'B'): string {
-  return side === 'B' ? 'long' : 'short'
-}
+import type { FrontendOpenOrder } from '../../../protocols/hyperliquid'
+import { resolvePerpOutput, resolvePerpQueryArgs, resolvePerpUserContext } from './shared'
 
 function formatTif(tif: string, isTrigger: boolean): string {
   if (isTrigger) return `trigger (${tif})`
   return tif
 }
 
-function mapOpenOrder(order: OpenOrder) {
+function mapOpenOrder(order: FrontendOpenOrder) {
   return {
     coin: order.coin,
-    side: formatSide(order.side),
+    side: resolveOrderSide(order.side),
     size: order.sz,
     origSize: order.origSz,
     limitPx: order.limitPx,
     tif: formatTif(order.tif, order.isTrigger),
+    triggerPx: order.triggerPx ?? 'N/A',
+    cloid: order.cloid ?? 'N/A',
+    positionTpsl: order.isPositionTpsl ?? false,
     reduceOnly: order.reduceOnly,
     oid: order.oid,
     timestamp: order.timestamp,
   }
 }
 
-export function formatOpenOrderRows(orders: OpenOrder[]) {
+export function formatOpenOrderRows(orders: FrontendOpenOrder[]) {
   return orders.map((order) => ({
     ...mapOpenOrder(order),
     timestamp: formatTimestamp(order.timestamp),
@@ -38,27 +35,14 @@ export function formatOpenOrderRows(orders: OpenOrder[]) {
 
 export default defineCommand({
   meta: { name: 'orders', description: 'Show open perp orders' },
-  args: withDefaultArgs({
-    wallet: {
-      type: 'positional',
-      description: 'Wallet name or id (defaults to active wallet)',
-      required: false,
-    },
-    testnet: {
-      type: 'boolean',
-      description: 'Use Hyperliquid testnet',
-      default: false,
-    },
-  }),
+  args: resolvePerpQueryArgs(),
   async run({ args }) {
-    const out = createOutput(resolveOutputOptions(args))
-    const { walletName, wallet } = resolveWallet(args.wallet, out)
-    const ethAccount = requireChainAccount(wallet, 'eip155:1', out)
-    const user = ethAccount.address.toLowerCase()
+    const out = resolvePerpOutput(args)
+    const { walletName, user } = resolvePerpUserContext(args, out)
 
-    let orders: OpenOrder[] = []
+    let orders: FrontendOpenOrder[] = []
     try {
-      orders = await fetchOpenOrders(user, args.testnet)
+      orders = await fetchFrontendOpenOrders(user, args.testnet)
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       out.warn(`Failed to fetch open orders: ${message}`)
@@ -86,17 +70,30 @@ export default defineCommand({
     }
 
     if (isCsv) {
-      const header = 'coin,side,size,origSize,limitPx,tif,reduceOnly,oid,timestamp'
+      const header = 'coin,side,size,origSize,limitPx,tif,triggerPx,positionTpsl,reduceOnly,oid,cloid,timestamp'
       out.data(header)
       for (const row of displayRows) {
-        const line = `${row.coin},${row.side},${row.size},${row.origSize},${row.limitPx},${row.tif},${row.reduceOnly},${row.oid},${row.timestamp}`
+        const line = `${row.coin},${row.side},${row.size},${row.origSize},${row.limitPx},${row.tif},${row.triggerPx},${row.positionTpsl},${row.reduceOnly},${row.oid},${row.cloid},${row.timestamp}`
         out.data(line)
       }
       return
     }
 
     out.table(displayRows, {
-      columns: ['coin', 'side', 'size', 'origSize', 'limitPx', 'tif', 'reduceOnly', 'oid', 'timestamp'],
+      columns: [
+        'coin',
+        'side',
+        'size',
+        'origSize',
+        'limitPx',
+        'tif',
+        'triggerPx',
+        'positionTpsl',
+        'reduceOnly',
+        'oid',
+        'cloid',
+        'timestamp',
+      ],
       title: `Open Perp Orders | ${walletName} (${user})`,
     })
   },

@@ -1,16 +1,16 @@
 import { signTypedData } from '@bulu-cli/tcx-core'
 import { postHyperliquidExchange } from './client'
 import { buildHyperliquidTypedData, createL1ActionHash, splitSignature } from './crypto'
-import type { OrderRequestBody, OrderResponse } from './types'
+import type { ExchangeAction, ExchangeRequestBody, OrderResponse } from './types'
 
-export async function signAndSubmitL1Action(args: {
-  action: OrderRequestBody['action']
+export async function signAndSubmitL1Action<TResponse = OrderResponse>(args: {
+  action: ExchangeAction
   nonce: number
   walletName: string
   vaultPath: string
   credential: string
   isTestnet?: boolean
-}): Promise<OrderResponse> {
+}): Promise<TResponse> {
   const { action, nonce, walletName, vaultPath, credential, isTestnet = false } = args
 
   const hash = createL1ActionHash({ action, nonce })
@@ -18,6 +18,6 @@ export async function signAndSubmitL1Action(args: {
   const signed = signTypedData(walletName, 'eip155:1', JSON.stringify(typedData), credential, vaultPath)
   const signature = splitSignature(signed.signature as `0x${string}`)
 
-  const body: OrderRequestBody = { action, nonce, signature }
-  return postHyperliquidExchange<OrderResponse>(body, isTestnet)
+  const body: ExchangeRequestBody = { action, nonce, signature }
+  return postHyperliquidExchange<TResponse>(body, isTestnet)
 }

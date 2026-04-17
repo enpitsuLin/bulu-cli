@@ -3,36 +3,110 @@ import { formatSize, normalizeDecimalInput } from './format'
 import type {
   AssetPosition,
   ClearinghouseState,
+  ExchangeCancelAction,
+  ExchangeCancelByCloidAction,
+  ExchangeModifyAction,
+  ExchangeOrderAction,
+  ExchangeScheduleCancelAction,
+  ExchangeUpdateIsolatedMarginAction,
+  ExchangeUpdateLeverageAction,
+  FrontendOpenOrder,
   HyperliquidMarketAsset,
-  OrderRequestBody,
+  HyperliquidOrderWire,
+  OrderGrouping,
   OrderSide,
   OrderTimeInForce,
   ResolvedPerpOrder,
+  TriggerOrderKind,
 } from './types'
 
-export function buildOrderAction(args: {
+interface ResolvedPerpOrderInput {
+  isBuy: boolean
+  size: string
+  reduceOnly: boolean
+}
+
+export function buildOrderWire(args: {
   assetIndex: number
   isBuy: boolean
   size: string
   price: string
   reduceOnly: boolean
-  tif: OrderTimeInForce
-}): OrderRequestBody['action'] {
-  const { assetIndex, isBuy, size, price, reduceOnly, tif } = args
+  tif?: OrderTimeInForce
+  trigger?: { isMarket: boolean; triggerPx: string; tpsl: TriggerOrderKind }
+  cloid?: `0x${string}`
+}): HyperliquidOrderWire {
+  const { assetIndex, isBuy, size, price, reduceOnly, tif, trigger, cloid } = args
+  return {
+    a: assetIndex,
+    b: isBuy,
+    p: price,
+    s: size,
+    r: reduceOnly,
+    t: trigger ? { trigger } : { limit: { tif: tif ?? 'Gtc' } },
+    c: cloid,
+  }
+}
+
+export function buildOrderAction(args: {
+  orders: HyperliquidOrderWire[]
+  grouping?: OrderGrouping
+}): ExchangeOrderAction {
+  const { orders, grouping = 'na' } = args
   return {
     type: 'order',
-    orders: [
-      {
-        a: assetIndex,
-        b: isBuy,
-        p: price,
-        s: size,
-        r: reduceOnly,
-        t: { limit: { tif } },
-      },
-    ],
-    grouping: 'na',
+    orders,
+    grouping,
   }
+}
+
+export function buildCancelAction(cancels: ExchangeCancelAction['cancels']): ExchangeCancelAction {
+  return { type: 'cancel', cancels }
+}
+
+export function buildCancelByCloidAction(cancels: ExchangeCancelByCloidAction['cancels']): ExchangeCancelByCloidAction {
+  return { type: 'cancelByCloid', cancels }
+}
+
+export function buildModifyAction(args: {
+  oid: number | `0x${string}`
+  order: HyperliquidOrderWire
+}): ExchangeModifyAction {
+  return {
+    type: 'modify',
+    oid: args.oid,
+    order: args.order,
+  }
+}
+
+export function buildUpdateLeverageAction(args: {
+  asset: number
+  leverage: number
+  isCross: boolean
+}): ExchangeUpdateLeverageAction {
+  return {
+    type: 'updateLeverage',
+    asset: args.asset,
+    leverage: args.leverage,
+    isCross: args.isCross,
+  }
+}
+
+export function buildUpdateIsolatedMarginAction(args: {
+  asset: number
+  ntli: number
+  isBuy?: boolean
+}): ExchangeUpdateIsolatedMarginAction {
+  return {
+    type: 'updateIsolatedMargin',
+    asset: args.asset,
+    isBuy: args.isBuy ?? true,
+    ntli: args.ntli,
+  }
+}
+
+export function buildScheduleCancelAction(time?: number): ExchangeScheduleCancelAction {
+  return time === undefined ? { type: 'scheduleCancel' } : { type: 'scheduleCancel', time }
 }
 
 export function findPerpPosition(
@@ -47,7 +121,7 @@ function resolveCloseOrder(args: {
   coin: string
   requestedSize?: string
   state?: Pick<ClearinghouseState, 'assetPositions'>
-}): { isBuy: boolean; size: string; reduceOnly: true } {
+}): ResolvedPerpOrderInput {
   const { coin, requestedSize, state } = args
   if (!state) {
     throw new Error(`Perp positions are required to close ${coin}`)
@@ -70,11 +144,7 @@ function resolveCloseOrder(args: {
   }
 }
 
-function resolveOpenOrder(args: { requestedSide?: OrderSide; requestedSize?: string }): {
-  isBuy: boolean
-  size: string
-  reduceOnly: false
-} {
+function resolveOpenOrder(args: { requestedSide?: OrderSide; requestedSize?: string }): ResolvedPerpOrderInput {
   const size = args.requestedSize
   if (!size) {
     throw new Error('Size is required when opening a position')
@@ -114,22 +184,130 @@ export function resolvePerpOrder(args: {
   const formattedSize = formatSize(order.size, market.meta.szDecimals)
   const tif: OrderTimeInForce = price ? 'Gtc' : 'FrontendMarket'
   const resolvedSide: OrderSide = order.isBuy ? 'long' : 'short'
+  const wire = buildOrderWire({
+    assetIndex: market.assetIndex,
+    isBuy: order.isBuy,
+    size: formattedSize,
+    price: normalizedPrice,
+    reduceOnly: order.reduceOnly,
+    tif,
+  })
 
   return {
-    action: buildOrderAction({
-      assetIndex: market.assetIndex,
-      isBuy: order.isBuy,
-      size: formattedSize,
-      price: normalizedPrice,
-      reduceOnly: order.reduceOnly,
-      tif,
-    }),
+    action: buildOrderAction({ orders: [wire], grouping: 'na' }),
     assetIndex: market.assetIndex,
     side: resolvedSide,
     size: formattedSize,
     price: normalizedPrice,
     reduceOnly: order.reduceOnly,
     tif,
+    triggerPx: undefined,
+    triggerKind: undefined,
+    isTrigger: false,
+    grouping: 'na',
     market,
   }
+}
+
+export function resolvePerpTpslOrder(args: {
+  coin: string
+  market: HyperliquidMarketAsset
+  triggerPrice: string
+  price?: string
+  size?: string
+  state?: Pick<ClearinghouseState, 'assetPositions'>
+  tpsl: TriggerOrderKind
+  grouping?: OrderGrouping
+}): ResolvedPerpOrder {
+  const { coin, market, triggerPrice, price, size, state, tpsl, grouping = 'positionTpsl' } = args
+  const normalizedCoin = coin.toUpperCase()
+  if (market.meta.name !== normalizedCoin) {
+    throw new Error(`Market context does not match ${normalizedCoin}`)
+  }
+
+  const order = resolveCloseOrder({ coin: normalizedCoin, requestedSize: size, state })
+  const normalizedTrigger = normalizeDecimalInput(triggerPrice, 'trigger price')
+  const normalizedPrice = price ? normalizeDecimalInput(price, 'price') : normalizedTrigger
+  const formattedSize = formatSize(order.size, market.meta.szDecimals)
+  const resolvedSide: OrderSide = order.isBuy ? 'long' : 'short'
+  const wire = buildOrderWire({
+    assetIndex: market.assetIndex,
+    isBuy: order.isBuy,
+    size: formattedSize,
+    price: normalizedPrice,
+    reduceOnly: true,
+    trigger: {
+      isMarket: !price,
+      triggerPx: normalizedTrigger,
+      tpsl,
+    },
+  })
+
+  return {
+    action: buildOrderAction({ orders: [wire], grouping }),
+    assetIndex: market.assetIndex,
+    side: resolvedSide,
+    size: formattedSize,
+    price: normalizedPrice,
+    reduceOnly: true,
+    tif: undefined,
+    triggerPx: normalizedTrigger,
+    triggerKind: tpsl,
+    isTrigger: true,
+    grouping,
+    market,
+  }
+}
+
+export function parseOrderIdentifier(value: string): number | `0x${string}` {
+  const trimmed = value.trim()
+  if (!trimmed) {
+    throw new Error('Order id is required')
+  }
+  if (/^0x[0-9a-fA-F]{32}$/.test(trimmed)) {
+    return trimmed.toLowerCase() as `0x${string}`
+  }
+  if (!/^\d+$/.test(trimmed)) {
+    throw new Error(`Invalid order id: ${value}`)
+  }
+
+  const parsed = Number(trimmed)
+  if (!Number.isSafeInteger(parsed)) {
+    throw new Error(`Order id exceeds JavaScript safe integer range: ${value}`)
+  }
+  return parsed
+}
+
+export function isCloid(value: number | string): value is `0x${string}` {
+  return typeof value === 'string' && /^0x[0-9a-fA-F]{32}$/.test(value)
+}
+
+export function resolveOrderSide(side: FrontendOpenOrder['side']): OrderSide {
+  return side === 'B' ? 'long' : 'short'
+}
+
+export function resolveOrderTimeInForce(order: Pick<FrontendOpenOrder, 'tif'>): OrderTimeInForce {
+  const normalized = order.tif.toLowerCase()
+  if (normalized === 'alo') return 'Alo'
+  if (normalized === 'ioc') return 'Ioc'
+  if (normalized === 'gtc') return 'Gtc'
+  if (normalized === 'frontendmarket') return 'FrontendMarket'
+  throw new Error(`Unsupported time-in-force: ${order.tif}`)
+}
+
+export function resolveTriggerKindFromOrder(
+  order: Pick<FrontendOpenOrder, 'triggerCondition' | 'orderType'>,
+  fallback?: TriggerOrderKind,
+): TriggerOrderKind {
+  if (fallback) return fallback
+
+  const triggerCondition = order.triggerCondition?.toLowerCase()
+  if (triggerCondition?.includes('tp') || triggerCondition?.includes('take')) return 'tp'
+  if (triggerCondition?.includes('sl') || triggerCondition?.includes('stop')) return 'sl'
+
+  const orderType = order.orderType.toLowerCase()
+  if (orderType.includes('take')) return 'tp'
+  if (orderType.includes('stop')) return 'sl'
+
+  throw new Error('Could not infer TP/SL kind for trigger order; pass --tp or --sl explicitly')
 }

@@ -1,30 +1,59 @@
+import { getVaultPath } from '../../../core/config'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
-import { withDefaultArgs } from '../../../core/args-def'
 import { resolveTCXPassphrase } from '../../../core/tcx'
+import { requireChainAccount, resolveWallet } from '../../../core/wallet'
+import { withDefaultArgs } from '../../../core/args-def'
 import {
-  fetchMarketAsset,
   fetchClearinghouseState,
+  fetchMarketAsset,
   formatOrderStatus,
   resolvePerpOrder,
   signAndSubmitL1Action,
 } from '../../../protocols/hyperliquid'
 import type {
   ClearinghouseState,
+  DefaultExchangeResponse,
+  ExchangeAction,
   HyperliquidMarketAsset,
   OrderResponse,
   OrderSide,
   ResolvedPerpOrder,
 } from '../../../protocols/hyperliquid'
-import { getVaultPath } from '../../../core/config'
-import { requireChainAccount, resolveWallet } from '../../../core/wallet'
 
 export interface PerpOrderPreset {
   side?: OrderSide
   close: boolean
 }
 
-export function resolvePerpOrderArgs(mode: 'open' | 'close') {
+export interface PerpCommandArgs {
+  wallet?: string
+  testnet?: boolean
+  json?: boolean
+  format?: string
+}
+
+export interface PerpUserContext {
+  walletName: string
+  user: string
+}
+
+export function resolvePerpQueryArgs(extraArgs: Record<string, unknown> = {}) {
   return withDefaultArgs({
+    ...extraArgs,
+    testnet: {
+      type: 'boolean',
+      description: 'Use Hyperliquid testnet',
+      default: false,
+    },
+    wallet: {
+      type: 'string',
+      description: 'Wallet name or id (defaults to active wallet)',
+    },
+  })
+}
+
+export function resolvePerpOrderArgs(mode: 'open' | 'close') {
+  return resolvePerpQueryArgs({
     coin: {
       type: 'positional',
       description: 'Trading pair symbol, e.g. BTC, ETH',
@@ -42,15 +71,124 @@ export function resolvePerpOrderArgs(mode: 'open' | 'close') {
       type: 'string',
       description: 'Limit price (omit for market order)',
     },
-    testnet: {
-      type: 'boolean',
-      description: 'Use Hyperliquid testnet for signing',
-      default: false,
-    },
-    wallet: {
-      type: 'string',
-      description: 'Wallet name or id (defaults to active wallet)',
-    },
+  })
+}
+
+export function resolvePerpOutput(args: Pick<PerpCommandArgs, 'json' | 'format'>) {
+  return createOutput(resolveOutputOptions(args))
+}
+
+export function resolvePerpUserContext(
+  args: Pick<PerpCommandArgs, 'wallet'>,
+  out: ReturnType<typeof createOutput>,
+): PerpUserContext {
+  const { walletName, wallet } = resolveWallet(args.wallet, out)
+  const ethAccount = requireChainAccount(wallet, 'eip155:1', out)
+  return {
+    walletName,
+    user: ethAccount.address.toLowerCase(),
+  }
+}
+
+export async function submitExchangeAction<TResponse = DefaultExchangeResponse>(args: {
+  action: ExchangeAction
+  walletName: string
+  testnet?: boolean
+}): Promise<TResponse> {
+  const credential = await resolveTCXPassphrase()
+  return signAndSubmitL1Action<TResponse>({
+    action: args.action,
+    nonce: Date.now(),
+    walletName: args.walletName,
+    vaultPath: getVaultPath(),
+    credential,
+    isTestnet: args.testnet,
+  })
+}
+
+export function handleCommandError(out: ReturnType<typeof createOutput>, message: string): never {
+  out.warn(message)
+  process.exit(1)
+}
+
+export async function loadPerpMarketOrExit(
+  coin: string,
+  isTestnet: boolean | undefined,
+  out: ReturnType<typeof createOutput>,
+): Promise<HyperliquidMarketAsset> {
+  try {
+    return await fetchMarketAsset(coin, isTestnet)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    return handleCommandError(out, message)
+  }
+}
+
+export async function loadPerpStateOrExit(
+  user: string,
+  isTestnet: boolean | undefined,
+  out: ReturnType<typeof createOutput>,
+): Promise<ClearinghouseState> {
+  try {
+    return await fetchClearinghouseState(user, isTestnet)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    return handleCommandError(out, `Failed to fetch positions: ${message}`)
+  }
+}
+
+export function renderOrderSubmission(args: {
+  out: ReturnType<typeof createOutput>
+  commandArgs: Pick<PerpCommandArgs, 'json' | 'format'>
+  walletName: string
+  user: string
+  coin: string
+  order: ResolvedPerpOrder
+  response: OrderResponse
+  titlePrefix?: string
+}) {
+  const { out, commandArgs, walletName, user, coin, order, response, titlePrefix = 'Perp Order' } = args
+  const statuses = response.response.data.statuses
+  const rows = statuses.map((status, idx) => ({
+    orderIndex: idx + 1,
+    result: formatOrderStatus(status),
+  }))
+
+  const isJson = commandArgs.json || commandArgs.format === 'json'
+  const isCsv = commandArgs.format === 'csv'
+
+  if (isJson) {
+    out.data({
+      wallet: walletName,
+      user,
+      coin,
+      side: order.side,
+      size: order.size,
+      price: order.price,
+      triggerPx: order.triggerPx,
+      triggerKind: order.triggerKind,
+      reduceOnly: order.reduceOnly,
+      grouping: order.grouping,
+      statuses: rows,
+    })
+    return
+  }
+
+  if (isCsv) {
+    out.data('orderIndex,result')
+    for (const row of rows) {
+      out.data(`${row.orderIndex},${row.result}`)
+    }
+    return
+  }
+
+  const detail = order.isTrigger
+    ? `${coin} ${String(order.triggerKind).toUpperCase()} ${order.size} trigger ${order.triggerPx} -> ${order.price}`
+    : `${coin} ${order.side.toUpperCase()} ${order.size} @ ${order.price}`
+
+  out.table(rows, {
+    columns: ['orderIndex', 'result'],
+    title: `${titlePrefix} | ${walletName} | ${detail}`,
   })
 }
 
@@ -67,30 +205,11 @@ export async function runPerpOrderCommand(
   preset: PerpOrderPreset,
 ): Promise<void> {
   const coin = String(args.coin).toUpperCase()
-  const out = createOutput(resolveOutputOptions(args))
-  const { walletName, wallet } = resolveWallet(args.wallet, out)
-  const ethAccount = requireChainAccount(wallet, 'eip155:1', out)
-  const user = ethAccount.address.toLowerCase()
+  const out = resolvePerpOutput(args)
+  const { walletName, user } = resolvePerpUserContext(args, out)
+  const market = await loadPerpMarketOrExit(coin, args.testnet, out)
 
-  let market: HyperliquidMarketAsset
-  try {
-    market = await fetchMarketAsset(coin, args.testnet)
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    out.warn(message)
-    process.exit(1)
-  }
-
-  let state: ClearinghouseState | undefined
-  if (preset.close) {
-    try {
-      state = await fetchClearinghouseState(user, args.testnet)
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      out.warn(`Failed to fetch positions: ${message}`)
-      process.exit(1)
-    }
-  }
+  const state = preset.close ? await loadPerpStateOrExit(user, args.testnet, out) : undefined
 
   let order: ResolvedPerpOrder
   try {
@@ -105,61 +224,28 @@ export async function runPerpOrderCommand(
     })
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
-    out.warn(message)
-    process.exit(1)
+    handleCommandError(out, message)
   }
-
-  const credential = await resolveTCXPassphrase()
 
   let response: OrderResponse
   try {
-    response = await signAndSubmitL1Action({
+    response = await submitExchangeAction<OrderResponse>({
       action: order.action,
-      nonce: Date.now(),
       walletName,
-      vaultPath: getVaultPath(),
-      credential,
-      isTestnet: args.testnet,
+      testnet: args.testnet,
     })
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
-    out.warn(`Failed to submit order: ${message}`)
-    process.exit(1)
+    handleCommandError(out, `Failed to submit order: ${message}`)
   }
 
-  const statuses = response.response.data.statuses
-  const rows = statuses.map((status, idx) => ({
-    orderIndex: idx + 1,
-    result: formatOrderStatus(status),
-  }))
-
-  const isJson = args.json || args.format === 'json'
-  const isCsv = args.format === 'csv'
-
-  if (isJson) {
-    out.data({
-      wallet: walletName,
-      user,
-      coin,
-      side: order.side,
-      size: order.size,
-      price: order.price,
-      reduceOnly: order.reduceOnly,
-      statuses: rows,
-    })
-    return
-  }
-
-  if (isCsv) {
-    out.data('orderIndex,result')
-    for (const row of rows) {
-      out.data(`${row.orderIndex},${row.result}`)
-    }
-    return
-  }
-
-  out.table(rows, {
-    columns: ['orderIndex', 'result'],
-    title: `Perp Order | ${walletName} | ${coin} ${order.side.toUpperCase()} ${order.size} @ ${order.price}`,
+  renderOrderSubmission({
+    out,
+    commandArgs: args,
+    walletName,
+    user,
+    coin,
+    order,
+    response,
   })
 }
