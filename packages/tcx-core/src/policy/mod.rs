@@ -87,6 +87,28 @@ mod tests {
       rule_type: "allowed_chains".to_string(),
       chain_ids: Some(vec![chain_id.to_string()]),
       timestamp: None,
+      primary_types: None,
+      verifying_contracts: None,
+    }
+  }
+
+  fn allowed_primary_types_rule(primary_types: &[&str]) -> PolicyRule {
+    PolicyRule {
+      rule_type: "allowed_primary_types".to_string(),
+      chain_ids: None,
+      timestamp: None,
+      primary_types: Some(primary_types.iter().map(|s| s.to_string()).collect()),
+      verifying_contracts: None,
+    }
+  }
+
+  fn allowed_verifying_contracts_rule(contracts: &[&str]) -> PolicyRule {
+    PolicyRule {
+      rule_type: "allowed_verifying_contracts".to_string(),
+      chain_ids: None,
+      timestamp: None,
+      primary_types: None,
+      verifying_contracts: Some(contracts.iter().map(|s| s.to_string()).collect()),
     }
   }
 
@@ -131,5 +153,53 @@ mod tests {
     );
 
     let _ = fs::remove_dir_all(vault_dir);
+  }
+
+  #[test]
+  fn policy_allows_matching_primary_type() {
+    let (_, vault_path) = fixtures::temp_vault("policy-primary-type-allow");
+
+    let policy = create_policy(
+      PolicyCreateInput {
+        name: "Permit only".to_string(),
+        rules: vec![allowed_primary_types_rule(&["Permit"])],
+      },
+      vault_path.clone(),
+    )
+    .expect("policy creation should succeed");
+
+    let loaded = get_policy(policy.id, vault_path.clone()).expect("policy should load");
+    assert_eq!(
+      loaded.rules[0].primary_types,
+      Some(vec!["Permit".to_string()])
+    );
+
+    let _ = fs::remove_dir_all(vault_path);
+  }
+
+  #[test]
+  fn policy_allows_matching_verifying_contract() {
+    let (_, vault_path) = fixtures::temp_vault("policy-verifying-contract-allow");
+
+    let policy = create_policy(
+      PolicyCreateInput {
+        name: "USDC only".to_string(),
+        rules: vec![allowed_verifying_contracts_rule(&[
+          "0xA0b86a33E6Cb19d3C91d8C8c3D0f1E62b68DEf98",
+        ])],
+      },
+      vault_path.clone(),
+    )
+    .expect("policy creation should succeed");
+
+    let loaded = get_policy(policy.id, vault_path.clone()).expect("policy should load");
+    assert_eq!(
+      loaded.rules[0].verifying_contracts,
+      Some(vec![
+        "0xA0b86a33E6Cb19d3C91d8C8c3D0f1E62b68DEf98".to_string()
+      ])
+    );
+
+    let _ = fs::remove_dir_all(vault_path);
   }
 }

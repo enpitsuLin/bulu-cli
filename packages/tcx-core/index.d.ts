@@ -258,12 +258,19 @@ export interface PolicyInfo {
 
 /** Declarative policy rule used during agent-mode signing. */
 export interface PolicyRule {
-  /** Rule type. Supported values are `allowed_chains` and `expires_at`. */
+  /**
+   * Rule type. Supported values are `allowed_chains`, `expires_at`,
+   * `allowed_primary_types`, and `allowed_verifying_contracts`.
+   */
   type: string
   /** Allowed CAIP-2 chain ids for `allowed_chains`. */
   chainIds?: Array<string>
   /** Unix seconds timestamp for `expires_at`. */
   timestamp?: number
+  /** Allowed EIP-712 primary types for `allowed_primary_types`. */
+  primaryTypes?: Array<string>
+  /** Allowed EIP-712 domain verifying contracts for `allowed_verifying_contracts`. */
+  verifyingContracts?: Array<string>
 }
 
 /** Revokes an API key by removing its persisted record from the vault. */

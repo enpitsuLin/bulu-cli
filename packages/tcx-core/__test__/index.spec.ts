@@ -628,3 +628,190 @@ test('signTypedData signs Tron TIP-712 typed data', () => {
     rmSync(tempDir, { recursive: true, force: true })
   }
 })
+
+test('signTypedData respects allowed_primary_types policy via API key', () => {
+  const tempDir = mkdtempSync(join(tmpdir(), 'tcx-core-wallet-'))
+  try {
+    importWalletPrivateKey('Signer', PRIVATE_KEY, PASSWORD, tempDir)
+
+    const policy = createPolicy(
+      {
+        name: 'Message only',
+        rules: [{ type: 'allowed_primary_types', primaryTypes: ['Message'] }],
+      },
+      tempDir,
+    )
+
+    const created = createApiKey('typed-data-agent', ['Signer'], [policy.id], PASSWORD, undefined, tempDir)
+
+    const matchingTypedData = JSON.stringify({
+      types: {
+        EIP712Domain: [],
+        Message: [{ name: 'content', type: 'string' }],
+      },
+      primaryType: 'Message',
+      domain: {},
+      message: { content: 'hello' },
+    })
+
+    const signed = signTypedData('Signer', ETH_MAINNET_CHAIN_ID, matchingTypedData, created.token, tempDir)
+    expect(signed.signature.length).toBeGreaterThan(0)
+
+    const nonMatchingTypedData = JSON.stringify({
+      types: {
+        EIP712Domain: [],
+        Permit: [{ name: 'holder', type: 'address' }],
+      },
+      primaryType: 'Permit',
+      domain: {},
+      message: { holder: '0xCD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826' },
+    })
+
+    expect(() => signTypedData('Signer', ETH_MAINNET_CHAIN_ID, nonMatchingTypedData, created.token, tempDir)).toThrow(
+      /primaryType `Permit` is not allowed/,
+    )
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true })
+  }
+})
+
+test('signTypedData respects allowed_verifying_contracts policy via API key', () => {
+  const tempDir = mkdtempSync(join(tmpdir(), 'tcx-core-wallet-'))
+  try {
+    importWalletPrivateKey('Signer', PRIVATE_KEY, PASSWORD, tempDir)
+
+    const allowedContract = '0xA0b86a33E6Cb19d3C91d8C8c3D0f1E62b68DEf98'
+
+    const policy = createPolicy(
+      {
+        name: 'USDC only',
+        rules: [{ type: 'allowed_verifying_contracts', verifyingContracts: [allowedContract] }],
+      },
+      tempDir,
+    )
+
+    const created = createApiKey('contract-agent', ['Signer'], [policy.id], PASSWORD, undefined, tempDir)
+
+    const matchingTypedData = JSON.stringify({
+      types: {
+        EIP712Domain: [
+          { name: 'name', type: 'string' },
+          { name: 'version', type: 'string' },
+          { name: 'chainId', type: 'uint256' },
+          { name: 'verifyingContract', type: 'address' },
+        ],
+        Permit: [{ name: 'holder', type: 'address' }],
+      },
+      primaryType: 'Permit',
+      domain: {
+        name: 'USDC',
+        version: '2',
+        chainId: 1,
+        verifyingContract: allowedContract,
+      },
+      message: { holder: '0xCD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826' },
+    })
+
+    const signed = signTypedData('Signer', ETH_MAINNET_CHAIN_ID, matchingTypedData, created.token, tempDir)
+    expect(signed.signature.length).toBeGreaterThan(0)
+
+    const nonMatchingTypedData = JSON.stringify({
+      types: {
+        EIP712Domain: [
+          { name: 'name', type: 'string' },
+          { name: 'version', type: 'string' },
+          { name: 'chainId', type: 'uint256' },
+          { name: 'verifyingContract', type: 'address' },
+        ],
+        Permit: [{ name: 'holder', type: 'address' }],
+      },
+      primaryType: 'Permit',
+      domain: {
+        name: 'BadToken',
+        version: '1',
+        chainId: 1,
+        verifyingContract: '0xBad0000000000000000000000000000000000000',
+      },
+      message: { holder: '0xCD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826' },
+    })
+
+    expect(() => signTypedData('Signer', ETH_MAINNET_CHAIN_ID, nonMatchingTypedData, created.token, tempDir)).toThrow(
+      /verifyingContract `0xBad0000000000000000000000000000000000000` is not allowed/,
+    )
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true })
+  }
+})
+
+test('signTypedData respects combined allowed_primary_types and allowed_verifying_contracts policies', () => {
+  const tempDir = mkdtempSync(join(tmpdir(), 'tcx-core-wallet-'))
+  try {
+    importWalletPrivateKey('Signer', PRIVATE_KEY, PASSWORD, tempDir)
+
+    const allowedContract = '0xA0b86a33E6Cb19d3C91d8C8c3D0f1E62b68DEf98'
+
+    const policy = createPolicy(
+      {
+        name: 'USDC Permit only',
+        rules: [
+          { type: 'allowed_primary_types', primaryTypes: ['Permit'] },
+          { type: 'allowed_verifying_contracts', verifyingContracts: [allowedContract] },
+        ],
+      },
+      tempDir,
+    )
+
+    const created = createApiKey('combined-agent', ['Signer'], [policy.id], PASSWORD, undefined, tempDir)
+
+    const baseTypedData = {
+      types: {
+        EIP712Domain: [
+          { name: 'name', type: 'string' },
+          { name: 'version', type: 'string' },
+          { name: 'chainId', type: 'uint256' },
+          { name: 'verifyingContract', type: 'address' },
+        ],
+        Permit: [{ name: 'holder', type: 'address' }],
+        Message: [{ name: 'content', type: 'string' }],
+      },
+      domain: {
+        name: 'USDC',
+        version: '2',
+        chainId: 1,
+        verifyingContract: allowedContract,
+      },
+      message: { holder: '0xCD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826' },
+    }
+
+    const matching = JSON.stringify({ ...baseTypedData, primaryType: 'Permit' })
+    const signed = signTypedData('Signer', ETH_MAINNET_CHAIN_ID, matching, created.token, tempDir)
+    expect(signed.signature.length).toBeGreaterThan(0)
+
+    const wrongPrimaryType = JSON.stringify({
+      ...baseTypedData,
+      primaryType: 'Message',
+      types: {
+        ...baseTypedData.types,
+        Message: [{ name: 'content', type: 'string' }],
+      },
+      message: { content: 'hello' },
+    })
+    expect(() => signTypedData('Signer', ETH_MAINNET_CHAIN_ID, wrongPrimaryType, created.token, tempDir)).toThrow(
+      /primaryType `Message` is not allowed/,
+    )
+
+    const wrongContract = JSON.stringify({
+      ...baseTypedData,
+      primaryType: 'Permit',
+      domain: {
+        ...baseTypedData.domain,
+        verifyingContract: '0xBad0000000000000000000000000000000000000',
+      },
+    })
+    expect(() => signTypedData('Signer', ETH_MAINNET_CHAIN_ID, wrongContract, created.token, tempDir)).toThrow(
+      /verifyingContract `0xBad0000000000000000000000000000000000000` is not allowed/,
+    )
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true })
+  }
+})

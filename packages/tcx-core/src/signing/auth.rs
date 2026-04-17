@@ -9,6 +9,7 @@ use crate::error::{require_non_empty, CoreError, CoreResult, ResultExt};
 use crate::policy::engine::{
   evaluate_policy, timestamp_is_expired, PolicyEvaluationContext, PolicyOperation,
 };
+use crate::typed_data::TypedData;
 use crate::types::DerivationInput;
 use crate::utils::now_timestamp;
 use crate::vault::VaultRepository;
@@ -20,6 +21,7 @@ pub(crate) fn with_signing_request<T>(
   credential: String,
   vault_path: String,
   operation: PolicyOperation,
+  typed_data: Option<TypedData>,
   f: impl FnOnce(&mut TcxKeystore, DerivationRequest) -> CoreResult<T>,
 ) -> CoreResult<T> {
   require_non_empty(&name, "name")?;
@@ -56,6 +58,7 @@ pub(crate) fn with_signing_request<T>(
       chain_id: &normalized_chain_id,
       wallet_id: &wallet.meta.id,
       now_timestamp: now_timestamp(),
+      typed_data: typed_data.as_ref(),
     };
 
     if let Some(expires_at) = api_key.info.expires_at {

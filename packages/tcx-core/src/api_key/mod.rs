@@ -145,6 +145,8 @@ mod tests {
       rule_type: "allowed_chains".to_string(),
       chain_ids: Some(vec![chain_id.to_string()]),
       timestamp: None,
+      primary_types: None,
+      verifying_contracts: None,
     }
   }
 
