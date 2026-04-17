@@ -1,4 +1,4 @@
-import { resolveMarketPrice } from './market'
+import { normalizeSpotPair, resolveMarketPrice } from './market'
 import { formatSize, normalizeDecimalInput } from './format'
 import type {
   AssetPosition,
@@ -13,10 +13,13 @@ import type {
   FrontendOpenOrder,
   HyperliquidMarketAsset,
   HyperliquidOrderWire,
+  HyperliquidSpotMarketAsset,
   OrderGrouping,
   OrderSide,
   OrderTimeInForce,
   ResolvedPerpOrder,
+  ResolvedSpotOrder,
+  SpotOrderSide,
   TriggerOrderKind,
 } from './types'
 
@@ -205,6 +208,47 @@ export function resolvePerpOrder(args: {
     triggerKind: undefined,
     isTrigger: false,
     grouping: 'na',
+    market,
+  }
+}
+
+export function resolveSpotOrder(args: {
+  pair: string
+  market: HyperliquidSpotMarketAsset
+  side: SpotOrderSide
+  size: string
+  price?: string
+}): ResolvedSpotOrder {
+  const { pair, market, side, size, price } = args
+  const normalizedPair = normalizeSpotPair(pair)
+  if (market.meta.name !== normalizedPair) {
+    throw new Error(`Market context does not match ${normalizedPair}`)
+  }
+
+  const normalizedSize = normalizeDecimalInput(size, 'size', { absolute: true })
+  const normalizedPrice = price ? normalizeDecimalInput(price, 'price') : resolveMarketPrice(market.context)
+  if (!normalizedPrice) {
+    throw new Error(`Could not resolve a price for ${normalizedPair}`)
+  }
+
+  const formattedSize = formatSize(normalizedSize, market.baseToken.szDecimals)
+  const tif: OrderTimeInForce = price ? 'Gtc' : 'FrontendMarket'
+  const wire = buildOrderWire({
+    assetIndex: market.assetIndex,
+    isBuy: side === 'buy',
+    size: formattedSize,
+    price: normalizedPrice,
+    reduceOnly: false,
+    tif,
+  })
+
+  return {
+    action: buildOrderAction({ orders: [wire], grouping: 'na' }),
+    assetIndex: market.assetIndex,
+    side,
+    size: formattedSize,
+    price: normalizedPrice,
+    tif,
     market,
   }
 }

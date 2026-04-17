@@ -35,6 +35,9 @@ export function normalizeDecimalInput(
 export function formatSize(value: string, decimals: number): string {
   if (!value.includes('.')) return value
   const [intPart, fracPart] = value.split('.')
+  if (decimals <= 0) {
+    return stripTrailingZeros(intPart)
+  }
   const trimmed = fracPart.slice(0, decimals)
   const combined = `${intPart}.${trimmed}`
   return stripTrailingZeros(combined)

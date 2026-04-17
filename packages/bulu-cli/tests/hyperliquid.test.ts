@@ -3,8 +3,14 @@ import { keccak_256 } from '@noble/hashes/sha3.js'
 import { bytesToHex, concatBytes } from '@noble/hashes/utils.js'
 import { describe, expect, test } from 'vitest'
 import { createL1ActionHash } from '../src/protocols/hyperliquid/crypto'
-import { normalizeDecimalInput } from '../src/protocols/hyperliquid/format'
-import { findMarketAsset, resolveMarketPrice } from '../src/protocols/hyperliquid/market'
+import { formatSize, normalizeDecimalInput } from '../src/protocols/hyperliquid/format'
+import {
+  findMarketAsset,
+  findSpotMarketAsset,
+  normalizeSpotPair,
+  partitionEntriesBySpot,
+  resolveMarketPrice,
+} from '../src/protocols/hyperliquid/market'
 import {
   buildCancelAction,
   buildModifyAction,
@@ -14,9 +20,11 @@ import {
   findPerpPosition,
   parseOrderIdentifier,
   resolvePerpOrder,
+  resolveSpotOrder,
   resolvePerpTpslOrder,
   resolveTriggerKindFromOrder,
 } from '../src/protocols/hyperliquid/trade'
+import type { AssetCtx, HyperliquidSpotMarketAsset, SpotMeta } from '../src/protocols/hyperliquid/types'
 
 function toUint64Bytes(n: bigint | number): Uint8Array {
   const bytes = new Uint8Array(8)
@@ -106,10 +114,74 @@ describe('market helpers', () => {
   })
 })
 
+describe('spot market helpers', () => {
+  const spotMeta: SpotMeta = {
+    tokens: [
+      { name: 'USDC', szDecimals: 8, weiDecimals: 8, index: 0, tokenId: '0x0', isCanonical: true },
+      { name: 'PURR', szDecimals: 0, weiDecimals: 5, index: 1, tokenId: '0x1', isCanonical: true },
+      { name: 'HYPE', szDecimals: 3, weiDecimals: 8, index: 150, tokenId: '0x96', isCanonical: true },
+    ],
+    universe: [
+      { name: 'PURR/USDC', tokens: [1, 0], index: 0, isCanonical: true },
+      { name: '@107', tokens: [150, 0], index: 107, isCanonical: false },
+    ],
+  }
+  const spotMarket: { meta: SpotMeta; contexts: AssetCtx[] } = {
+    meta: spotMeta,
+    contexts: [
+      { markPx: '0.14', midPx: '0.141' },
+      { markPx: '25.5', midPx: '25.6' },
+    ],
+  }
+
+  test('normalizeSpotPair uppercases slash pairs and preserves indexed pairs', () => {
+    expect(normalizeSpotPair('purr/usdc')).toBe('PURR/USDC')
+    expect(normalizeSpotPair('@107')).toBe('@107')
+  })
+
+  test('findSpotMarketAsset resolves an exact slash pair', () => {
+    const market = findSpotMarketAsset('PURR/USDC', spotMarket)
+
+    expect(market).toMatchObject({
+      assetIndex: 10_000,
+      meta: { name: 'PURR/USDC', index: 0 },
+      baseToken: { name: 'PURR', szDecimals: 0 },
+      quoteToken: { name: 'USDC' },
+      context: { markPx: '0.14', midPx: '0.141' },
+    })
+  })
+
+  test('findSpotMarketAsset resolves slash-pair normalization and indexed pairs', () => {
+    expect(findSpotMarketAsset('purr/usdc', spotMarket).assetIndex).toBe(10_000)
+    expect(findSpotMarketAsset('@107', spotMarket)).toMatchObject({
+      assetIndex: 10_107,
+      meta: { name: '@107', index: 107 },
+      baseToken: { name: 'HYPE', szDecimals: 3 },
+    })
+  })
+
+  test('partitionEntriesBySpot separates spot and perp entries', () => {
+    const entries = [
+      { coin: 'BTC', id: 1 },
+      { coin: 'PURR/USDC', id: 2 },
+      { coin: '@107', id: 3 },
+    ]
+
+    expect(partitionEntriesBySpot(entries, spotMarket.meta)).toEqual({
+      perps: [{ coin: 'BTC', id: 1 }],
+      spot: [
+        { coin: 'PURR/USDC', id: 2 },
+        { coin: '@107', id: 3 },
+      ],
+    })
+  })
+})
+
 describe('format helpers', () => {
   test('normalizeDecimalInput trims zeros and supports absolute conversion', () => {
     expect(normalizeDecimalInput('1.2300', 'price')).toBe('1.23')
     expect(normalizeDecimalInput('-0.5000', 'size', { absolute: true })).toBe('0.5')
+    expect(formatSize('10.9', 0)).toBe('10')
   })
 
   test('normalizeDecimalInput rejects invalid decimal strings', () => {
@@ -241,6 +313,142 @@ describe('perp order helpers', () => {
         },
       },
     })
+  })
+})
+
+describe('spot order helpers', () => {
+  const baseSpotMarket: HyperliquidSpotMarketAsset = {
+    meta: {
+      name: 'PURR/USDC',
+      tokens: [1, 0],
+      index: 0,
+      isCanonical: true,
+    },
+    assetIndex: 10_000,
+    baseToken: {
+      name: 'PURR',
+      szDecimals: 0,
+      weiDecimals: 5,
+      index: 1,
+      tokenId: '0x1',
+      isCanonical: true,
+    },
+    quoteToken: {
+      name: 'USDC',
+      szDecimals: 8,
+      weiDecimals: 8,
+      index: 0,
+      tokenId: '0x0',
+      isCanonical: true,
+    },
+    context: { markPx: '0.14', midPx: '0.141' },
+  }
+
+  test('resolveSpotOrder builds a limit buy order', () => {
+    const order = resolveSpotOrder({
+      pair: 'PURR/USDC',
+      market: baseSpotMarket,
+      side: 'buy',
+      size: '10.9',
+      price: '0.123400',
+    })
+
+    expect(order).toMatchObject({
+      assetIndex: 10_000,
+      side: 'buy',
+      size: '10',
+      price: '0.1234',
+      tif: 'Gtc',
+    })
+    expect(order.action.orders[0]).toMatchObject({
+      a: 10_000,
+      b: true,
+      p: '0.1234',
+      s: '10',
+      r: false,
+      t: { limit: { tif: 'Gtc' } },
+    })
+  })
+
+  test('resolveSpotOrder builds a limit sell order with truncated size', () => {
+    const market: HyperliquidSpotMarketAsset = {
+      ...baseSpotMarket,
+      meta: { name: '@107', tokens: [150, 0], index: 107, isCanonical: false },
+      assetIndex: 10_107,
+      baseToken: {
+        name: 'HYPE',
+        szDecimals: 3,
+        weiDecimals: 8,
+        index: 150,
+        tokenId: '0x96',
+        isCanonical: true,
+      },
+      context: { markPx: '25.5', midPx: '25.6' },
+    }
+
+    const order = resolveSpotOrder({
+      pair: '@107',
+      market,
+      side: 'sell',
+      size: '1.2349',
+      price: '25.55',
+    })
+
+    expect(order).toMatchObject({
+      assetIndex: 10_107,
+      side: 'sell',
+      size: '1.234',
+      price: '25.55',
+      tif: 'Gtc',
+    })
+    expect(order.action.orders[0]).toMatchObject({
+      a: 10_107,
+      b: false,
+      s: '1.234',
+      p: '25.55',
+    })
+  })
+
+  test('resolveSpotOrder builds market-style buy and sell orders from price context', () => {
+    const buyOrder = resolveSpotOrder({
+      pair: 'PURR/USDC',
+      market: baseSpotMarket,
+      side: 'buy',
+      size: '5',
+    })
+    const sellOrder = resolveSpotOrder({
+      pair: 'PURR/USDC',
+      market: baseSpotMarket,
+      side: 'sell',
+      size: '3',
+    })
+
+    expect(buyOrder.tif).toBe('FrontendMarket')
+    expect(buyOrder.price).toBe('0.14')
+    expect(buyOrder.action.orders[0]).toMatchObject({ b: true, t: { limit: { tif: 'FrontendMarket' } } })
+    expect(sellOrder.tif).toBe('FrontendMarket')
+    expect(sellOrder.action.orders[0]).toMatchObject({ b: false, t: { limit: { tif: 'FrontendMarket' } } })
+  })
+
+  test('resolveSpotOrder rejects pair mismatches and missing price context', () => {
+    expect(() =>
+      resolveSpotOrder({
+        pair: 'BTC/USDC',
+        market: baseSpotMarket,
+        side: 'buy',
+        size: '1',
+        price: '1',
+      }),
+    ).toThrow('Market context does not match BTC/USDC')
+
+    expect(() =>
+      resolveSpotOrder({
+        pair: 'PURR/USDC',
+        market: { ...baseSpotMarket, context: {} },
+        side: 'buy',
+        size: '1',
+      }),
+    ).toThrow('Could not resolve a price for PURR/USDC')
   })
 })
 

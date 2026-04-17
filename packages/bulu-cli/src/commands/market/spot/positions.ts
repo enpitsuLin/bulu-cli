@@ -1,27 +1,23 @@
 import { defineCommand } from 'citty'
-import { createOutput, resolveOutputOptions } from '../../../core/output'
-import { withDefaultArgs } from '../../../core/args-def'
 import { fetchSpotClearinghouseState } from '../../../protocols/hyperliquid'
-import { requireChainAccount, resolveWallet } from '../../../core/wallet'
+import { resolveSpotOutput, resolveSpotQueryArgs, resolveSpotUserContext } from './shared'
 
 export default defineCommand({
   meta: { name: 'positions', description: 'Show spot balances' },
-  args: withDefaultArgs({
-    wallet: {
+  args: resolveSpotQueryArgs({
+    legacyWallet: {
       type: 'positional',
-      description: 'Wallet name or id (defaults to active wallet)',
+      description: 'Deprecated positional wallet name or id',
       required: false,
     },
   }),
   async run({ args }) {
-    const out = createOutput(resolveOutputOptions(args))
-    const { walletName, wallet } = resolveWallet(args.wallet, out)
-    const ethAccount = requireChainAccount(wallet, 'eip155:1', out)
-    const user = ethAccount.address.toLowerCase()
+    const out = resolveSpotOutput(args)
+    const { walletName, user } = resolveSpotUserContext(args, out)
 
     let state
     try {
-      state = await fetchSpotClearinghouseState(user)
+      state = await fetchSpotClearinghouseState(user, args.testnet)
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       out.warn(`Failed to fetch spot balances: ${message}`)

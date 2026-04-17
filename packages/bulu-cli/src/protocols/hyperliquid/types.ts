@@ -66,6 +66,7 @@ export interface ClearinghouseState {
 
 export interface SpotBalance {
   coin: string
+  token?: number
   total: string
   hold: string
   entryNtl: string
@@ -73,6 +74,31 @@ export interface SpotBalance {
 
 export interface SpotClearinghouseState {
   balances: SpotBalance[]
+}
+
+export interface SpotTokenMeta {
+  name: string
+  szDecimals: number
+  weiDecimals: number
+  index: number
+  tokenId: string
+  isCanonical: boolean
+  evmContract?: string | null
+  fullName?: string | null
+  [key: string]: unknown
+}
+
+export interface SpotPairMeta {
+  name: string
+  tokens: [number, number]
+  index: number
+  isCanonical: boolean
+  [key: string]: unknown
+}
+
+export interface SpotMeta {
+  tokens: SpotTokenMeta[]
+  universe: SpotPairMeta[]
 }
 
 export interface OpenOrder {
@@ -263,6 +289,14 @@ export interface HyperliquidMarketAsset {
   context?: AssetCtx
 }
 
+export interface HyperliquidSpotMarketAsset {
+  assetIndex: number
+  meta: SpotPairMeta
+  context?: AssetCtx
+  baseToken: SpotTokenMeta
+  quoteToken: SpotTokenMeta
+}
+
 export interface ResolvedPerpOrder {
   action: ExchangeOrderAction
   assetIndex: number
@@ -276,4 +310,16 @@ export interface ResolvedPerpOrder {
   isTrigger: boolean
   grouping: OrderGrouping
   market: HyperliquidMarketAsset
+}
+
+export type SpotOrderSide = 'buy' | 'sell'
+
+export interface ResolvedSpotOrder {
+  action: ExchangeOrderAction
+  assetIndex: number
+  side: SpotOrderSide
+  size: string
+  price: string
+  tif: OrderTimeInForce
+  market: HyperliquidSpotMarketAsset
 }

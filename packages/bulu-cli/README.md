@@ -125,7 +125,9 @@ Fetch Hyperliquid price and balance data:
 bulu market price BTC
 bulu market price ETH --period 1h
 
+bulu market spot pairs
 bulu market spot positions
+bulu market spot orders
 bulu market perps positions
 bulu market perps orders
 ```
@@ -136,6 +138,60 @@ Most market commands support:
 - `--testnet` for Hyperliquid testnet
 - `--format table|csv|json`
 - `--json` as shorthand for JSON output
+
+## Hyperliquid Spot
+
+### Pair Discovery And Balances
+
+List tradable spot pairs and inspect balances:
+
+```bash
+bulu market spot pairs
+bulu market spot positions
+bulu market spot positions --wallet trading
+```
+
+### Basic Trading
+
+Place market-style or limit spot orders:
+
+```bash
+bulu market spot buy PURR/USDC --size 100
+bulu market spot buy @107 --size 0.01 --price 62000
+
+bulu market spot sell PURR/USDC --size 50 --price 0.16
+bulu market spot sell @107 --size 0.005
+```
+
+- `--size` is always the base asset amount.
+- Omitting `--price` submits a market-style order using current spot price context.
+- Spot inputs must use the exact HyperCore pair name returned by `bulu market spot pairs`.
+
+### Order Management
+
+Inspect and cancel open spot orders:
+
+```bash
+bulu market spot orders
+bulu market spot orders --pair PURR/USDC
+
+bulu market spot cancel 123456789
+bulu market spot cancel --all
+bulu market spot cancel --all --pair @107
+```
+
+### Fills And History
+
+Inspect recent fills and historical orders:
+
+```bash
+bulu market spot fills
+bulu market spot fills --pair PURR/USDC --limit 100
+bulu market spot fills --since 2026-04-01T00:00:00Z --until 2026-04-17T00:00:00Z
+
+bulu market spot history
+bulu market spot history --pair @107 --status filled --limit 50
+```
 
 ## Hyperliquid Perps
 
@@ -229,6 +285,8 @@ bulu market perps fills --format json
 
 ## Notes
 
+- Hyperliquid spot commands currently accept raw HyperCore pair names only, such as `PURR/USDC`, `UBTC/USDC`, or `@107`.
+- UI remaps like `BTC/USDC` are not accepted unless HyperCore exposes that exact pair name. For example, `BTC/USDC` on the Hyperliquid UI may map to `UBTC/USDC` on HyperCore.
 - Hyperliquid perps commands require an Ethereum account in the selected wallet because requests are signed as `eip155:1`.
 - Testnet requests use `https://api.hyperliquid-testnet.xyz` unless overridden in config.
 - Private keys passed directly on the command line may be visible in shell history; prefer stdin or `--file` for sensitive material.

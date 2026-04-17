@@ -1,6 +1,7 @@
 export { createHyperliquidClient } from './client'
 
 export {
+  buildSpotPairNameSet,
   fetchCandles,
   fetchMarketAsset,
   fetchClearinghouseState,
@@ -9,8 +10,15 @@ export {
   fetchMetaAndAssetCtxs,
   fetchOpenOrders,
   fetchOrderStatus,
+  fetchSpotMarketAsset,
+  fetchSpotMeta,
+  fetchSpotMetaAndAssetCtxs,
   findMarketAsset,
+  findSpotMarketAsset,
   isValidPeriod,
+  isSpotPairName,
+  normalizeSpotPair,
+  partitionEntriesBySpot,
   resolveMarketPrice,
   fetchSpotClearinghouseState,
   fetchUserFills,
@@ -39,6 +47,7 @@ export {
   resolveOrderSide,
   resolveOrderTimeInForce,
   resolvePerpOrder,
+  resolveSpotOrder,
   resolvePerpTpslOrder,
   resolveTriggerKindFromOrder,
 } from './trade'
@@ -65,6 +74,7 @@ export type {
   FrontendOpenOrder,
   HistoricalOrder,
   HyperliquidMarketAsset,
+  HyperliquidSpotMarketAsset,
   HyperliquidOrderType,
   HyperliquidOrderWire,
   MarginSummary,
@@ -78,8 +88,13 @@ export type {
   OrderTimeInForce,
   PerpPosition,
   ResolvedPerpOrder,
+  ResolvedSpotOrder,
   SpotBalance,
   SpotClearinghouseState,
+  SpotMeta,
+  SpotOrderSide,
+  SpotPairMeta,
+  SpotTokenMeta,
   TriggerOrderKind,
   UserFill,
 } from './types'
