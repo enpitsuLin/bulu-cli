@@ -97,6 +97,10 @@ export interface ExchangeSignature {
   v: number
 }
 
+export type OrderSide = 'long' | 'short'
+
+export type OrderTimeInForce = 'Alo' | 'Ioc' | 'Gtc' | 'FrontendMarket'
+
 export interface OrderRequestBody {
   action: {
     type: 'order'
@@ -138,3 +142,20 @@ export interface OrderResponse {
 }
 
 export type OrderStatus = OrderResponse['response']['data']['statuses'][number]
+
+export interface HyperliquidMarketAsset {
+  assetIndex: number
+  meta: AssetMeta
+  context?: AssetCtx
+}
+
+export interface ResolvedPerpOrder {
+  action: OrderRequestBody['action']
+  assetIndex: number
+  side: OrderSide
+  size: string
+  price: string
+  reduceOnly: boolean
+  tif: OrderTimeInForce
+  market: HyperliquidMarketAsset
+}

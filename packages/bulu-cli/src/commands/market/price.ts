@@ -1,7 +1,15 @@
 import { defineCommand } from 'citty'
 import { createOutput, resolveOutputOptions } from '../../core/output'
 import { withDefaultArgs } from '../../core/args-def'
-import { fetchCandles, fetchMetaAndAssetCtxs, resolvePeriodMs, VALID_PERIODS } from '../../protocols/hyperliquid'
+import {
+  fetchCandles,
+  fetchMarketAsset,
+  isValidPeriod,
+  resolveMarketPrice,
+  resolvePeriodMs,
+  VALID_PERIODS,
+} from '../../protocols/hyperliquid'
+import type { HyperliquidMarketAsset, Period } from '../../protocols/hyperliquid'
 
 function formatChange(current: number, prev: number): string {
   if (!Number.isFinite(prev) || prev === 0) return 'N/A'
@@ -12,7 +20,7 @@ function formatChange(current: number, prev: number): string {
 
 async function fetchPeriodRow(
   pair: string,
-  period: string,
+  period: Period,
   price: number,
 ): Promise<Record<string, string | number> | null> {
   const ms = resolvePeriodMs(period)
@@ -59,41 +67,28 @@ export default defineCommand({
     const period = args.period ? String(args.period).toLowerCase() : undefined
     const out = createOutput(resolveOutputOptions(args))
 
-    if (period && !VALID_PERIODS.includes(period as (typeof VALID_PERIODS)[number])) {
+    if (period && !isValidPeriod(period)) {
       out.warn(`Invalid period "${period}". Valid options: ${VALID_PERIODS.join(', ')}`)
       process.exit(1)
     }
+    const requestedPeriod: Period | undefined = period && isValidPeriod(period) ? period : undefined
 
-    let meta: {
-      universe: { name: string }[]
-      contexts: {
-        markPx?: string
-        midPx?: string
-        oraclePx?: string
-        prevDayPx?: string
-      }[]
-    }
+    let market: HyperliquidMarketAsset
     try {
-      meta = await fetchMetaAndAssetCtxs()
+      market = await fetchMarketAsset(pair)
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       out.warn(`Failed to fetch market data: ${message}`)
       process.exit(1)
     }
 
-    const index = meta.universe.findIndex((u) => u.name === pair)
-    if (index === -1) {
-      out.warn(`Pair "${pair}" not found on Hyperliquid`)
-      process.exit(1)
-    }
-
-    const ctx = meta.contexts[index]
-    const priceStr = ctx.markPx ?? ctx.midPx ?? ctx.oraclePx ?? 'N/A'
-    const markStr = ctx.markPx ?? 'N/A'
-    const oracleStr = ctx.oraclePx ?? 'N/A'
+    const ctx = market.context
+    const priceStr = resolveMarketPrice(ctx) ?? 'N/A'
+    const markStr = ctx?.markPx ?? 'N/A'
+    const oracleStr = ctx?.oraclePx ?? 'N/A'
     const price = parseFloat(priceStr)
 
-    const periods = period ? [period] : ['1h', '4h', '1d']
+    const periods: Period[] = requestedPeriod ? [requestedPeriod] : ['1h', '4h', '1d']
     const rows = (await Promise.all(periods.map((p) => fetchPeriodRow(pair, p, price)))).filter(
       (r): r is Record<string, string | number> => r !== null,
     )

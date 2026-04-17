@@ -1,32 +1,7 @@
 import { signTypedData } from '@bulu-cli/tcx-core'
-import { createHyperliquidClient } from './client'
+import { postHyperliquidExchange } from './client'
 import { buildHyperliquidTypedData, createL1ActionHash, splitSignature } from './crypto'
 import type { OrderRequestBody, OrderResponse } from './types'
-
-export function buildOrderAction(args: {
-  assetIndex: number
-  isBuy: boolean
-  size: string
-  price: string
-  reduceOnly: boolean
-  tif: 'Gtc' | 'FrontendMarket'
-}): OrderRequestBody['action'] {
-  const { assetIndex, isBuy, size, price, reduceOnly, tif } = args
-  return {
-    type: 'order',
-    orders: [
-      {
-        a: assetIndex,
-        b: isBuy,
-        p: price,
-        s: size,
-        r: reduceOnly,
-        t: { limit: { tif } },
-      },
-    ],
-    grouping: 'na',
-  }
-}
 
 export async function signAndSubmitL1Action(args: {
   action: OrderRequestBody['action']
@@ -44,8 +19,5 @@ export async function signAndSubmitL1Action(args: {
   const signature = splitSignature(signed.signature as `0x${string}`)
 
   const body: OrderRequestBody = { action, nonce, signature }
-  return createHyperliquidClient(isTestnet)<OrderResponse>('/exchange', {
-    method: 'POST',
-    body,
-  })
+  return postHyperliquidExchange<OrderResponse>(body, isTestnet)
 }

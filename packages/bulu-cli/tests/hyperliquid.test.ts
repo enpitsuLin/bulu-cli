@@ -1,8 +1,11 @@
 import { encode } from '@msgpack/msgpack'
 import { keccak_256 } from '@noble/hashes/sha3.js'
 import { bytesToHex, concatBytes } from '@noble/hashes/utils.js'
-import { expect, test } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { createL1ActionHash } from '../src/protocols/hyperliquid/crypto'
+import { normalizeDecimalInput } from '../src/protocols/hyperliquid/format'
+import { findMarketAsset, resolveMarketPrice } from '../src/protocols/hyperliquid/market'
+import { findPerpPosition, resolvePerpOrder } from '../src/protocols/hyperliquid/trade'
 
 function toUint64Bytes(n: bigint | number): Uint8Array {
   const bytes = new Uint8Array(8)
@@ -65,4 +68,126 @@ test('createL1ActionHash with assetIndex 3 matches reference layout', () => {
   const manualHash = `0x${bytesToHex(keccak_256(concatBytes(actionBytes, nonceBytes, vaultMarker, new Uint8Array(), new Uint8Array(), new Uint8Array())))}`
 
   expect(expected).toBe(manualHash)
+})
+
+describe('market helpers', () => {
+  test('findMarketAsset resolves metadata and context by coin', () => {
+    const market = findMarketAsset('btc', {
+      universe: [
+        { name: 'BTC', szDecimals: 5, maxLeverage: 40 },
+        { name: 'ETH', szDecimals: 4, maxLeverage: 25 },
+      ],
+      contexts: [{ markPx: '100000' }, { markPx: '2500' }],
+    })
+
+    expect(market).toEqual({
+      assetIndex: 0,
+      meta: { name: 'BTC', szDecimals: 5, maxLeverage: 40 },
+      context: { markPx: '100000' },
+    })
+  })
+
+  test('resolveMarketPrice falls back from mark to mid to oracle', () => {
+    expect(resolveMarketPrice({ markPx: '101' })).toBe('101')
+    expect(resolveMarketPrice({ midPx: '102' })).toBe('102')
+    expect(resolveMarketPrice({ oraclePx: '103' })).toBe('103')
+    expect(resolveMarketPrice(undefined)).toBeUndefined()
+  })
+})
+
+describe('format helpers', () => {
+  test('normalizeDecimalInput trims zeros and supports absolute conversion', () => {
+    expect(normalizeDecimalInput('1.2300', 'price')).toBe('1.23')
+    expect(normalizeDecimalInput('-0.5000', 'size', { absolute: true })).toBe('0.5')
+  })
+
+  test('normalizeDecimalInput rejects invalid decimal strings', () => {
+    expect(() => normalizeDecimalInput('1e-3', 'size')).toThrow('Invalid size')
+    expect(() => normalizeDecimalInput('0', 'size')).toThrow('size must be greater than zero')
+  })
+})
+
+describe('perp order helpers', () => {
+  const market = {
+    assetIndex: 0,
+    meta: { name: 'BTC', szDecimals: 3, maxLeverage: 40 },
+    context: { markPx: '92500.5' },
+  } as const
+
+  test('findPerpPosition resolves by normalized coin', () => {
+    const position = findPerpPosition('btc', {
+      assetPositions: [
+        {
+          type: 'oneWay',
+          position: {
+            coin: 'BTC',
+            szi: '-0.123',
+            positionValue: '10000',
+            unrealizedPnl: '15',
+            leverage: { type: 'cross', value: 5 },
+            marginUsed: '100',
+            returnOnEquity: '0.1',
+          },
+        },
+      ],
+    })
+
+    expect(position?.position.coin).toBe('BTC')
+  })
+
+  test('resolvePerpOrder builds a market order for opening a position', () => {
+    const order = resolvePerpOrder({
+      coin: 'btc',
+      market,
+      side: 'short',
+      size: '1.23456',
+    })
+
+    expect(order.side).toBe('short')
+    expect(order.size).toBe('1.234')
+    expect(order.price).toBe('92500.5')
+    expect(order.tif).toBe('FrontendMarket')
+    expect(order.reduceOnly).toBe(false)
+    expect(order.action.orders[0]).toMatchObject({
+      a: 0,
+      b: false,
+      p: '92500.5',
+      s: '1.234',
+      r: false,
+      t: { limit: { tif: 'FrontendMarket' } },
+    })
+  })
+
+  test('resolvePerpOrder builds a reduce-only close order from current position', () => {
+    const order = resolvePerpOrder({
+      coin: 'BTC',
+      market,
+      close: true,
+      state: {
+        assetPositions: [
+          {
+            type: 'oneWay',
+            position: {
+              coin: 'BTC',
+              szi: '-0.3339',
+              positionValue: '30000',
+              unrealizedPnl: '42',
+              leverage: { type: 'cross', value: 3 },
+              marginUsed: '200',
+              returnOnEquity: '0.2',
+            },
+          },
+        ],
+      },
+    })
+
+    expect(order.side).toBe('long')
+    expect(order.size).toBe('0.333')
+    expect(order.reduceOnly).toBe(true)
+    expect(order.action.orders[0]).toMatchObject({
+      b: true,
+      r: true,
+      s: '0.333',
+    })
+  })
 })

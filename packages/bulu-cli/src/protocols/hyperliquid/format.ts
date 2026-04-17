@@ -5,6 +5,33 @@ export function stripTrailingZeros(value: string): string {
   return value.replace(/\.?0+$/, '')
 }
 
+export function normalizeDecimalInput(
+  value: string,
+  label: string,
+  options?: { absolute?: boolean; allowZero?: boolean },
+): string {
+  const trimmed = value.trim()
+  if (!trimmed) {
+    throw new Error(`${label} is required`)
+  }
+
+  if (!/^-?\d+(\.\d+)?$/.test(trimmed)) {
+    throw new Error(`Invalid ${label}: ${value}`)
+  }
+
+  const numeric = Number(trimmed)
+  if (!Number.isFinite(numeric)) {
+    throw new Error(`Invalid ${label}: ${value}`)
+  }
+
+  if (!options?.allowZero && numeric === 0) {
+    throw new Error(`${label} must be greater than zero`)
+  }
+
+  const normalized = options?.absolute && trimmed.startsWith('-') ? trimmed.slice(1) : trimmed
+  return stripTrailingZeros(normalized)
+}
+
 export function formatSize(value: string, decimals: number): string {
   if (!value.includes('.')) return value
   const [intPart, fracPart] = value.split('.')

@@ -3,13 +3,17 @@ import { createOutput, resolveOutputOptions } from '../../../core/output'
 import { withDefaultArgs } from '../../../core/args-def'
 import { resolveTCXPassphrase } from '../../../core/tcx'
 import {
-  buildOrderAction,
+  fetchMarketAsset,
   fetchClearinghouseState,
-  fetchMetaAndAssetCtxs,
   formatOrderStatus,
-  formatSize,
+  resolvePerpOrder,
   signAndSubmitL1Action,
-  stripTrailingZeros,
+} from '../../../protocols/hyperliquid'
+import type {
+  ClearinghouseState,
+  HyperliquidMarketAsset,
+  OrderResponse,
+  ResolvedPerpOrder,
 } from '../../../protocols/hyperliquid'
 import { getVaultPath } from '../../../core/config'
 import { requireChainAccount, resolveWallet } from '../../../core/wallet'
@@ -57,31 +61,17 @@ export default defineCommand({
     const ethAccount = requireChainAccount(wallet, 'eip155:1', out)
     const user = ethAccount.address.toLowerCase()
 
-    const isClose = args.close
-    let sizeStr = args.size ? String(args.size) : undefined
-    let isBuy = args.side === 'short' ? false : true
-    let reduceOnly = false
-
-    let assetIndex: number
-    let szDecimals: number
-    let markPrice: string | undefined
+    let market: HyperliquidMarketAsset
     try {
-      const { universe, contexts } = await fetchMetaAndAssetCtxs(args.testnet)
-      assetIndex = universe.findIndex((u) => u.name === coin)
-      if (assetIndex === -1) {
-        throw new Error(`Coin "${coin}" not found on Hyperliquid`)
-      }
-      szDecimals = universe[assetIndex]?.szDecimals ?? 0
-      markPrice = contexts[assetIndex]?.markPx
+      market = await fetchMarketAsset(coin, args.testnet)
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       out.warn(message)
       process.exit(1)
     }
 
-    if (isClose) {
-      reduceOnly = true
-      let state
+    let state: ClearinghouseState | undefined
+    if (args.close) {
       try {
         state = await fetchClearinghouseState(user, args.testnet)
       } catch (error) {
@@ -89,53 +79,31 @@ export default defineCommand({
         out.warn(`Failed to fetch positions: ${message}`)
         process.exit(1)
       }
-
-      const position = state.assetPositions.find((ap) => ap.position.coin === coin)
-      if (!position) {
-        out.warn(`No open position for ${coin}`)
-        process.exit(1)
-      }
-
-      const positionSize = parseFloat(position.position.szi)
-      if (positionSize === 0) {
-        out.warn(`Position size is zero for ${coin}`)
-        process.exit(1)
-      }
-
-      if (!sizeStr) {
-        sizeStr = position.position.szi.replace(/^-/, '')
-      }
-      isBuy = positionSize < 0
-    } else if (!sizeStr) {
-      out.warn('Size is required when opening a position')
-      process.exit(1)
     }
 
-    const formattedSize = formatSize(stripTrailingZeros(sizeStr), szDecimals)
-    const userPriceStr = args.price ? stripTrailingZeros(String(args.price)) : undefined
-
-    const priceStr = userPriceStr ?? markPrice
-    if (!priceStr) {
-      out.warn(`Could not fetch mark price for ${coin}`)
+    let order: ResolvedPerpOrder
+    try {
+      order = resolvePerpOrder({
+        coin,
+        market,
+        side: args.side === 'short' ? 'short' : 'long',
+        size: args.size ? String(args.size) : undefined,
+        price: args.price ? String(args.price) : undefined,
+        close: args.close,
+        state,
+      })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      out.warn(message)
       process.exit(1)
     }
-
-    const tif = userPriceStr ? 'Gtc' : 'FrontendMarket'
-    const action = buildOrderAction({
-      assetIndex,
-      isBuy,
-      size: formattedSize,
-      price: priceStr,
-      reduceOnly,
-      tif,
-    })
 
     const credential = await resolveTCXPassphrase()
 
-    let response
+    let response: OrderResponse
     try {
       response = await signAndSubmitL1Action({
-        action,
+        action: order.action,
         nonce: Date.now(),
         walletName,
         vaultPath: getVaultPath(),
@@ -162,10 +130,10 @@ export default defineCommand({
         wallet: walletName,
         user,
         coin,
-        side: isBuy ? 'long' : 'short',
-        size: formattedSize,
-        price: priceStr,
-        reduceOnly,
+        side: order.side,
+        size: order.size,
+        price: order.price,
+        reduceOnly: order.reduceOnly,
         statuses: rows,
       })
       return
@@ -181,7 +149,7 @@ export default defineCommand({
 
     out.table(rows, {
       columns: ['orderIndex', 'result'],
-      title: `Perp Order | ${walletName} | ${coin} ${isBuy ? 'LONG' : 'SHORT'} ${formattedSize} @ ${priceStr}`,
+      title: `Perp Order | ${walletName} | ${coin} ${order.side.toUpperCase()} ${order.size} @ ${order.price}`,
     })
   },
 })

@@ -2,20 +2,26 @@ export { createHyperliquidClient } from './client'
 
 export {
   fetchCandles,
+  fetchMarketAsset,
   fetchClearinghouseState,
   fetchMetaAndAssetCtxs,
   fetchOpenOrders,
+  findMarketAsset,
+  isValidPeriod,
+  resolveMarketPrice,
   fetchSpotClearinghouseState,
   resolvePeriodMs,
   VALID_PERIODS,
-} from './client'
-export type { Period } from './client'
+} from './market'
+export type { Period } from './market'
 
 export { buildHyperliquidTypedData, createL1ActionHash, splitSignature } from './crypto'
 
-export { buildOrderAction, signAndSubmitL1Action } from './exchange'
+export { signAndSubmitL1Action } from './exchange'
 
-export { formatOrderStatus, formatSize, stripTrailingZeros } from './format'
+export { buildOrderAction, findPerpPosition, resolvePerpOrder } from './trade'
+
+export { formatOrderStatus, formatSize, normalizeDecimalInput, stripTrailingZeros } from './format'
 
 export type {
   AssetCtx,
@@ -24,12 +30,16 @@ export type {
   Candle,
   ClearinghouseState,
   ExchangeSignature,
+  HyperliquidMarketAsset,
   MarginSummary,
   OpenOrder,
   OrderRequestBody,
   OrderResponse,
+  OrderSide,
   OrderStatus,
+  OrderTimeInForce,
   PerpPosition,
+  ResolvedPerpOrder,
   SpotBalance,
   SpotClearinghouseState,
 } from './types'
