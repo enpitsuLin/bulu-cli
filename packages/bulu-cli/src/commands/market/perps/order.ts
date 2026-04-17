@@ -85,7 +85,7 @@ export default defineCommand({
     let szDecimals: number
     let markPrice: string | undefined
     try {
-      const { universe, contexts } = await fetchMetaAndAssetCtxs()
+      const { universe, contexts } = await fetchMetaAndAssetCtxs(args.testnet)
       assetIndex = universe.findIndex((u) => u.name === coin)
       if (assetIndex === -1) {
         throw new Error(`Coin "${coin}" not found on Hyperliquid`)
@@ -102,7 +102,7 @@ export default defineCommand({
       reduceOnly = true
       let state
       try {
-        state = await fetchClearinghouseState(user)
+        state = await fetchClearinghouseState(user, args.testnet)
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
         out.warn(`Failed to fetch positions: ${message}`)

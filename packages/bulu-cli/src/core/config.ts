@@ -16,8 +16,7 @@ export interface BuluConfig {
   }
   chains?: Record<string, { rpc?: string }>
   hyperliquid?: {
-    apiUrl?: string
-    exchangeUrl?: string
+    apiBase?: string
   }
 }
 
@@ -31,11 +30,11 @@ export const CONFIG_DEFAULTS: BuluConfig = {
     'eip155:1': { rpc: 'https://1rpc.io/eth' },
     'eip155:11155111': { rpc: 'https://1rpc.io/sepolia' },
   },
-  hyperliquid: {
-    apiUrl: 'https://api.hyperliquid.xyz/info',
-    exchangeUrl: 'https://api.hyperliquid.xyz/exchange',
-  },
+  hyperliquid: {},
 }
+
+const HYPERLIQUID_MAINNET_BASE = 'https://api.hyperliquid.xyz'
+const HYPERLIQUID_TESTNET_BASE = 'https://api.hyperliquid-testnet.xyz'
 
 export interface InitBuluConfigResult {
   action: 'created' | 'overwritten' | 'unchanged'
@@ -185,12 +184,7 @@ export function setActiveWallet(name: string, cwd?: string): void {
   saveUserConfigSync(userConfig, configDir)
 }
 
-export function getHyperliquidApiUrl(cwd?: string): string {
+export function getHyperliquidBaseUrl(testnet?: boolean, cwd?: string): string {
   const config = loadBuluConfigSync(cwd)
-  return config.hyperliquid?.apiUrl ?? 'https://api.hyperliquid.xyz/info'
-}
-
-export function getHyperliquidExchangeUrl(cwd?: string): string {
-  const config = loadBuluConfigSync(cwd)
-  return config.hyperliquid?.exchangeUrl ?? 'https://api.hyperliquid.xyz/exchange'
+  return config.hyperliquid?.apiBase ?? (testnet ? HYPERLIQUID_TESTNET_BASE : HYPERLIQUID_MAINNET_BASE)
 }

@@ -2,8 +2,7 @@ import { signTypedData } from '@bulu-cli/tcx-core'
 import { encode } from '@msgpack/msgpack'
 import { keccak_256 } from '@noble/hashes/sha3.js'
 import { bytesToHex, concatBytes, hexToBytes } from '@noble/hashes/utils.js'
-import { $fetch } from 'ofetch'
-import { getHyperliquidExchangeUrl } from '../../core/config'
+import { createHyperliquidClient } from './client'
 import type { OrderRequestBody, OrderResponse, OrderStatus } from './types'
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as const
@@ -192,7 +191,7 @@ export async function signAndSubmitL1Action(args: {
   const signature = splitSignature(signed.signature as `0x${string}`)
 
   const body: OrderRequestBody = { action, nonce, signature }
-  return $fetch<OrderResponse>(getHyperliquidExchangeUrl(), {
+  return createHyperliquidClient(isTestnet)<OrderResponse>('/exchange', {
     method: 'POST',
     body,
   })

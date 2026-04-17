@@ -1,13 +1,13 @@
 import { $fetch } from 'ofetch'
-import { getHyperliquidApiUrl } from '../../core/config'
+import { getHyperliquidBaseUrl } from '../../core/config'
 import type { AssetCtx, AssetMeta, Candle, ClearinghouseState, SpotClearinghouseState } from './types'
 
 export const VALID_PERIODS = ['1m', '5m', '15m', '1h', '4h', '1d'] as const
 
 export type Period = (typeof VALID_PERIODS)[number]
 
-function getApiUrl(): string {
-  return getHyperliquidApiUrl()
+export function createHyperliquidClient(isTestnet?: boolean) {
+  return $fetch.create({ baseURL: getHyperliquidBaseUrl(isTestnet) })
 }
 
 export function resolvePeriodMs(period: string): number {
@@ -29,8 +29,10 @@ export function resolvePeriodMs(period: string): number {
   }
 }
 
-export async function fetchMetaAndAssetCtxs(): Promise<{ universe: AssetMeta[]; contexts: AssetCtx[] }> {
-  const data = await $fetch<[Record<string, unknown>, AssetCtx[]]>(getApiUrl(), {
+export async function fetchMetaAndAssetCtxs(
+  isTestnet?: boolean,
+): Promise<{ universe: AssetMeta[]; contexts: AssetCtx[] }> {
+  const data = await createHyperliquidClient(isTestnet)('/info', {
     method: 'POST',
     body: { type: 'metaAndAssetCtxs' },
   })
@@ -43,8 +45,9 @@ export async function fetchCandles(
   interval: string,
   startTime: number,
   endTime: number,
+  isTestnet?: boolean,
 ): Promise<Candle[]> {
-  return $fetch<Candle[]>(getApiUrl(), {
+  return createHyperliquidClient(isTestnet)('/info', {
     method: 'POST',
     body: {
       type: 'candleSnapshot',
@@ -53,15 +56,15 @@ export async function fetchCandles(
   })
 }
 
-export async function fetchClearinghouseState(user: string): Promise<ClearinghouseState> {
-  return $fetch<ClearinghouseState>(getApiUrl(), {
+export async function fetchClearinghouseState(user: string, isTestnet?: boolean): Promise<ClearinghouseState> {
+  return createHyperliquidClient(isTestnet)('/info', {
     method: 'POST',
     body: { type: 'clearinghouseState', user },
   })
 }
 
-export async function fetchSpotClearinghouseState(user: string): Promise<SpotClearinghouseState> {
-  return $fetch<SpotClearinghouseState>(getApiUrl(), {
+export async function fetchSpotClearinghouseState(user: string, isTestnet?: boolean): Promise<SpotClearinghouseState> {
+  return createHyperliquidClient(isTestnet)('/info', {
     method: 'POST',
     body: { type: 'spotClearinghouseState', user },
   })
