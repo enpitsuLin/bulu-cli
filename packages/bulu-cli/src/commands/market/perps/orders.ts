@@ -1,9 +1,8 @@
 import { defineCommand } from 'citty'
-import { getWallet } from '@bulu-cli/tcx-core'
-import { getActiveWallet, getVaultPath } from '../../../core/config'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
 import { withDefaultArgs } from '../../../core/args-def'
 import { fetchOpenOrders } from '../../../protocols/hyperliquid'
+import { requireChainAccount, resolveWallet } from '../../../core/wallet'
 
 function formatSide(side: 'A' | 'B'): string {
   return side === 'B' ? 'long' : 'short'
@@ -29,30 +28,9 @@ export default defineCommand({
     },
   }),
   async run({ args }) {
-    const walletName = args.wallet ? String(args.wallet) : getActiveWallet()
     const out = createOutput(resolveOutputOptions(args))
-
-    if (!walletName) {
-      out.warn('No wallet specified and no active wallet configured')
-      process.exit(1)
-    }
-
-    const vaultPath = getVaultPath()
-    let wallet
-    try {
-      wallet = getWallet(walletName, vaultPath)
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      out.warn(`Failed to load wallet: ${message}`)
-      process.exit(1)
-    }
-
-    const ethAccount = wallet.accounts.find((a) => a.chainId === 'eip155:1')
-    if (!ethAccount) {
-      out.warn('Wallet has no Ethereum account (eip155:1) required for Hyperliquid')
-      process.exit(1)
-    }
-
+    const { walletName, wallet } = resolveWallet(args.wallet, out)
+    const ethAccount = requireChainAccount(wallet, 'eip155:1', out)
     const user = ethAccount.address.toLowerCase()
 
     let orders

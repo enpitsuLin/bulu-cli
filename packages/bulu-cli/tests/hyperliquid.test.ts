@@ -2,7 +2,7 @@ import { encode } from '@msgpack/msgpack'
 import { keccak_256 } from '@noble/hashes/sha3.js'
 import { bytesToHex, concatBytes } from '@noble/hashes/utils.js'
 import { expect, test } from 'vitest'
-import { createL1ActionHash } from '../src/protocols/hyperliquid/exchange'
+import { createL1ActionHash } from '../src/protocols/hyperliquid/crypto'
 
 function toUint64Bytes(n: bigint | number): Uint8Array {
   const bytes = new Uint8Array(8)

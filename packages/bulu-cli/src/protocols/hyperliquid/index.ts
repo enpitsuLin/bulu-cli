@@ -1,4 +1,4 @@
-export { createHyperliquidClient } from './api'
+export { createHyperliquidClient } from './client'
 
 export {
   fetchCandles,
@@ -11,16 +11,11 @@ export {
 } from './client'
 export type { Period } from './client'
 
-export {
-  buildHyperliquidTypedData,
-  buildOrderAction,
-  createL1ActionHash,
-  formatOrderStatus,
-  formatSize,
-  signAndSubmitL1Action,
-  splitSignature,
-  stripTrailingZeros,
-} from './exchange'
+export { buildHyperliquidTypedData, createL1ActionHash, splitSignature } from './crypto'
+
+export { buildOrderAction, signAndSubmitL1Action } from './exchange'
+
+export { formatOrderStatus, formatSize, stripTrailingZeros } from './format'
 
 export type {
   AssetCtx,
