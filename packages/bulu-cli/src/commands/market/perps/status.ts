@@ -1,6 +1,13 @@
 import { defineCommand } from 'citty'
-import { fetchOrderStatus, parseOrderIdentifier, resolveOrderSide } from '../../../protocols/hyperliquid'
+import {
+  fetchOrderStatus,
+  fetchSpotMeta,
+  isSpotPairName,
+  parseOrderIdentifier,
+  resolveOrderSide,
+} from '../../../protocols/hyperliquid'
 import { formatTimestamp } from '../../../core/time'
+import type { OrderStatusInfo, SpotMeta } from '../../../protocols/hyperliquid'
 import { resolvePerpOutput, resolvePerpQueryArgs, resolvePerpUserContext } from './shared'
 
 export default defineCommand({
@@ -16,17 +23,28 @@ export default defineCommand({
     const out = resolvePerpOutput(args)
     const { walletName, user } = resolvePerpUserContext(args, out)
 
-    let response
+    let response: OrderStatusInfo
+    let spotMeta: SpotMeta
     try {
-      response = await fetchOrderStatus({
-        user,
-        oid: parseOrderIdentifier(String(args.id)),
-        isTestnet: args.testnet,
-      })
+      ;[response, spotMeta] = await Promise.all([
+        fetchOrderStatus({
+          user,
+          oid: parseOrderIdentifier(String(args.id)),
+          isTestnet: args.testnet,
+        }),
+        fetchSpotMeta(args.testnet),
+      ])
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       out.warn(`Failed to fetch order status: ${message}`)
       process.exit(1)
+    }
+
+    if (response && typeof response === 'object' && 'order' in response && response.order) {
+      if (isSpotPairName(response.order.coin, spotMeta)) {
+        out.warn(`Order ${args.id} belongs to spot; use \`bulu market spot orders\` or \`bulu market spot history\``)
+        process.exit(1)
+      }
     }
 
     const isJson = args.json || args.format === 'json'

@@ -1,16 +1,14 @@
 import { defineCommand } from 'citty'
-import { fetchUserFills, fetchUserFillsByTime, resolveOrderSide } from '../../../protocols/hyperliquid'
+import {
+  fetchSpotMeta,
+  fetchUserFills,
+  fetchUserFillsByTime,
+  partitionEntriesBySpot,
+  resolveOrderSide,
+} from '../../../protocols/hyperliquid'
 import { formatTimestamp } from '../../../core/time'
 import { resolvePerpOutput, resolvePerpQueryArgs, resolvePerpUserContext } from './shared'
-import { parseTimeArg } from './utils'
-
-function parseLimit(value?: string): number {
-  const limit = value ? Number(value) : 50
-  if (!Number.isSafeInteger(limit) || limit <= 0) {
-    throw new Error(`Invalid limit: ${value}`)
-  }
-  return limit
-}
+import { parseLimitArg, parseTimeArg } from './utils'
 
 export default defineCommand({
   meta: { name: 'fills', description: 'Show recent perp fills' },
@@ -46,25 +44,28 @@ export default defineCommand({
 
     let limit: number
     try {
-      limit = parseLimit(args.limit ? String(args.limit) : undefined)
+      limit = parseLimitArg(args.limit ? String(args.limit) : undefined)
     } catch (error) {
       out.warn(error instanceof Error ? error.message : String(error))
       process.exit(1)
     }
 
     try {
-      const fills =
+      const [fills, spotMeta] = await Promise.all([
         args.since || args.until
-          ? await fetchUserFillsByTime({
+          ? fetchUserFillsByTime({
               user,
               startTime: parseTimeArg(String(args.since ?? '0'), 'since'),
               endTime: args.until ? parseTimeArg(String(args.until), 'until') : undefined,
               aggregateByTime,
               isTestnet: args.testnet,
             })
-          : await fetchUserFills(user, aggregateByTime, args.testnet)
+          : fetchUserFills(user, aggregateByTime, args.testnet),
+        fetchSpotMeta(args.testnet),
+      ])
 
-      const rows = fills
+      const { perps } = partitionEntriesBySpot(fills, spotMeta)
+      const rows = perps
         .filter((fill) => !coin || fill.coin === coin)
         .slice(0, limit)
         .map((fill) => ({
@@ -85,7 +86,7 @@ export default defineCommand({
       }
 
       if (rows.length === 0) {
-        out.success(`No fills found for ${walletName} (${user})`)
+        out.success(`No perp fills found for ${walletName} (${user})`)
         return
       }
 

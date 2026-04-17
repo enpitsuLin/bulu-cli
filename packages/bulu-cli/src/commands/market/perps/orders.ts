@@ -1,7 +1,12 @@
 import { defineCommand } from 'citty'
-import { fetchFrontendOpenOrders, resolveOrderSide } from '../../../protocols/hyperliquid'
+import {
+  fetchFrontendOpenOrders,
+  fetchSpotMeta,
+  partitionEntriesBySpot,
+  resolveOrderSide,
+} from '../../../protocols/hyperliquid'
 import { formatTimestamp } from '../../../core/time'
-import type { FrontendOpenOrder } from '../../../protocols/hyperliquid'
+import type { FrontendOpenOrder, SpotMeta } from '../../../protocols/hyperliquid'
 import { resolvePerpOutput, resolvePerpQueryArgs, resolvePerpUserContext } from './shared'
 
 function formatTif(tif: string, isTrigger: boolean): string {
@@ -41,16 +46,21 @@ export default defineCommand({
     const { walletName, user } = resolvePerpUserContext(args, out)
 
     let orders: FrontendOpenOrder[] = []
+    let spotMeta: SpotMeta
     try {
-      orders = await fetchFrontendOpenOrders(user, args.testnet)
+      ;[orders, spotMeta] = await Promise.all([
+        fetchFrontendOpenOrders(user, args.testnet),
+        fetchSpotMeta(args.testnet),
+      ])
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       out.warn(`Failed to fetch open orders: ${message}`)
       process.exit(1)
     }
 
-    const rawRows = (orders || []).map(mapOpenOrder)
-    const displayRows = formatOpenOrderRows(orders || [])
+    const { perps } = partitionEntriesBySpot(orders || [], spotMeta)
+    const rawRows = perps.map(mapOpenOrder)
+    const displayRows = formatOpenOrderRows(perps)
 
     const isJson = args.json || args.format === 'json'
     const isCsv = args.format === 'csv'

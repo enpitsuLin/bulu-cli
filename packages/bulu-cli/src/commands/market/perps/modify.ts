@@ -4,11 +4,13 @@ import {
   buildOrderWire,
   fetchFrontendOpenOrders,
   fetchMarketAsset,
+  fetchSpotMeta,
+  partitionEntriesBySpot,
   resolveOrderSide,
   resolveOrderTimeInForce,
   resolveTriggerKindFromOrder,
 } from '../../../protocols/hyperliquid'
-import type { FrontendOpenOrder } from '../../../protocols/hyperliquid'
+import type { FrontendOpenOrder, HyperliquidMarketAsset } from '../../../protocols/hyperliquid'
 import {
   handleCommandError,
   resolvePerpOutput,
@@ -61,27 +63,35 @@ export default defineCommand({
       process.exit(1)
     }
 
-    let orders
-    try {
-      orders = await fetchFrontendOpenOrders(user, args.testnet)
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      handleCommandError(out, `Failed to fetch open orders: ${message}`)
-    }
+    const [orders, spotMeta] = await (async () => {
+      try {
+        return await Promise.all([fetchFrontendOpenOrders(user, args.testnet), fetchSpotMeta(args.testnet)])
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        return handleCommandError(out, `Failed to fetch open orders: ${message}`)
+      }
+    })()
 
-    const currentOrder = findOrderByIdentifier(orders, String(args.id))
+    const { perps, spot } = partitionEntriesBySpot(orders, spotMeta)
+    const currentOrder = findOrderByIdentifier(perps, String(args.id))
     if (!currentOrder) {
+      const spotOrder = findOrderByIdentifier(spot, String(args.id))
+      if (spotOrder) {
+        out.warn(`Order ${args.id} belongs to spot; use \`bulu market spot cancel\` and place a new spot order`)
+        process.exit(1)
+      }
       out.warn(`Order not found: ${args.id}`)
       process.exit(1)
     }
 
-    let market
-    try {
-      market = await fetchMarketAsset(currentOrder.coin, args.testnet)
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      handleCommandError(out, message)
-    }
+    const market: HyperliquidMarketAsset = await (async () => {
+      try {
+        return await fetchMarketAsset(currentOrder.coin, args.testnet)
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        return handleCommandError(out, message)
+      }
+    })()
 
     const triggerKind = currentOrder.isTrigger
       ? resolveTriggerKindFromOrder(currentOrder, args.tp ? 'tp' : args.sl ? 'sl' : undefined)

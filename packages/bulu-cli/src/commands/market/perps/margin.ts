@@ -48,12 +48,13 @@ export default defineCommand({
     const coin = String(args.coin).toUpperCase()
     const market = await loadPerpMarketOrExit(coin, args.testnet, out)
 
-    let ntli: number
-    try {
-      ntli = parseScaledUsdDelta(String(args.delta))
-    } catch (error) {
-      handleCommandError(out, error instanceof Error ? error.message : String(error))
-    }
+    const ntli = (() => {
+      try {
+        return parseScaledUsdDelta(String(args.delta))
+      } catch (error) {
+        return handleCommandError(out, error instanceof Error ? error.message : String(error))
+      }
+    })()
 
     try {
       const response = await submitExchangeAction({

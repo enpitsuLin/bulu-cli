@@ -1,15 +1,7 @@
 import { defineCommand } from 'citty'
-import { fetchHistoricalOrders } from '../../../protocols/hyperliquid'
+import { fetchHistoricalOrders, fetchSpotMeta, partitionEntriesBySpot } from '../../../protocols/hyperliquid'
 import { resolvePerpOutput, resolvePerpQueryArgs, resolvePerpUserContext } from './shared'
-import { formatHistoryOrderRows } from './utils'
-
-function parseLimit(value?: string): number {
-  const limit = value ? Number(value) : 50
-  if (!Number.isSafeInteger(limit) || limit <= 0) {
-    throw new Error(`Invalid limit: ${value}`)
-  }
-  return limit
-}
+import { formatHistoryOrderRows, parseLimitArg } from './utils'
 
 export default defineCommand({
   meta: { name: 'history', description: 'Show historical perp orders' },
@@ -36,7 +28,7 @@ export default defineCommand({
 
     let limit: number
     try {
-      limit = parseLimit(args.limit ? String(args.limit) : undefined)
+      limit = parseLimitArg(args.limit ? String(args.limit) : undefined)
     } catch (error) {
       out.warn(error instanceof Error ? error.message : String(error))
       process.exit(1)
@@ -44,8 +36,14 @@ export default defineCommand({
 
     try {
       const history = await fetchHistoricalOrders(user, args.testnet)
+      const spotMeta = await fetchSpotMeta(args.testnet)
+      const { perps } = partitionEntriesBySpot(
+        history.map((entry) => ({ coin: entry.order.coin, entry })),
+        spotMeta,
+      )
       const rows = formatHistoryOrderRows(
-        history
+        perps
+          .map(({ entry }) => entry)
           .filter((entry) => !coin || entry.order.coin === coin)
           .filter((entry) => !status || entry.status.toLowerCase() === status)
           .slice(0, limit),

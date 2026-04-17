@@ -1,6 +1,6 @@
 import { defineCommand } from 'citty'
 import { resolvePerpTpslOrder } from '../../../protocols/hyperliquid'
-import type { OrderResponse } from '../../../protocols/hyperliquid'
+import type { OrderResponse, ResolvedPerpOrder } from '../../../protocols/hyperliquid'
 import {
   handleCommandError,
   loadPerpMarketOrExit,
@@ -41,21 +41,22 @@ export default defineCommand({
     const market = await loadPerpMarketOrExit(coin, args.testnet, out)
     const state = await loadPerpStateOrExit(user, args.testnet, out)
 
-    let order
-    try {
-      order = resolvePerpTpslOrder({
-        coin,
-        market,
-        triggerPrice: String(args.trigger),
-        price: args.price ? String(args.price) : undefined,
-        size: args.size ? String(args.size) : undefined,
-        state,
-        tpsl: 'tp',
-      })
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      handleCommandError(out, message)
-    }
+    const order: ResolvedPerpOrder = (() => {
+      try {
+        return resolvePerpTpslOrder({
+          coin,
+          market,
+          triggerPrice: String(args.trigger),
+          price: args.price ? String(args.price) : undefined,
+          size: args.size ? String(args.size) : undefined,
+          state,
+          tpsl: 'tp',
+        })
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        return handleCommandError(out, message)
+      }
+    })()
 
     try {
       const response = await submitExchangeAction<OrderResponse>({

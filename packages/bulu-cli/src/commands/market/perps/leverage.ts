@@ -42,12 +42,13 @@ export default defineCommand({
     const coin = String(args.coin).toUpperCase()
     const market = await loadPerpMarketOrExit(coin, args.testnet, out)
 
-    let leverage: number
-    try {
-      leverage = parseLeverage(String(args.value))
-    } catch (error) {
-      handleCommandError(out, error instanceof Error ? error.message : String(error))
-    }
+    const leverage = (() => {
+      try {
+        return parseLeverage(String(args.value))
+      } catch (error) {
+        return handleCommandError(out, error instanceof Error ? error.message : String(error))
+      }
+    })()
 
     try {
       const response = await submitExchangeAction({

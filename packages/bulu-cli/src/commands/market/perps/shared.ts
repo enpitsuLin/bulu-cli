@@ -1,19 +1,19 @@
-import { getVaultPath } from '../../../core/config'
-import { createOutput, resolveOutputOptions } from '../../../core/output'
-import { resolveTCXPassphrase } from '../../../core/tcx'
-import { requireChainAccount, resolveWallet } from '../../../core/wallet'
-import { withDefaultArgs } from '../../../core/args-def'
+import { createOutput } from '../../../core/output'
+import {
+  handleCommandError,
+  resolveMarketOutput,
+  resolveMarketQueryArgs,
+  resolveMarketUserContext,
+  submitExchangeAction,
+} from '../shared'
 import {
   fetchClearinghouseState,
   fetchMarketAsset,
   formatOrderStatus,
   resolvePerpOrder,
-  signAndSubmitL1Action,
 } from '../../../protocols/hyperliquid'
 import type {
   ClearinghouseState,
-  DefaultExchangeResponse,
-  ExchangeAction,
   HyperliquidMarketAsset,
   OrderResponse,
   OrderSide,
@@ -37,19 +37,10 @@ export interface PerpUserContext {
   user: string
 }
 
+export { handleCommandError, submitExchangeAction } from '../shared'
+
 export function resolvePerpQueryArgs(extraArgs: Record<string, unknown> = {}) {
-  return withDefaultArgs({
-    ...extraArgs,
-    testnet: {
-      type: 'boolean',
-      description: 'Use Hyperliquid testnet',
-      default: false,
-    },
-    wallet: {
-      type: 'string',
-      description: 'Wallet name or id (defaults to active wallet)',
-    },
-  })
+  return resolveMarketQueryArgs(extraArgs)
 }
 
 export function resolvePerpOrderArgs(mode: 'open' | 'close') {
@@ -75,40 +66,14 @@ export function resolvePerpOrderArgs(mode: 'open' | 'close') {
 }
 
 export function resolvePerpOutput(args: Pick<PerpCommandArgs, 'json' | 'format'>) {
-  return createOutput(resolveOutputOptions(args))
+  return resolveMarketOutput(args)
 }
 
 export function resolvePerpUserContext(
   args: Pick<PerpCommandArgs, 'wallet'>,
   out: ReturnType<typeof createOutput>,
 ): PerpUserContext {
-  const { walletName, wallet } = resolveWallet(args.wallet, out)
-  const ethAccount = requireChainAccount(wallet, 'eip155:1', out)
-  return {
-    walletName,
-    user: ethAccount.address.toLowerCase(),
-  }
-}
-
-export async function submitExchangeAction<TResponse = DefaultExchangeResponse>(args: {
-  action: ExchangeAction
-  walletName: string
-  testnet?: boolean
-}): Promise<TResponse> {
-  const credential = await resolveTCXPassphrase()
-  return signAndSubmitL1Action<TResponse>({
-    action: args.action,
-    nonce: Date.now(),
-    walletName: args.walletName,
-    vaultPath: getVaultPath(),
-    credential,
-    isTestnet: args.testnet,
-  })
-}
-
-export function handleCommandError(out: ReturnType<typeof createOutput>, message: string): never {
-  out.warn(message)
-  process.exit(1)
+  return resolveMarketUserContext(args, out)
 }
 
 export async function loadPerpMarketOrExit(

@@ -3,8 +3,11 @@ import {
   buildCancelAction,
   fetchFrontendOpenOrders,
   fetchMarketAsset,
+  fetchSpotMeta,
+  partitionEntriesBySpot,
   resolveOrderSide,
 } from '../../../protocols/hyperliquid'
+import type { FrontendOpenOrder, SpotMeta } from '../../../protocols/hyperliquid'
 import { resolvePerpOutput, resolvePerpQueryArgs, resolvePerpUserContext, submitExchangeAction } from './shared'
 import { findOrderByIdentifier } from './utils'
 
@@ -36,16 +39,21 @@ export default defineCommand({
       process.exit(1)
     }
 
-    let orders
+    let orders: FrontendOpenOrder[]
+    let spotMeta: SpotMeta
     try {
-      orders = await fetchFrontendOpenOrders(user, args.testnet)
+      ;[orders, spotMeta] = await Promise.all([
+        fetchFrontendOpenOrders(user, args.testnet),
+        fetchSpotMeta(args.testnet),
+      ])
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       out.warn(`Failed to fetch open orders: ${message}`)
       process.exit(1)
     }
 
-    const candidates = coinFilter ? orders.filter((order) => order.coin === coinFilter) : orders
+    const { perps, spot } = partitionEntriesBySpot(orders, spotMeta)
+    const candidates = coinFilter ? perps.filter((order) => order.coin === coinFilter) : perps
     const selected = args.all
       ? candidates
       : (() => {
@@ -54,6 +62,11 @@ export default defineCommand({
         })()
 
     if (selected.length === 0) {
+      const spotOrder = args.all ? undefined : findOrderByIdentifier(spot, String(args.id))
+      if (spotOrder) {
+        out.warn(`Order ${args.id} belongs to spot; use \`bulu market spot cancel\``)
+        process.exit(1)
+      }
       out.warn(args.all ? 'No matching open orders to cancel' : `Order not found: ${args.id}`)
       process.exit(1)
     }
