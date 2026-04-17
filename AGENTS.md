@@ -48,9 +48,7 @@ The repository is a pnpm monorepo containing two main packages:
 │   └── workflows/             # CI.yml, publish.yml
 ├── .cargo/
 │   └── config.toml            # Windows static CRT flag
-├── vendor/
-│   └── token-core-monorepo/   # Git submodule (fork reference, not a path dependency)
-├── Cargo.toml                 # Workspace manifest + git patches for tcx-* crates
+├── Cargo.toml                 # Workspace manifest
 ├── package.json               # Root monorepo manifest
 ├── pnpm-workspace.yaml
 └── rust-toolchain.toml
@@ -78,9 +76,7 @@ The repository is a pnpm monorepo containing two main packages:
 
 ### Dependency Routing for `tcx-*` Crates
 
-`packages/tcx-core/Cargo.toml` references `tcx-btc-kin`, `tcx-common`, `tcx-constants`, `tcx-crypto`, `tcx-eth`, `tcx-keystore`, `tcx-primitive`, and `tcx-tron` via the upstream git URL (`consenlabs/token-core-monorepo`).
-
-The **root** `Cargo.toml` applies `[patch."https://github.com/consenlabs/token-core-monorepo"]` to redirect all of those dependencies to a fork at `https://github.com/enpitsuLin/token-core-monorepo`. The `vendor/token-core-monorepo` submodule exists for reference but is **not** used as a local path dependency during builds.
+`packages/tcx-core/Cargo.toml` references `tcx-common`, `tcx-constants`, `tcx-crypto`, `tcx-eth`, `tcx-keystore`, `tcx-primitive`, and `tcx-tron` directly via the upstream git URL (`consenlabs/token-core-monorepo`) on the `feat/keyless` branch. There is no `[patch]` override in the root `Cargo.toml` and no local vendor path dependency.
 
 ## Daily Development Commands
 
