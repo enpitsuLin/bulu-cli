@@ -1,5 +1,5 @@
 import { createHyperliquidClient } from './api'
-import type { AssetCtx, AssetMeta, Candle, ClearinghouseState, SpotClearinghouseState } from './types'
+import type { AssetCtx, AssetMeta, Candle, ClearinghouseState, OpenOrder, SpotClearinghouseState } from './types'
 
 export const VALID_PERIODS = ['1m', '5m', '15m', '1h', '4h', '1d'] as const
 
@@ -62,5 +62,12 @@ export async function fetchSpotClearinghouseState(user: string, isTestnet?: bool
   return createHyperliquidClient(isTestnet)('/info', {
     method: 'POST',
     body: { type: 'spotClearinghouseState', user },
+  })
+}
+
+export async function fetchOpenOrders(user: string, isTestnet?: boolean): Promise<OpenOrder[]> {
+  return createHyperliquidClient(isTestnet)('/info', {
+    method: 'POST',
+    body: { type: 'openOrders', user },
   })
 }

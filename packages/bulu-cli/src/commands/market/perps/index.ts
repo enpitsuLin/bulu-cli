@@ -5,5 +5,6 @@ export default defineCommand({
   subCommands: {
     positions: () => import('./positions').then((m) => m.default),
     order: () => import('./order').then((m) => m.default),
+    orders: () => import('./orders').then((m) => m.default),
   },
 })

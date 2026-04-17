@@ -75,6 +75,22 @@ export interface SpotClearinghouseState {
   balances: SpotBalance[]
 }
 
+export interface OpenOrder {
+  coin: string
+  side: 'A' | 'B'
+  limitPx: string
+  sz: string
+  oid: number
+  timestamp: number
+  origSz: string
+  reduceOnly: boolean
+  orderType: string
+  tif: string
+  triggerCondition?: string
+  isTrigger: boolean
+  triggerPx?: string
+}
+
 export interface ExchangeSignature {
   r: `0x${string}`
   s: `0x${string}`
