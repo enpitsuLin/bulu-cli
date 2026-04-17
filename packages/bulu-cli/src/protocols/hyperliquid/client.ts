@@ -1,14 +1,9 @@
-import { $fetch } from 'ofetch'
-import { getHyperliquidBaseUrl } from '../../core/config'
+import { createHyperliquidClient } from './api'
 import type { AssetCtx, AssetMeta, Candle, ClearinghouseState, SpotClearinghouseState } from './types'
 
 export const VALID_PERIODS = ['1m', '5m', '15m', '1h', '4h', '1d'] as const
 
 export type Period = (typeof VALID_PERIODS)[number]
-
-export function createHyperliquidClient(isTestnet?: boolean) {
-  return $fetch.create({ baseURL: getHyperliquidBaseUrl(isTestnet) })
-}
 
 export function resolvePeriodMs(period: string): number {
   switch (period) {

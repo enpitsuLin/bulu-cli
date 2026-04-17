@@ -3,7 +3,7 @@ import { getWallet } from '@bulu-cli/tcx-core'
 import { getActiveWallet, getVaultPath } from '../../../core/config'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
 import { withDefaultArgs } from '../../../core/args-def'
-import { fetchSpotClearinghouseState } from '../../../protocols/hyperliquid/client'
+import { fetchSpotClearinghouseState } from '../../../protocols/hyperliquid'
 
 export default defineCommand({
   meta: { name: 'positions', description: 'Show spot balances' },

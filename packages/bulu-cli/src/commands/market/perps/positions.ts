@@ -3,8 +3,8 @@ import { getWallet } from '@bulu-cli/tcx-core'
 import { getActiveWallet, getVaultPath } from '../../../core/config'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
 import { withDefaultArgs } from '../../../core/args-def'
-import { fetchClearinghouseState } from '../../../protocols/hyperliquid/client'
-import type { PerpPosition } from '../../../protocols/hyperliquid/types'
+import { fetchClearinghouseState } from '../../../protocols/hyperliquid'
+import type { PerpPosition } from '../../../protocols/hyperliquid'
 
 function formatLeverage(leverage: PerpPosition['leverage']): string {
   if (typeof leverage === 'object' && leverage !== null) {

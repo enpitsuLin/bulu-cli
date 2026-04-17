@@ -1,7 +1,7 @@
 import { defineCommand } from 'citty'
 import { createOutput, resolveOutputOptions } from '../../core/output'
 import { withDefaultArgs } from '../../core/args-def'
-import { fetchCandles, fetchMetaAndAssetCtxs, resolvePeriodMs, VALID_PERIODS } from '../../protocols/hyperliquid/client'
+import { fetchCandles, fetchMetaAndAssetCtxs, resolvePeriodMs, VALID_PERIODS } from '../../protocols/hyperliquid'
 
 function formatChange(current: number, prev: number): string {
   if (!Number.isFinite(prev) || prev === 0) return 'N/A'

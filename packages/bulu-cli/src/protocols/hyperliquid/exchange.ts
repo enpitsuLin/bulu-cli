@@ -2,7 +2,7 @@ import { signTypedData } from '@bulu-cli/tcx-core'
 import { encode } from '@msgpack/msgpack'
 import { keccak_256 } from '@noble/hashes/sha3.js'
 import { bytesToHex, concatBytes, hexToBytes } from '@noble/hashes/utils.js'
-import { createHyperliquidClient } from './client'
+import { createHyperliquidClient } from './api'
 import type { OrderRequestBody, OrderResponse, OrderStatus } from './types'
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as const

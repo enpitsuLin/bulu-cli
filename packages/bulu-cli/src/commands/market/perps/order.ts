@@ -4,14 +4,15 @@ import { getActiveWallet, getVaultPath } from '../../../core/config'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
 import { withDefaultArgs } from '../../../core/args-def'
 import { resolveTCXPassphrase } from '../../../core/tcx'
-import { fetchClearinghouseState, fetchMetaAndAssetCtxs } from '../../../protocols/hyperliquid/client'
 import {
   buildOrderAction,
+  fetchClearinghouseState,
+  fetchMetaAndAssetCtxs,
   formatOrderStatus,
   formatSize,
   signAndSubmitL1Action,
   stripTrailingZeros,
-} from '../../../protocols/hyperliquid/exchange'
+} from '../../../protocols/hyperliquid'
 
 export default defineCommand({
   meta: { name: 'order', description: 'Place a perp order on Hyperliquid (open or close)' },
