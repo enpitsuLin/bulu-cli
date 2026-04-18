@@ -16,8 +16,7 @@ import type {
 } from '../../../protocols/hyperliquid'
 import { resolveMarketQueryArgs, resolveMarketUserContext } from '../shared'
 import { executeOrExit, loadDataOrExit } from '../../../utils/cli'
-import { buildOrderPositionalArgs, submitOrderAndRender } from '../order-shared'
-import type { OrderSubmissionContext } from '../order-shared'
+import { buildOrderPositionalArgs, submitOrder } from '../order-shared'
 
 export interface SpotCommandArgs {
   wallet?: string
@@ -121,14 +120,10 @@ export async function runSpotOrderCommand(
     'Failed to resolve order',
   )
 
-  const ctx: OrderSubmissionContext = {
-    out,
-    walletName,
-    testnet: args.testnet,
-  }
+  const statuses = await submitOrder({ walletName, testnet: args.testnet }, order.action)
 
-  await submitOrderAndRender(ctx, order.action, {
-    detail: `${pair} ${side.toUpperCase()} ${order.size} @ ${order.price}`,
-    titlePrefix: 'Spot Order',
+  out.table(statuses, {
+    columns: ['orderIndex', 'result'],
+    title: `Spot Order | ${walletName} | ${pair} ${side.toUpperCase()} ${order.size} @ ${order.price}`,
   })
 }

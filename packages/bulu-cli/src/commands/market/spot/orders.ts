@@ -3,7 +3,7 @@ import { fetchFrontendOpenOrders, normalizeSpotPair, partitionEntriesBySpot } fr
 import type { FrontendOpenOrder } from '../../../protocols/hyperliquid'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
 import { loadSpotPairNameSetOrExit, resolveSpotQueryArgs, resolveSpotUserContext } from './shared'
-import { runListCommand } from '../query-shared'
+import { fetchListItems } from '../query-shared'
 import { formatTimestamp } from '../../../core/time'
 
 function mapSpotOpenOrder(order: FrontendOpenOrder) {
@@ -18,13 +18,6 @@ function mapSpotOpenOrder(order: FrontendOpenOrder) {
     reduceOnly: order.reduceOnly,
     oid: order.oid,
     cloid: order.cloid ?? 'N/A',
-    timestamp: order.timestamp,
-  }
-}
-
-function formatSpotOpenOrderRow(order: FrontendOpenOrder) {
-  return {
-    ...mapSpotOpenOrder(order),
     timestamp: formatTimestamp(order.timestamp),
   }
 }
@@ -43,11 +36,8 @@ export default defineCommand({
     const spotPairs = await loadSpotPairNameSetOrExit(args.testnet, out)
     const pairFilter = args.pair ? normalizeSpotPair(String(args.pair)) : undefined
 
-    await runListCommand({
+    const rows = await fetchListItems({
       out,
-      args,
-      walletName,
-      user,
       fetchItems: async () => {
         const orders = await fetchFrontendOpenOrders(user, args.testnet)
         const { spot } = partitionEntriesBySpot(orders, spotPairs)
@@ -55,7 +45,9 @@ export default defineCommand({
       },
       filter: pairFilter ? (order) => order.coin === pairFilter : undefined,
       toRow: mapSpotOpenOrder,
-      toDisplayRow: formatSpotOpenOrderRow,
+    })
+
+    out.table(rows, {
       columns: [
         'pair',
         'side',

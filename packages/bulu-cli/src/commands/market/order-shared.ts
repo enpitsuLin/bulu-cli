@@ -1,45 +1,25 @@
-import type { Output } from '../../core/output'
 import type { ExchangeAction, OrderResponse } from '../../protocols/hyperliquid'
 import { formatOrderStatus } from '../../protocols/hyperliquid'
 import { submitExchangeAction } from './shared'
 
-export interface OrderSubmissionContext {
-  out: Output
-  walletName: string
-  testnet?: boolean
-}
-
-export interface OrderRenderInput {
-  detail: string
-  titlePrefix: string
-}
-
 /**
- * Shared order submission and rendering logic.
- * Eliminates duplication between spot and perp order commands.
+ * Submit an order action and return formatted status rows.
+ * Callers control output.
  */
-export async function submitOrderAndRender(
-  ctx: OrderSubmissionContext,
+export async function submitOrder(
+  ctx: { walletName: string; testnet?: boolean },
   action: ExchangeAction,
-  render: OrderRenderInput,
-): Promise<void> {
-  const { out, walletName, testnet } = ctx
-
+): Promise<{ orderIndex: number; result: string }[]> {
   const response = await submitExchangeAction<OrderResponse>({
     action,
-    walletName,
-    testnet,
+    walletName: ctx.walletName,
+    testnet: ctx.testnet,
   })
 
-  const statuses = response.response.data.statuses.map((status, idx) => ({
+  return response.response.data.statuses.map((status, idx) => ({
     orderIndex: idx + 1,
     result: formatOrderStatus(status),
   }))
-
-  out.table(statuses, {
-    columns: ['orderIndex', 'result'],
-    title: `${render.titlePrefix} | ${walletName} | ${render.detail}`,
-  })
 }
 
 /**

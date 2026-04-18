@@ -3,7 +3,7 @@ import { fetchHistoricalOrders, normalizeSpotPair, partitionEntriesBySpot } from
 import type { HistoricalOrder } from '../../../protocols/hyperliquid'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
 import { loadSpotPairNameSetOrExit, resolveSpotQueryArgs, resolveSpotUserContext } from './shared'
-import { runListCommand } from '../query-shared'
+import { fetchListItems } from '../query-shared'
 import { parseLimitArg } from '../utils'
 import { formatTimestamp } from '../../../core/time'
 
@@ -49,11 +49,8 @@ export default defineCommand({
 
     const limit = parseLimitArg(args.limit ? String(args.limit) : undefined)
 
-    await runListCommand({
+    const rows = await fetchListItems({
       out,
-      args,
-      walletName,
-      user,
       fetchItems: async () => {
         const history = await fetchHistoricalOrders(user, args.testnet)
         const mapped = history.map((entry) => ({ coin: entry.order.coin, entry }))
@@ -67,6 +64,9 @@ export default defineCommand({
       },
       limit,
       toRow: mapSpotHistoryRow,
+    })
+
+    out.table(rows, {
       columns: [
         'pair',
         'status',

@@ -9,7 +9,7 @@ import {
   resolvePerpQueryArgs,
   resolvePerpUserContext,
 } from './shared'
-import { submitOrderAndRender } from '../order-shared'
+import { submitOrder } from '../order-shared'
 
 function buildTpslArgs() {
   return resolvePerpQueryArgs({
@@ -60,18 +60,12 @@ async function runTpslCommand(args: Record<string, unknown>, tpsl: 'sl' | 'tp', 
 
   const detail = `${coin} ${String(order.triggerKind).toUpperCase()} ${order.size} trigger ${order.triggerPx} -> ${order.price}`
 
-  await submitOrderAndRender(
-    {
-      out,
-      walletName,
-      testnet: args.testnet as boolean | undefined,
-    },
-    order.action,
-    {
-      detail,
-      titlePrefix,
-    },
-  )
+  const statuses = await submitOrder({ walletName, testnet: args.testnet as boolean | undefined }, order.action)
+
+  out.table(statuses, {
+    columns: ['orderIndex', 'result'],
+    title: `${titlePrefix} | ${walletName} | ${detail}`,
+  })
 }
 
 export default defineCommand({

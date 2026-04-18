@@ -7,7 +7,7 @@ import {
 } from '../../../protocols/hyperliquid'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
 import { loadSpotPairNameSetOrExit, resolveSpotQueryArgs, resolveSpotUserContext } from './shared'
-import { runListCommand } from '../query-shared'
+import { fetchListItems } from '../query-shared'
 import { parseLimitArg, parseTimeArg } from '../utils'
 import { formatTimestamp } from '../../../core/time'
 import type { UserFill } from '../../../protocols/hyperliquid'
@@ -61,11 +61,8 @@ export default defineCommand({
 
     const limit = parseLimitArg(args.limit ? String(args.limit) : undefined)
 
-    await runListCommand({
+    const rows = await fetchListItems({
       out,
-      args,
-      walletName,
-      user,
       fetchItems: async () => {
         const fills =
           args.since || args.until
@@ -83,6 +80,9 @@ export default defineCommand({
       filter: pairFilter ? (fill) => fill.coin === pairFilter : undefined,
       limit,
       toRow: mapSpotFillRow,
+    })
+
+    out.table(rows, {
       columns: ['time', 'pair', 'dir', 'side', 'size', 'price', 'fee', 'closedPnl', 'oid'],
       title: `Spot Fills | ${walletName} (${user})`,
     })

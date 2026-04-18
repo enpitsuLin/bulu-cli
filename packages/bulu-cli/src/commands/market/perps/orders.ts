@@ -1,4 +1,3 @@
-import { defineCommand } from 'citty'
 import {
   fetchFrontendOpenOrders,
   fetchSpotMeta,
@@ -9,7 +8,7 @@ import type { FrontendOpenOrder } from '../../../protocols/hyperliquid'
 import { formatTimestamp } from '../../../core/time'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
 import { resolvePerpQueryArgs, resolvePerpUserContext } from './shared'
-import { runListCommand } from '../query-shared'
+import { fetchListItems } from '../query-shared'
 
 function mapOpenOrder(order: FrontendOpenOrder) {
   return {
@@ -24,13 +23,6 @@ function mapOpenOrder(order: FrontendOpenOrder) {
     positionTpsl: order.isPositionTpsl ?? false,
     reduceOnly: order.reduceOnly,
     oid: order.oid,
-    timestamp: order.timestamp,
-  }
-}
-
-function formatOpenOrderRow(order: FrontendOpenOrder) {
-  return {
-    ...mapOpenOrder(order),
     timestamp: formatTimestamp(order.timestamp),
   }
 }
@@ -43,11 +35,8 @@ export default defineCommand({
     const { walletName, user } = resolvePerpUserContext(args, out)
     const coinFilter = args.coin ? String(args.coin).toUpperCase() : undefined
 
-    await runListCommand({
+    const rows = await fetchListItems({
       out,
-      args,
-      walletName,
-      user,
       fetchItems: async () => {
         const [orders, spotMeta] = await Promise.all([
           fetchFrontendOpenOrders(user, args.testnet),
@@ -58,7 +47,9 @@ export default defineCommand({
       },
       filter: coinFilter ? (order) => order.coin === coinFilter : undefined,
       toRow: mapOpenOrder,
-      toDisplayRow: formatOpenOrderRow,
+    })
+
+    out.table(rows, {
       columns: [
         'coin',
         'side',

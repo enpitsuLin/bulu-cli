@@ -8,8 +8,7 @@ import type {
 } from '../../../protocols/hyperliquid'
 import { resolveMarketQueryArgs, resolveMarketUserContext } from '../shared'
 import { executeOrExit, loadDataOrExit } from '../../../utils/cli'
-import { buildOrderPositionalArgs, submitOrderAndRender } from '../order-shared'
-import type { OrderSubmissionContext } from '../order-shared'
+import { buildOrderPositionalArgs, submitOrder } from '../order-shared'
 
 export { handleCommandError } from '../../../utils/cli'
 export { submitExchangeAction } from '../shared'
@@ -113,14 +112,10 @@ export async function runPerpOrderCommand(
     ? `${coin} ${String(order.triggerKind).toUpperCase()} ${order.size} trigger ${order.triggerPx} -> ${order.price}`
     : `${coin} ${order.side.toUpperCase()} ${order.size} @ ${order.price}`
 
-  const ctx: OrderSubmissionContext = {
-    out,
-    walletName,
-    testnet: args.testnet,
-  }
+  const statuses = await submitOrder({ walletName, testnet: args.testnet }, order.action)
 
-  await submitOrderAndRender(ctx, order.action, {
-    detail,
-    titlePrefix: 'Perp Order',
+  out.table(statuses, {
+    columns: ['orderIndex', 'result'],
+    title: `Perp Order | ${walletName} | ${detail}`,
   })
 }

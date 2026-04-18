@@ -8,7 +8,7 @@ import {
 } from '../../../protocols/hyperliquid'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
 import { resolvePerpQueryArgs, resolvePerpUserContext } from './shared'
-import { runListCommand } from '../query-shared'
+import { fetchListItems } from '../query-shared'
 import { parseLimitArg, parseTimeArg } from './utils'
 import { formatTimestamp } from '../../../core/time'
 import type { UserFill } from '../../../protocols/hyperliquid'
@@ -61,11 +61,8 @@ export default defineCommand({
 
     const limit = parseLimitArg(args.limit ? String(args.limit) : undefined)
 
-    await runListCommand({
+    const rows = await fetchListItems({
       out,
-      args,
-      walletName,
-      user,
       fetchItems: async () => {
         const [fills, spotMeta] = await Promise.all([
           args.since || args.until
@@ -85,6 +82,9 @@ export default defineCommand({
       filter: coin ? (fill) => fill.coin === coin : undefined,
       limit,
       toRow: mapPerpFillRow,
+    })
+
+    out.table(rows, {
       columns: ['time', 'coin', 'dir', 'side', 'size', 'price', 'fee', 'closedPnl', 'oid'],
       title: `Perp Fills | ${walletName} (${user})`,
     })
