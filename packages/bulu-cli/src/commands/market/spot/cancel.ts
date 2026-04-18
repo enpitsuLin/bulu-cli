@@ -8,7 +8,7 @@ import {
 } from '../../../protocols/hyperliquid'
 import { findOrderByIdentifier } from '../utils'
 import { loadSpotMarketStateOrExit, resolveSpotOutput, resolveSpotQueryArgs, resolveSpotUserContext } from './shared'
-import { mapSpotOpenOrders } from './utils'
+import { loadDataOrExit, renderResult } from '../command-helpers'
 import { submitExchangeAction } from '../shared'
 
 export default defineCommand({
@@ -39,16 +39,10 @@ export default defineCommand({
       process.exit(1)
     }
 
-    const spotMarket = await loadSpotMarketStateOrExit(args.testnet, out)
-
-    let orders
-    try {
-      orders = await fetchFrontendOpenOrders(user, args.testnet)
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      out.warn(`Failed to fetch open orders: ${message}`)
-      process.exit(1)
-    }
+    const [spotMarket, orders] = await Promise.all([
+      loadSpotMarketStateOrExit(args.testnet, out),
+      loadDataOrExit(out, fetchFrontendOpenOrders(user, args.testnet), 'Failed to fetch open orders'),
+    ])
 
     const { spot } = partitionEntriesBySpot(orders, spotMarket.meta)
     const candidates = pairFilter ? spot.filter((order) => order.coin === pairFilter) : spot
@@ -71,55 +65,47 @@ export default defineCommand({
       })),
     )
 
-    try {
-      const response = await submitExchangeAction({
-        action,
-        walletName,
-        testnet: args.testnet,
-      })
+    const response = await loadDataOrExit(
+      out,
+      submitExchangeAction({ action, walletName, testnet: args.testnet }),
+      'Failed to cancel order',
+    )
 
-      const rows = mapSpotOpenOrders(selected)
+    const rows = selected.map((order) => ({
+      pair: order.coin,
+      side: order.side === 'B' ? 'buy' : 'sell',
+      size: order.sz,
+      origSize: order.origSz,
+      limitPx: order.limitPx,
+      tif: order.isTrigger ? `trigger (${order.tif})` : order.tif,
+      triggerPx: order.triggerPx ?? 'N/A',
+      reduceOnly: order.reduceOnly,
+      oid: order.oid,
+      cloid: order.cloid ?? 'N/A',
+      timestamp: order.timestamp,
+    }))
 
-      if (args.json || args.format === 'json') {
-        out.data({
-          wallet: walletName,
-          user,
-          canceled: rows,
-          response,
-        })
-        return
-      }
-
-      if (args.format === 'csv') {
-        out.data('pair,side,size,origSize,limitPx,tif,triggerPx,reduceOnly,oid,cloid,timestamp')
-        for (const row of rows) {
-          out.data(
-            `${row.pair},${row.side},${row.size},${row.origSize},${row.limitPx},${row.tif},${row.triggerPx},${row.reduceOnly},${row.oid},${row.cloid},${row.timestamp}`,
-          )
-        }
-        return
-      }
-
-      out.table(rows, {
-        columns: [
-          'pair',
-          'side',
-          'size',
-          'origSize',
-          'limitPx',
-          'tif',
-          'triggerPx',
-          'reduceOnly',
-          'oid',
-          'cloid',
-          'timestamp',
-        ],
-        title: `Canceled Spot Orders | ${walletName} (${user})`,
-      })
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      out.warn(`Failed to cancel order: ${message}`)
-      process.exit(1)
-    }
+    renderResult(out, args, {
+      rows,
+      dataKey: 'canceled',
+      emptyMessage: '',
+      columns: [
+        'pair',
+        'side',
+        'size',
+        'origSize',
+        'limitPx',
+        'tif',
+        'triggerPx',
+        'reduceOnly',
+        'oid',
+        'cloid',
+        'timestamp',
+      ],
+      title: `Canceled Spot Orders | ${walletName} (${user})`,
+      jsonData: { wallet: walletName, user, canceled: rows, response },
+      walletName,
+      user,
+    })
   },
 })

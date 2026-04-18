@@ -5,11 +5,12 @@ import {
   fetchMarketAsset,
   fetchSpotMeta,
   partitionEntriesBySpot,
-  resolveOrderSide,
 } from '../../../protocols/hyperliquid'
-import type { FrontendOpenOrder, SpotMeta } from '../../../protocols/hyperliquid'
-import { resolvePerpOutput, resolvePerpQueryArgs, resolvePerpUserContext, submitExchangeAction } from './shared'
+import type { FrontendOpenOrder } from '../../../protocols/hyperliquid'
 import { findOrderByIdentifier } from './utils'
+import { resolvePerpOutput, resolvePerpQueryArgs, resolvePerpUserContext } from './shared'
+import { loadDataOrExit, renderResult } from '../command-helpers'
+import { submitExchangeAction } from './shared'
 
 export default defineCommand({
   meta: { name: 'cancel', description: 'Cancel open perp orders' },
@@ -39,18 +40,10 @@ export default defineCommand({
       process.exit(1)
     }
 
-    let orders: FrontendOpenOrder[]
-    let spotMeta: SpotMeta
-    try {
-      ;[orders, spotMeta] = await Promise.all([
-        fetchFrontendOpenOrders(user, args.testnet),
-        fetchSpotMeta(args.testnet),
-      ])
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      out.warn(`Failed to fetch open orders: ${message}`)
-      process.exit(1)
-    }
+    const [orders, spotMeta] = await Promise.all([
+      loadDataOrExit(out, fetchFrontendOpenOrders(user, args.testnet), 'Failed to fetch open orders'),
+      loadDataOrExit(out, fetchSpotMeta(args.testnet), 'Failed to fetch spot metadata'),
+    ])
 
     const { perps, spot } = partitionEntriesBySpot(orders, spotMeta)
     const candidates = coinFilter ? perps.filter((order) => order.coin === coinFilter) : perps
@@ -84,48 +77,30 @@ export default defineCommand({
       })),
     )
 
-    try {
-      const response = await submitExchangeAction({
-        action,
-        walletName,
-        testnet: args.testnet,
-      })
+    const response = await loadDataOrExit(
+      out,
+      submitExchangeAction({ action, walletName, testnet: args.testnet }),
+      'Failed to cancel order',
+    )
 
-      const rows = selected.map((order) => ({
-        coin: order.coin,
-        side: resolveOrderSide(order.side),
-        size: order.sz,
-        limitPx: order.limitPx,
-        oid: order.oid,
-        cloid: order.cloid ?? 'N/A',
-      }))
+    const rows = selected.map((order: FrontendOpenOrder) => ({
+      coin: order.coin,
+      side: order.side === 'B' ? 'long' : 'short',
+      size: order.sz,
+      limitPx: order.limitPx,
+      oid: order.oid,
+      cloid: order.cloid ?? 'N/A',
+    }))
 
-      if (args.json || args.format === 'json') {
-        out.data({
-          wallet: walletName,
-          user,
-          canceled: rows,
-          response,
-        })
-        return
-      }
-
-      if (args.format === 'csv') {
-        out.data('coin,side,size,limitPx,oid,cloid')
-        for (const row of rows) {
-          out.data(`${row.coin},${row.side},${row.size},${row.limitPx},${row.oid},${row.cloid}`)
-        }
-        return
-      }
-
-      out.table(rows, {
-        columns: ['coin', 'side', 'size', 'limitPx', 'oid', 'cloid'],
-        title: `Canceled Perp Orders | ${walletName} (${user})`,
-      })
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      out.warn(`Failed to cancel order: ${message}`)
-      process.exit(1)
-    }
+    renderResult(out, args, {
+      rows,
+      dataKey: 'canceled',
+      emptyMessage: '',
+      columns: ['coin', 'side', 'size', 'limitPx', 'oid', 'cloid'],
+      title: `Canceled Perp Orders | ${walletName} (${user})`,
+      jsonData: { wallet: walletName, user, canceled: rows, response },
+      walletName,
+      user,
+    })
   },
 })
