@@ -3,7 +3,6 @@ import { fetchSpotClearinghouseState } from '../../../protocols/hyperliquid'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
 import { resolveSpotQueryArgs, resolveSpotUserContext } from './shared'
 import { loadDataOrExit } from '../../../utils/cli'
-import { renderResult } from '../../../utils/output'
 
 export default defineCommand({
   meta: { name: 'positions', description: 'Show spot balances' },
@@ -31,14 +30,9 @@ export default defineCommand({
       entryNtl: b.entryNtl,
     }))
 
-    renderResult(out, args, {
-      rows,
-      dataKey: 'balances',
-      emptyMessage: `No spot balances for ${walletName} (${user})`,
+    out.table(rows, {
       columns: ['coin', 'total', 'hold', 'entryNtl'],
       title: `Spot Balances | ${walletName} (${user})`,
-      walletName,
-      user,
     })
   },
 })

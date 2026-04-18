@@ -11,7 +11,7 @@ import { findOrderByIdentifier } from './utils'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
 import { resolvePerpQueryArgs, resolvePerpUserContext } from './shared'
 import { loadDataOrExit } from '../../../utils/cli'
-import { renderResult } from '../../../utils/output'
+
 import { submitExchangeAction } from './shared'
 
 export default defineCommand({
@@ -79,7 +79,7 @@ export default defineCommand({
       })),
     )
 
-    const response = await loadDataOrExit(
+    await loadDataOrExit(
       out,
       submitExchangeAction({ action, walletName, testnet: args.testnet }),
       'Failed to cancel order',
@@ -94,15 +94,9 @@ export default defineCommand({
       cloid: order.cloid ?? 'N/A',
     }))
 
-    renderResult(out, args, {
-      rows,
-      dataKey: 'canceled',
-      emptyMessage: '',
+    out.table(rows, {
       columns: ['coin', 'side', 'size', 'limitPx', 'oid', 'cloid'],
       title: `Canceled Perp Orders | ${walletName} (${user})`,
-      jsonData: { wallet: walletName, user, canceled: rows, response },
-      walletName,
-      user,
     })
   },
 })

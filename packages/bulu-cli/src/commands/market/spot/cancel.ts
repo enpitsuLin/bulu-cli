@@ -10,7 +10,7 @@ import { findOrderByIdentifier } from '../utils'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
 import { loadSpotMarketStateOrExit, resolveSpotQueryArgs, resolveSpotUserContext } from './shared'
 import { loadDataOrExit } from '../../../utils/cli'
-import { renderResult } from '../../../utils/output'
+
 import { submitExchangeAction } from '../shared'
 
 export default defineCommand({
@@ -67,7 +67,7 @@ export default defineCommand({
       })),
     )
 
-    const response = await loadDataOrExit(
+    await loadDataOrExit(
       out,
       submitExchangeAction({ action, walletName, testnet: args.testnet }),
       'Failed to cancel order',
@@ -87,10 +87,7 @@ export default defineCommand({
       timestamp: order.timestamp,
     }))
 
-    renderResult(out, args, {
-      rows,
-      dataKey: 'canceled',
-      emptyMessage: '',
+    out.table(rows, {
       columns: [
         'pair',
         'side',
@@ -105,9 +102,6 @@ export default defineCommand({
         'timestamp',
       ],
       title: `Canceled Spot Orders | ${walletName} (${user})`,
-      jsonData: { wallet: walletName, user, canceled: rows, response },
-      walletName,
-      user,
     })
   },
 })

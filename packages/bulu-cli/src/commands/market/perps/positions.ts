@@ -4,7 +4,6 @@ import type { PerpPosition } from '../../../protocols/hyperliquid'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
 import { resolvePerpQueryArgs, resolvePerpUserContext } from './shared'
 import { loadDataOrExit } from '../../../utils/cli'
-import { renderResult } from '../../../utils/output'
 
 function formatLeverage(leverage: PerpPosition['leverage']): string {
   if (typeof leverage === 'object' && leverage !== null) {
@@ -33,14 +32,9 @@ export default defineCommand({
       liquidationPx: ap.position.liquidationPx ?? 'N/A',
     }))
 
-    renderResult(out, args, {
-      rows,
-      dataKey: 'positions',
-      emptyMessage: `No open perp positions for ${walletName} (${user})`,
+    out.table(rows, {
       columns: ['coin', 'size', 'entryPx', 'positionValue', 'unrealizedPnl', 'leverage', 'liquidationPx'],
       title: `Perp Positions | ${walletName} (${user})`,
-      walletName,
-      user,
     })
   },
 })

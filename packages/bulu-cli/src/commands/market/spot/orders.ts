@@ -70,8 +70,6 @@ export default defineCommand({
         'timestamp',
       ],
       title: `Open Spot Orders | ${walletName} (${user})`,
-      emptyMessage: `No open spot orders for ${walletName} (${user})`,
-      dataKey: 'orders',
     })
   },
 })

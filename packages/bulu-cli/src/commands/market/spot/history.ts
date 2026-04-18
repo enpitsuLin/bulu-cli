@@ -81,8 +81,6 @@ export default defineCommand({
         'statusTimestamp',
       ],
       title: `Spot Order History | ${walletName} (${user})`,
-      emptyMessage: `No historical spot orders for ${walletName} (${user})`,
-      dataKey: 'history',
     })
   },
 })

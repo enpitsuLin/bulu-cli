@@ -105,7 +105,7 @@ export async function runSpotOrderCommand(
 ): Promise<void> {
   const pair = normalizeSpotPair(String(args.pair))
   const out = createOutput(resolveOutputOptions(args))
-  const { walletName, user } = resolveSpotUserContext(args, out)
+  const { walletName, user: _user } = resolveSpotUserContext(args, out)
   const market = await loadSpotMarketOrExit(pair, args.testnet, out)
 
   const order: ResolvedSpotOrder = executeOrExit(
@@ -123,22 +123,12 @@ export async function runSpotOrderCommand(
 
   const ctx: OrderSubmissionContext = {
     out,
-    commandArgs: args,
     walletName,
-    user,
     testnet: args.testnet,
   }
 
   await submitOrderAndRender(ctx, order.action, {
     detail: `${pair} ${side.toUpperCase()} ${order.size} @ ${order.price}`,
     titlePrefix: 'Spot Order',
-    jsonData: {
-      wallet: walletName,
-      user,
-      pair,
-      side: order.side,
-      size: order.size,
-      price: order.price,
-    },
   })
 }

@@ -14,7 +14,7 @@ import type { FrontendOpenOrder, HyperliquidMarketAsset } from '../../../protoco
 import { createOutput, resolveOutputOptions } from '../../../core/output'
 import { resolvePerpQueryArgs, resolvePerpUserContext } from './shared'
 import { loadDataOrExit } from '../../../utils/cli'
-import { renderSingleResult } from '../../../utils/output'
+
 import { submitExchangeAction } from './shared'
 import { findOrderByIdentifier } from './utils'
 
@@ -110,7 +110,7 @@ export default defineCommand({
       cloid: currentOrder.cloid ?? undefined,
     })
 
-    const response = await loadDataOrExit(
+    await loadDataOrExit(
       out,
       submitExchangeAction({
         action: buildModifyAction({
@@ -134,11 +134,9 @@ export default defineCommand({
       cloid: currentOrder.cloid ?? 'N/A',
     }
 
-    renderSingleResult(out, args, {
-      row,
+    out.table([row], {
       columns: ['coin', 'side', 'size', 'limitPx', 'triggerPx', 'reduceOnly', 'oid', 'cloid'],
       title: `Modified Perp Order | ${walletName} (${user})`,
-      jsonData: { wallet: walletName, user, modified: row, response },
     })
   },
 })

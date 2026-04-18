@@ -63,27 +63,13 @@ async function runTpslCommand(args: Record<string, unknown>, tpsl: 'sl' | 'tp', 
   await submitOrderAndRender(
     {
       out,
-      commandArgs: args as { json?: boolean; format?: string },
       walletName,
-      user,
       testnet: args.testnet as boolean | undefined,
     },
     order.action,
     {
       detail,
       titlePrefix,
-      jsonData: {
-        wallet: walletName,
-        user,
-        coin,
-        side: order.side,
-        size: order.size,
-        price: order.price,
-        triggerPx: order.triggerPx,
-        triggerKind: order.triggerKind,
-        reduceOnly: order.reduceOnly,
-        grouping: order.grouping,
-      },
     },
   )
 }

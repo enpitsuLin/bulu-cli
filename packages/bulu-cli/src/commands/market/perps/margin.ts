@@ -9,7 +9,6 @@ import {
   submitExchangeAction,
 } from './shared'
 import { executeOrExit } from '../../../utils/cli'
-import { renderSingleResult } from '../../../utils/output'
 
 function parseScaledUsdDelta(value: string): number {
   const trimmed = value.trim()
@@ -52,7 +51,7 @@ export default defineCommand({
 
     const ntli = executeOrExit(out, () => parseScaledUsdDelta(String(args.delta)), 'Invalid margin delta')
 
-    const response = await submitExchangeAction({
+    const _response = await submitExchangeAction({
       action: buildUpdateIsolatedMarginAction({
         asset: market.assetIndex,
         ntli,
@@ -70,11 +69,6 @@ export default defineCommand({
       ntli,
     }
 
-    renderSingleResult(out, args, {
-      row,
-      columns: ['coin', 'delta', 'ntli'],
-      title: `Updated Isolated Margin | ${walletName} (${user})`,
-      jsonData: { wallet: walletName, user, update: row, response },
-    })
+    out.table([row], { columns: ['coin', 'delta', 'ntli'], title: `Updated Isolated Margin | ${walletName} (${user})` })
   },
 })

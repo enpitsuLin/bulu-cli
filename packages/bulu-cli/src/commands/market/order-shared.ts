@@ -2,20 +2,16 @@ import type { Output } from '../../core/output'
 import type { ExchangeAction, OrderResponse } from '../../protocols/hyperliquid'
 import { formatOrderStatus } from '../../protocols/hyperliquid'
 import { submitExchangeAction } from './shared'
-import type { CommandArgs } from '../../utils/output'
 
 export interface OrderSubmissionContext {
   out: Output
-  commandArgs: CommandArgs
   walletName: string
-  user: string
   testnet?: boolean
 }
 
 export interface OrderRenderInput {
   detail: string
   titlePrefix: string
-  jsonData: Record<string, unknown>
 }
 
 /**
@@ -27,7 +23,7 @@ export async function submitOrderAndRender(
   action: ExchangeAction,
   render: OrderRenderInput,
 ): Promise<void> {
-  const { out, commandArgs, walletName, testnet } = ctx
+  const { out, walletName, testnet } = ctx
 
   const response = await submitExchangeAction<OrderResponse>({
     action,
@@ -39,22 +35,6 @@ export async function submitOrderAndRender(
     orderIndex: idx + 1,
     result: formatOrderStatus(status),
   }))
-
-  const isJson = commandArgs.json || commandArgs.format === 'json'
-  const isCsv = commandArgs.format === 'csv'
-
-  if (isJson) {
-    out.data({ ...render.jsonData, statuses })
-    return
-  }
-
-  if (isCsv) {
-    out.data('orderIndex,result')
-    for (const row of statuses) {
-      out.data(`${row.orderIndex},${row.result}`)
-    }
-    return
-  }
 
   out.table(statuses, {
     columns: ['orderIndex', 'result'],

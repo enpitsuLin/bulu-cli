@@ -87,8 +87,6 @@ export default defineCommand({
       toRow: mapPerpFillRow,
       columns: ['time', 'coin', 'dir', 'side', 'size', 'price', 'fee', 'closedPnl', 'oid'],
       title: `Perp Fills | ${walletName} (${user})`,
-      emptyMessage: `No perp fills found for ${walletName} (${user})`,
-      dataKey: 'fills',
     })
   },
 })

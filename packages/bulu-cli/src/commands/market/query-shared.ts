@@ -1,7 +1,6 @@
 import type { SpotMeta, FrontendOpenOrder } from '../../protocols/hyperliquid'
 import { partitionEntriesBySpot } from '../../protocols/hyperliquid'
 import { loadDataOrExit } from '../../utils/cli'
-import { renderResult, type CommandArgs } from '../../utils/output'
 import type { Output } from '../../core/output'
 import { findOrderByIdentifier } from './utils'
 
@@ -29,7 +28,7 @@ export interface ListCommandConfig<
   TDisplayRow extends Record<string, unknown> = TRow,
 > {
   out: Output
-  args: CommandArgs & { testnet?: boolean }
+  args: { json?: boolean; format?: string; testnet?: boolean }
   walletName: string
   user: string
   /** Fetch and partition items */
@@ -45,8 +44,6 @@ export interface ListCommandConfig<
   /** Output configuration */
   columns: string[]
   title: string
-  emptyMessage: string
-  dataKey: string
 }
 
 /**
@@ -58,46 +55,25 @@ export async function runListCommand<
   TRow extends Record<string, unknown>,
   TDisplayRow extends Record<string, unknown> = TRow,
 >(config: ListCommandConfig<TItem, TRow, TDisplayRow>): Promise<void> {
-  const {
-    out,
-    args,
-    walletName,
-    user,
-    fetchItems,
-    filter,
-    limit,
-    toRow,
-    toDisplayRow,
-    columns,
-    title,
-    emptyMessage,
-    dataKey,
-  } = config
+  const { out, args, fetchItems, filter, limit, toRow, toDisplayRow, columns, title } = config
 
-  const items = await loadDataOrExit(out, fetchItems(), `Failed to fetch ${dataKey}`)
+  const items = await loadDataOrExit(out, fetchItems(), 'Failed to fetch data')
   const filtered = filter ? items.filter(filter) : items
   const limited = limit !== undefined ? filtered.slice(0, limit) : filtered
   const rawRows = limited.map(toRow)
   const displayRows = toDisplayRow ? limited.map(toDisplayRow) : (rawRows as unknown as TDisplayRow[])
 
   const isJson = args.json || args.format === 'json'
+  const rows = isJson
+    ? (rawRows as unknown as Record<string, unknown>[])
+    : (displayRows as unknown as Record<string, unknown>[])
 
-  renderResult(out, args, {
-    rows: isJson
-      ? (rawRows as unknown as Record<string, unknown>[])
-      : (displayRows as unknown as Record<string, unknown>[]),
-    dataKey,
-    emptyMessage,
-    columns,
-    title,
-    walletName,
-    user,
-  })
+  out.table(rows, { columns, title })
 }
 
 export interface CancelCommandConfig<TItem extends { coin: string; oid: number; cloid?: string | null }> {
   out: Output
-  args: CommandArgs & { testnet?: boolean; all?: boolean; id?: string }
+  args: { testnet?: boolean; all?: boolean; id?: string }
   walletName: string
   user: string
   /** Fetch and partition candidates */
@@ -111,8 +87,6 @@ export interface CancelCommandConfig<TItem extends { coin: string; oid: number; 
   /** Output configuration */
   columns: string[]
   title: string
-  emptyMessage: string
-  dataKey: string
   /** Error message when no matching item found */
   notFoundMessage: string
   /** Optional: warn and exit if a spot order with the same id exists (perp mode) */
@@ -129,15 +103,12 @@ export async function runCancelCommand<TItem extends { coin: string; oid: number
     out,
     args,
     walletName,
-    user,
     fetchItems,
     symbolFilter,
     buildCancelAction,
     toRow,
     columns,
     title,
-    emptyMessage,
-    dataKey,
     notFoundMessage,
     spotFallbackCheck,
   } = config
@@ -168,29 +139,19 @@ export async function runCancelCommand<TItem extends { coin: string; oid: number
         process.exit(1)
       }
     }
-    out.warn(args.all ? emptyMessage : notFoundMessage)
+    out.warn(notFoundMessage)
     process.exit(1)
   }
 
   const action = buildCancelAction(selected)
 
   const { submitExchangeAction } = require('./shared')
-  const response = await loadDataOrExit(
+  await loadDataOrExit(
     out,
     submitExchangeAction({ action, walletName, testnet: args.testnet }),
     'Failed to cancel order',
   )
 
   const rows = selected.map(toRow)
-
-  renderResult(out, args, {
-    rows: rows as Record<string, unknown>[],
-    dataKey,
-    emptyMessage,
-    columns,
-    title,
-    jsonData: { wallet: walletName, user, canceled: rows, response },
-    walletName,
-    user,
-  })
+  out.table(rows as Record<string, unknown>[], { columns, title })
 }

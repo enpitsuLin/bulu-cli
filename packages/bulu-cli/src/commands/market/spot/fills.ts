@@ -85,8 +85,6 @@ export default defineCommand({
       toRow: mapSpotFillRow,
       columns: ['time', 'pair', 'dir', 'side', 'size', 'price', 'fee', 'closedPnl', 'oid'],
       title: `Spot Fills | ${walletName} (${user})`,
-      emptyMessage: `No spot fills found for ${walletName} (${user})`,
-      dataKey: 'fills',
     })
   },
 })

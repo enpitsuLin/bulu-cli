@@ -74,8 +74,6 @@ export default defineCommand({
         'timestamp',
       ],
       title: `Open Perp Orders | ${walletName} (${user})`,
-      emptyMessage: `No open perp orders for ${walletName} (${user})`,
-      dataKey: 'orders',
     })
   },
 })

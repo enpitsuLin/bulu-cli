@@ -9,7 +9,6 @@ import {
   submitExchangeAction,
 } from './shared'
 import { executeOrExit } from '../../../utils/cli'
-import { renderSingleResult } from '../../../utils/output'
 
 function parseLeverage(value: string): number {
   const parsed = Number(value)
@@ -46,7 +45,7 @@ export default defineCommand({
 
     const leverage = executeOrExit(out, () => parseLeverage(String(args.value)), 'Invalid leverage')
 
-    const response = await submitExchangeAction({
+    const _response = await submitExchangeAction({
       action: buildUpdateLeverageAction({
         asset: market.assetIndex,
         leverage,
@@ -65,11 +64,9 @@ export default defineCommand({
       mode: args.isolated ? 'isolated' : 'cross',
     }
 
-    renderSingleResult(out, args, {
-      row,
+    out.table([row], {
       columns: ['coin', 'leverage', 'mode'],
       title: `Updated Perp Leverage | ${walletName} (${user})`,
-      jsonData: { wallet: walletName, user, update: row, response },
     })
   },
 })

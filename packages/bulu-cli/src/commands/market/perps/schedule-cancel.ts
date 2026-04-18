@@ -3,7 +3,7 @@ import { buildScheduleCancelAction } from '../../../protocols/hyperliquid'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
 import { handleCommandError, resolvePerpQueryArgs, resolvePerpUserContext, submitExchangeAction } from './shared'
 import { executeOrExit } from '../../../utils/cli'
-import { renderSingleResult } from '../../../utils/output'
+
 import { parseTimeArg } from './utils'
 
 export default defineCommand({
@@ -35,7 +35,7 @@ export default defineCommand({
       ? executeOrExit(out, () => parseTimeArg(String(args.at), 'schedule time'), 'Invalid time')
       : undefined
 
-    const response = await submitExchangeAction({
+    const _response = await submitExchangeAction({
       action: buildScheduleCancelAction(args.clear ? undefined : scheduledTime),
       walletName,
       testnet: args.testnet,
@@ -49,11 +49,6 @@ export default defineCommand({
       time: scheduledTime ?? 'N/A',
     }
 
-    renderSingleResult(out, args, {
-      row,
-      columns: ['mode', 'time'],
-      title: `Scheduled Cancel | ${walletName} (${user})`,
-      jsonData: { wallet: walletName, user, scheduleCancel: row, response },
-    })
+    out.table([row], { columns: ['mode', 'time'], title: `Scheduled Cancel | ${walletName} (${user})` })
   },
 })

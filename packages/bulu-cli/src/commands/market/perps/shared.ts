@@ -115,26 +115,12 @@ export async function runPerpOrderCommand(
 
   const ctx: OrderSubmissionContext = {
     out,
-    commandArgs: args,
     walletName,
-    user,
     testnet: args.testnet,
   }
 
   await submitOrderAndRender(ctx, order.action, {
     detail,
     titlePrefix: 'Perp Order',
-    jsonData: {
-      wallet: walletName,
-      user,
-      coin,
-      side: order.side,
-      size: order.size,
-      price: order.price,
-      triggerPx: order.triggerPx,
-      triggerKind: order.triggerKind,
-      reduceOnly: order.reduceOnly,
-      grouping: order.grouping,
-    },
   })
 }

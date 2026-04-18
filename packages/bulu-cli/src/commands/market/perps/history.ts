@@ -83,8 +83,6 @@ export default defineCommand({
         'statusTimestamp',
       ],
       title: `Perp Order History | ${walletName} (${user})`,
-      emptyMessage: `No historical perp orders for ${walletName} (${user})`,
-      dataKey: 'history',
     })
   },
 })

@@ -10,7 +10,6 @@ import { formatTimestamp } from '../../../core/time'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
 import { resolvePerpQueryArgs, resolvePerpUserContext } from './shared'
 import { loadDataOrExit } from '../../../utils/cli'
-import { renderSingleResult } from '../../../utils/output'
 
 export default defineCommand({
   meta: { name: 'status', description: 'Query perp order status by oid or cloid' },
@@ -59,8 +58,7 @@ export default defineCommand({
         statusTimestamp: 'statusTimestamp' in response ? formatTimestamp(Number(response.statusTimestamp)) : 'N/A',
       }
 
-      renderSingleResult(out, args, {
-        row,
+      out.table([row], {
         columns: [
           'coin',
           'status',
@@ -74,7 +72,6 @@ export default defineCommand({
           'statusTimestamp',
         ],
         title: `Perp Order Status | ${walletName} (${user})`,
-        jsonData: { wallet: walletName, user, query: String(args.id), status: response },
       })
       return
     }
