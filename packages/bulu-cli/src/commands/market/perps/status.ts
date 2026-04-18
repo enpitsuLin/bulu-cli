@@ -7,8 +7,8 @@ import {
   resolveOrderSide,
 } from '../../../protocols/hyperliquid'
 import { formatTimestamp } from '../../../core/time'
-import type { OrderStatusInfo, SpotMeta } from '../../../protocols/hyperliquid'
 import { resolvePerpOutput, resolvePerpQueryArgs, resolvePerpUserContext } from './shared'
+import { loadDataOrExit, renderSingleResult } from '../command-helpers'
 
 export default defineCommand({
   meta: { name: 'status', description: 'Query perp order status by oid or cloid' },
@@ -23,39 +23,24 @@ export default defineCommand({
     const out = resolvePerpOutput(args)
     const { walletName, user } = resolvePerpUserContext(args, out)
 
-    let response: OrderStatusInfo
-    let spotMeta: SpotMeta
-    try {
-      ;[response, spotMeta] = await Promise.all([
+    const [response, spotMeta] = await loadDataOrExit(
+      out,
+      Promise.all([
         fetchOrderStatus({
           user,
           oid: parseOrderIdentifier(String(args.id)),
           isTestnet: args.testnet,
         }),
         fetchSpotMeta(args.testnet),
-      ])
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      out.warn(`Failed to fetch order status: ${message}`)
-      process.exit(1)
-    }
+      ]),
+      'Failed to fetch order status',
+    )
 
     if (response && typeof response === 'object' && 'order' in response && response.order) {
       if (isSpotPairName(response.order.coin, spotMeta)) {
         out.warn(`Order ${args.id} belongs to spot; use \`bulu market spot orders\` or \`bulu market spot history\``)
         process.exit(1)
       }
-    }
-
-    const isJson = args.json || args.format === 'json'
-    if (isJson) {
-      out.data({
-        wallet: walletName,
-        user,
-        query: String(args.id),
-        status: response,
-      })
-      return
     }
 
     if (response && typeof response === 'object' && 'order' in response && response.order && 'status' in response) {
@@ -72,15 +57,8 @@ export default defineCommand({
         statusTimestamp: 'statusTimestamp' in response ? formatTimestamp(Number(response.statusTimestamp)) : 'N/A',
       }
 
-      if (args.format === 'csv') {
-        out.data('coin,status,side,size,limitPx,isTrigger,reduceOnly,oid,cloid,statusTimestamp')
-        out.data(
-          `${row.coin},${row.status},${row.side},${row.size},${row.limitPx},${row.isTrigger},${row.reduceOnly},${row.oid},${row.cloid},${row.statusTimestamp}`,
-        )
-        return
-      }
-
-      out.table([row], {
+      renderSingleResult(out, args, {
+        row,
         columns: [
           'coin',
           'status',
@@ -94,6 +72,7 @@ export default defineCommand({
           'statusTimestamp',
         ],
         title: `Perp Order Status | ${walletName} (${user})`,
+        jsonData: { wallet: walletName, user, query: String(args.id), status: response },
       })
       return
     }

@@ -1,5 +1,6 @@
 import { defineCommand } from 'citty'
 import { resolveSpotOutput, resolveSpotQueryArgs, loadSpotMarketStateOrExit } from './shared'
+import { renderResult } from '../command-helpers'
 
 export default defineCommand({
   meta: { name: 'pairs', description: 'List tradable spot pairs' },
@@ -22,27 +23,10 @@ export default defineCommand({
       }
     })
 
-    if (args.json || args.format === 'json') {
-      out.data({ pairs: rows })
-      return
-    }
-
-    if (rows.length === 0) {
-      out.success('No spot pairs available')
-      return
-    }
-
-    if (args.format === 'csv') {
-      out.data('pair,base,quote,assetId,markPx,midPx,dayNtlVlm,canonical')
-      for (const row of rows) {
-        out.data(
-          `${row.pair},${row.base},${row.quote},${row.assetId},${row.markPx},${row.midPx},${row.dayNtlVlm},${row.canonical}`,
-        )
-      }
-      return
-    }
-
-    out.table(rows, {
+    renderResult(out, args, {
+      rows,
+      dataKey: 'pairs',
+      emptyMessage: 'No spot pairs available',
       columns: ['pair', 'base', 'quote', 'assetId', 'markPx', 'midPx', 'dayNtlVlm', 'canonical'],
       title: 'Hyperliquid Spot Pairs',
     })

@@ -7,6 +7,7 @@ import {
   resolvePerpUserContext,
   submitExchangeAction,
 } from './shared'
+import { executeOrExit, renderSingleResult } from '../command-helpers'
 import { parseTimeArg } from './utils'
 
 export default defineCommand({
@@ -34,45 +35,29 @@ export default defineCommand({
       process.exit(1)
     }
 
-    let scheduledTime: number | undefined
-    if (args.at) {
-      try {
-        scheduledTime = parseTimeArg(String(args.at), 'schedule time')
-      } catch (error) {
-        handleCommandError(out, error instanceof Error ? error.message : String(error))
-      }
-    }
+    const scheduledTime = args.at
+      ? executeOrExit(out, () => parseTimeArg(String(args.at), 'schedule time'), 'Invalid time')
+      : undefined
 
-    try {
-      const response = await submitExchangeAction({
-        action: buildScheduleCancelAction(args.clear ? undefined : scheduledTime),
-        walletName,
-        testnet: args.testnet,
-      })
-
-      const row = {
-        mode: args.clear ? 'cleared' : 'scheduled',
-        time: scheduledTime ?? 'N/A',
-      }
-
-      if (args.json || args.format === 'json') {
-        out.data({ wallet: walletName, user, scheduleCancel: row, response })
-        return
-      }
-
-      if (args.format === 'csv') {
-        out.data('mode,time')
-        out.data(`${row.mode},${row.time}`)
-        return
-      }
-
-      out.table([row], {
-        columns: ['mode', 'time'],
-        title: `Scheduled Cancel | ${walletName} (${user})`,
-      })
-    } catch (error) {
+    const response = await submitExchangeAction({
+      action: buildScheduleCancelAction(args.clear ? undefined : scheduledTime),
+      walletName,
+      testnet: args.testnet,
+    }).catch((error) => {
       const message = error instanceof Error ? error.message : String(error)
       handleCommandError(out, `Failed to update scheduled cancel: ${message}`)
+    })
+
+    const row = {
+      mode: args.clear ? 'cleared' : 'scheduled',
+      time: scheduledTime ?? 'N/A',
     }
+
+    renderSingleResult(out, args, {
+      row,
+      columns: ['mode', 'time'],
+      title: `Scheduled Cancel | ${walletName} (${user})`,
+      jsonData: { wallet: walletName, user, scheduleCancel: row, response },
+    })
   },
 })

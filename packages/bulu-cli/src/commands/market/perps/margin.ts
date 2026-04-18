@@ -8,6 +8,7 @@ import {
   resolvePerpUserContext,
   submitExchangeAction,
 } from './shared'
+import { executeOrExit, renderSingleResult } from '../command-helpers'
 
 function parseScaledUsdDelta(value: string): number {
   const trimmed = value.trim()
@@ -48,48 +49,31 @@ export default defineCommand({
     const coin = String(args.coin).toUpperCase()
     const market = await loadPerpMarketOrExit(coin, args.testnet, out)
 
-    const ntli = (() => {
-      try {
-        return parseScaledUsdDelta(String(args.delta))
-      } catch (error) {
-        return handleCommandError(out, error instanceof Error ? error.message : String(error))
-      }
-    })()
+    const ntli = executeOrExit(out, () => parseScaledUsdDelta(String(args.delta)), 'Invalid margin delta')
 
-    try {
-      const response = await submitExchangeAction({
-        action: buildUpdateIsolatedMarginAction({
-          asset: market.assetIndex,
-          ntli,
-        }),
-        walletName,
-        testnet: args.testnet,
-      })
-
-      const row = {
-        coin,
-        delta: String(args.delta),
+    const response = await submitExchangeAction({
+      action: buildUpdateIsolatedMarginAction({
+        asset: market.assetIndex,
         ntli,
-      }
-
-      if (args.json || args.format === 'json') {
-        out.data({ wallet: walletName, user, update: row, response })
-        return
-      }
-
-      if (args.format === 'csv') {
-        out.data('coin,delta,ntli')
-        out.data(`${row.coin},${row.delta},${row.ntli}`)
-        return
-      }
-
-      out.table([row], {
-        columns: ['coin', 'delta', 'ntli'],
-        title: `Updated Isolated Margin | ${walletName} (${user})`,
-      })
-    } catch (error) {
+      }),
+      walletName,
+      testnet: args.testnet,
+    }).catch((error) => {
       const message = error instanceof Error ? error.message : String(error)
       handleCommandError(out, `Failed to update isolated margin: ${message}`)
+    })
+
+    const row = {
+      coin,
+      delta: String(args.delta),
+      ntli,
     }
+
+    renderSingleResult(out, args, {
+      row,
+      columns: ['coin', 'delta', 'ntli'],
+      title: `Updated Isolated Margin | ${walletName} (${user})`,
+      jsonData: { wallet: walletName, user, update: row, response },
+    })
   },
 })

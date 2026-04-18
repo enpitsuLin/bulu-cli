@@ -8,6 +8,7 @@ import {
   resolvePerpUserContext,
   submitExchangeAction,
 } from './shared'
+import { executeOrExit, renderSingleResult } from '../command-helpers'
 
 function parseLeverage(value: string): number {
   const parsed = Number(value)
@@ -42,49 +43,32 @@ export default defineCommand({
     const coin = String(args.coin).toUpperCase()
     const market = await loadPerpMarketOrExit(coin, args.testnet, out)
 
-    const leverage = (() => {
-      try {
-        return parseLeverage(String(args.value))
-      } catch (error) {
-        return handleCommandError(out, error instanceof Error ? error.message : String(error))
-      }
-    })()
+    const leverage = executeOrExit(out, () => parseLeverage(String(args.value)), 'Invalid leverage')
 
-    try {
-      const response = await submitExchangeAction({
-        action: buildUpdateLeverageAction({
-          asset: market.assetIndex,
-          leverage,
-          isCross: !args.isolated,
-        }),
-        walletName,
-        testnet: args.testnet,
-      })
-
-      const row = {
-        coin,
+    const response = await submitExchangeAction({
+      action: buildUpdateLeverageAction({
+        asset: market.assetIndex,
         leverage,
-        mode: args.isolated ? 'isolated' : 'cross',
-      }
-
-      if (args.json || args.format === 'json') {
-        out.data({ wallet: walletName, user, update: row, response })
-        return
-      }
-
-      if (args.format === 'csv') {
-        out.data('coin,leverage,mode')
-        out.data(`${row.coin},${row.leverage},${row.mode}`)
-        return
-      }
-
-      out.table([row], {
-        columns: ['coin', 'leverage', 'mode'],
-        title: `Updated Perp Leverage | ${walletName} (${user})`,
-      })
-    } catch (error) {
+        isCross: !args.isolated,
+      }),
+      walletName,
+      testnet: args.testnet,
+    }).catch((error) => {
       const message = error instanceof Error ? error.message : String(error)
       handleCommandError(out, `Failed to update leverage: ${message}`)
+    })
+
+    const row = {
+      coin,
+      leverage,
+      mode: args.isolated ? 'isolated' : 'cross',
     }
+
+    renderSingleResult(out, args, {
+      row,
+      columns: ['coin', 'leverage', 'mode'],
+      title: `Updated Perp Leverage | ${walletName} (${user})`,
+      jsonData: { wallet: walletName, user, update: row, response },
+    })
   },
 })

@@ -11,13 +11,9 @@ import {
   resolveTriggerKindFromOrder,
 } from '../../../protocols/hyperliquid'
 import type { FrontendOpenOrder, HyperliquidMarketAsset } from '../../../protocols/hyperliquid'
-import {
-  handleCommandError,
-  resolvePerpOutput,
-  resolvePerpQueryArgs,
-  resolvePerpUserContext,
-  submitExchangeAction,
-} from './shared'
+import { resolvePerpOutput, resolvePerpQueryArgs, resolvePerpUserContext } from './shared'
+import { loadDataOrExit, renderSingleResult } from '../command-helpers'
+import { submitExchangeAction } from './shared'
 import { findOrderByIdentifier } from './utils'
 
 function isMarketTrigger(order: FrontendOpenOrder): boolean {
@@ -63,14 +59,11 @@ export default defineCommand({
       process.exit(1)
     }
 
-    const [orders, spotMeta] = await (async () => {
-      try {
-        return await Promise.all([fetchFrontendOpenOrders(user, args.testnet), fetchSpotMeta(args.testnet)])
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error)
-        return handleCommandError(out, `Failed to fetch open orders: ${message}`)
-      }
-    })()
+    const [orders, spotMeta] = await loadDataOrExit(
+      out,
+      Promise.all([fetchFrontendOpenOrders(user, args.testnet), fetchSpotMeta(args.testnet)]),
+      'Failed to fetch open orders',
+    )
 
     const { perps, spot } = partitionEntriesBySpot(orders, spotMeta)
     const currentOrder = findOrderByIdentifier(perps, String(args.id))
@@ -84,14 +77,11 @@ export default defineCommand({
       process.exit(1)
     }
 
-    const market: HyperliquidMarketAsset = await (async () => {
-      try {
-        return await fetchMarketAsset(currentOrder.coin, args.testnet)
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error)
-        return handleCommandError(out, message)
-      }
-    })()
+    const market: HyperliquidMarketAsset = await loadDataOrExit(
+      out,
+      fetchMarketAsset(currentOrder.coin, args.testnet),
+      'Failed to load market',
+    )
 
     const triggerKind = currentOrder.isTrigger
       ? resolveTriggerKindFromOrder(currentOrder, args.tp ? 'tp' : args.sl ? 'sl' : undefined)
@@ -118,52 +108,35 @@ export default defineCommand({
       cloid: currentOrder.cloid ?? undefined,
     })
 
-    try {
-      const response = await submitExchangeAction({
+    const response = await loadDataOrExit(
+      out,
+      submitExchangeAction({
         action: buildModifyAction({
           oid: currentOrder.cloid ?? currentOrder.oid,
           order: wire,
         }),
         walletName,
         testnet: args.testnet,
-      })
+      }),
+      'Failed to modify order',
+    )
 
-      const row = {
-        coin: currentOrder.coin,
-        side: resolveOrderSide(currentOrder.side),
-        size: wire.s,
-        limitPx: wire.p,
-        triggerPx: 'trigger' in wire.t ? wire.t.trigger.triggerPx : 'N/A',
-        reduceOnly: wire.r,
-        oid: currentOrder.oid,
-        cloid: currentOrder.cloid ?? 'N/A',
-      }
-
-      if (args.json || args.format === 'json') {
-        out.data({
-          wallet: walletName,
-          user,
-          modified: row,
-          response,
-        })
-        return
-      }
-
-      if (args.format === 'csv') {
-        out.data('coin,side,size,limitPx,triggerPx,reduceOnly,oid,cloid')
-        out.data(
-          `${row.coin},${row.side},${row.size},${row.limitPx},${row.triggerPx},${row.reduceOnly},${row.oid},${row.cloid}`,
-        )
-        return
-      }
-
-      out.table([row], {
-        columns: ['coin', 'side', 'size', 'limitPx', 'triggerPx', 'reduceOnly', 'oid', 'cloid'],
-        title: `Modified Perp Order | ${walletName} (${user})`,
-      })
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      handleCommandError(out, `Failed to modify order: ${message}`)
+    const row = {
+      coin: currentOrder.coin,
+      side: resolveOrderSide(currentOrder.side),
+      size: wire.s,
+      limitPx: wire.p,
+      triggerPx: 'trigger' in wire.t ? wire.t.trigger.triggerPx : 'N/A',
+      reduceOnly: wire.r,
+      oid: currentOrder.oid,
+      cloid: currentOrder.cloid ?? 'N/A',
     }
+
+    renderSingleResult(out, args, {
+      row,
+      columns: ['coin', 'side', 'size', 'limitPx', 'triggerPx', 'reduceOnly', 'oid', 'cloid'],
+      title: `Modified Perp Order | ${walletName} (${user})`,
+      jsonData: { wallet: walletName, user, modified: row, response },
+    })
   },
 })
