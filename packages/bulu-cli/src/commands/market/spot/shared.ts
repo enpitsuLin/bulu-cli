@@ -21,7 +21,6 @@ import { buildOrderPositionalArgs, submitOrder } from '../order-shared'
 
 export interface SpotCommandArgs {
   wallet?: string
-  legacyWallet?: string
   testnet?: boolean
   json?: boolean
   format?: string
@@ -66,10 +65,10 @@ export function resolveSpotOrderArgs() {
 }
 
 export function resolveSpotUserContext(
-  args: Pick<SpotCommandArgs, 'wallet' | 'legacyWallet'>,
+  args: Pick<SpotCommandArgs, 'wallet'>,
   out: ReturnType<typeof createOutput>,
 ): SpotUserContext {
-  return resolveMarketUserContext({ wallet: args.wallet ?? args.legacyWallet }, out)
+  return resolveMarketUserContext({ wallet: args.wallet }, out)
 }
 
 export async function loadSpotMarketStateOrExit(

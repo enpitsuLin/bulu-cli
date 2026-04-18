@@ -6,13 +6,7 @@ import { loadDataOrExit } from '../../../utils/cli'
 
 export default defineCommand({
   meta: { name: 'positions', description: 'Show spot balances' },
-  args: resolveSpotQueryArgs({
-    legacyWallet: {
-      type: 'positional',
-      description: 'Deprecated positional wallet name or id',
-      required: false,
-    },
-  }),
+  args: resolveSpotQueryArgs(),
   async run({ args }) {
     const out = createOutput(resolveOutputOptions(args))
     const { walletName, user } = resolveSpotUserContext(args, out)
