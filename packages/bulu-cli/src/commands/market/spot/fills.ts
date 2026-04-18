@@ -5,9 +5,25 @@ import {
   normalizeSpotPair,
   partitionEntriesBySpot,
 } from '../../../protocols/hyperliquid'
-import { parseLimitArg, parseTimeArg } from '../utils'
 import { loadSpotPairNameSetOrExit, resolveSpotOutput, resolveSpotQueryArgs, resolveSpotUserContext } from './shared'
-import { formatSpotFillRows } from './utils'
+import { runListCommand } from '../query-shared'
+import { parseLimitArg, parseTimeArg } from '../utils'
+import { formatTimestamp } from '../../../core/time'
+import type { UserFill } from '../../../protocols/hyperliquid'
+
+function mapSpotFillRow(fill: UserFill) {
+  return {
+    time: formatTimestamp(fill.time),
+    pair: fill.coin,
+    dir: fill.dir ?? 'N/A',
+    side: fill.side === 'B' ? 'buy' : 'sell',
+    size: fill.sz,
+    price: fill.px,
+    fee: fill.fee ?? 'N/A',
+    closedPnl: fill.closedPnl ?? 'N/A',
+    oid: fill.oid,
+  }
+}
 
 export default defineCommand({
   meta: { name: 'fills', description: 'Show recent spot fills' },
@@ -42,57 +58,34 @@ export default defineCommand({
     const pairFilter = args.pair ? normalizeSpotPair(String(args.pair)) : undefined
     const aggregateByTime = args.aggregateByTime === true
 
-    let limit: number
-    try {
-      limit = parseLimitArg(args.limit ? String(args.limit) : undefined)
-    } catch (error) {
-      out.warn(error instanceof Error ? error.message : String(error))
-      process.exit(1)
-    }
+    const limit = parseLimitArg(args.limit ? String(args.limit) : undefined)
 
-    try {
-      const fills =
-        args.since || args.until
-          ? await fetchUserFillsByTime({
-              user,
-              startTime: parseTimeArg(String(args.since ?? '0'), 'since'),
-              endTime: args.until ? parseTimeArg(String(args.until), 'until') : undefined,
-              aggregateByTime,
-              isTestnet: args.testnet,
-            })
-          : await fetchUserFills(user, aggregateByTime, args.testnet)
-
-      const { spot } = partitionEntriesBySpot(fills, spotPairs)
-      const rows = formatSpotFillRows(spot.filter((fill) => !pairFilter || fill.coin === pairFilter).slice(0, limit))
-
-      if (args.json || args.format === 'json') {
-        out.data({ wallet: walletName, user, fills: rows })
-        return
-      }
-
-      if (rows.length === 0) {
-        out.success(`No spot fills found for ${walletName} (${user})`)
-        return
-      }
-
-      if (args.format === 'csv') {
-        out.data('time,pair,dir,side,size,price,fee,closedPnl,oid')
-        for (const row of rows) {
-          out.data(
-            `${row.time},${row.pair},${row.dir},${row.side},${row.size},${row.price},${row.fee},${row.closedPnl},${row.oid}`,
-          )
-        }
-        return
-      }
-
-      out.table(rows, {
-        columns: ['time', 'pair', 'dir', 'side', 'size', 'price', 'fee', 'closedPnl', 'oid'],
-        title: `Spot Fills | ${walletName} (${user})`,
-      })
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      out.warn(`Failed to fetch fills: ${message}`)
-      process.exit(1)
-    }
+    await runListCommand({
+      out,
+      args,
+      walletName,
+      user,
+      fetchItems: async () => {
+        const fills =
+          args.since || args.until
+            ? await fetchUserFillsByTime({
+                user,
+                startTime: parseTimeArg(String(args.since ?? '0'), 'since'),
+                endTime: args.until ? parseTimeArg(String(args.until), 'until') : undefined,
+                aggregateByTime,
+                isTestnet: args.testnet,
+              })
+            : await fetchUserFills(user, aggregateByTime, args.testnet)
+        const { spot } = partitionEntriesBySpot(fills, spotPairs)
+        return spot
+      },
+      filter: pairFilter ? (fill) => fill.coin === pairFilter : undefined,
+      limit,
+      toRow: mapSpotFillRow,
+      columns: ['time', 'pair', 'dir', 'side', 'size', 'price', 'fee', 'closedPnl', 'oid'],
+      title: `Spot Fills | ${walletName} (${user})`,
+      emptyMessage: `No spot fills found for ${walletName} (${user})`,
+      dataKey: 'fills',
+    })
   },
 })

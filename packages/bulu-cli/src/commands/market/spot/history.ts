@@ -1,8 +1,26 @@
 import { defineCommand } from 'citty'
 import { fetchHistoricalOrders, normalizeSpotPair, partitionEntriesBySpot } from '../../../protocols/hyperliquid'
-import { parseLimitArg } from '../utils'
+import type { HistoricalOrder } from '../../../protocols/hyperliquid'
 import { loadSpotPairNameSetOrExit, resolveSpotOutput, resolveSpotQueryArgs, resolveSpotUserContext } from './shared'
-import { formatSpotHistoryOrderRows } from './utils'
+import { runListCommand } from '../query-shared'
+import { parseLimitArg } from '../utils'
+import { formatTimestamp } from '../../../core/time'
+
+function mapSpotHistoryRow(entry: HistoricalOrder) {
+  return {
+    pair: entry.order.coin,
+    status: entry.status,
+    side: entry.order.side === 'B' ? 'buy' : 'sell',
+    size: entry.order.sz,
+    origSize: entry.order.origSz,
+    limitPx: entry.order.limitPx,
+    tif: entry.order.tif,
+    reduceOnly: entry.order.reduceOnly,
+    oid: entry.order.oid,
+    cloid: entry.order.cloid ?? 'N/A',
+    statusTimestamp: formatTimestamp(entry.statusTimestamp),
+  }
+}
 
 export default defineCommand({
   meta: { name: 'history', description: 'Show historical spot orders' },
@@ -28,68 +46,42 @@ export default defineCommand({
     const pairFilter = args.pair ? normalizeSpotPair(String(args.pair)) : undefined
     const status = args.status ? String(args.status).toLowerCase() : undefined
 
-    let limit: number
-    try {
-      limit = parseLimitArg(args.limit ? String(args.limit) : undefined)
-    } catch (error) {
-      out.warn(error instanceof Error ? error.message : String(error))
-      process.exit(1)
-    }
+    const limit = parseLimitArg(args.limit ? String(args.limit) : undefined)
 
-    try {
-      const history = await fetchHistoricalOrders(user, args.testnet)
-      const { spot } = partitionEntriesBySpot(
-        history.map((entry) => ({ coin: entry.order.coin, entry })),
-        spotPairs,
-      )
-      const rows = formatSpotHistoryOrderRows(
-        spot
-          .map(({ entry }) => entry)
-          .filter((entry) => !pairFilter || entry.order.coin === pairFilter)
-          .filter((entry) => !status || entry.status.toLowerCase() === status)
-          .slice(0, limit),
-      )
-
-      if (args.json || args.format === 'json') {
-        out.data({ wallet: walletName, user, history: rows })
-        return
-      }
-
-      if (rows.length === 0) {
-        out.success(`No historical spot orders for ${walletName} (${user})`)
-        return
-      }
-
-      if (args.format === 'csv') {
-        out.data('pair,status,side,size,origSize,limitPx,tif,reduceOnly,oid,cloid,statusTimestamp')
-        for (const row of rows) {
-          out.data(
-            `${row.pair},${row.status},${row.side},${row.size},${row.origSize},${row.limitPx},${row.tif},${row.reduceOnly},${row.oid},${row.cloid},${row.statusTimestamp}`,
-          )
-        }
-        return
-      }
-
-      out.table(rows, {
-        columns: [
-          'pair',
-          'status',
-          'side',
-          'size',
-          'origSize',
-          'limitPx',
-          'tif',
-          'reduceOnly',
-          'oid',
-          'cloid',
-          'statusTimestamp',
-        ],
-        title: `Spot Order History | ${walletName} (${user})`,
-      })
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      out.warn(`Failed to fetch historical orders: ${message}`)
-      process.exit(1)
-    }
+    await runListCommand({
+      out,
+      args,
+      walletName,
+      user,
+      fetchItems: async () => {
+        const history = await fetchHistoricalOrders(user, args.testnet)
+        const mapped = history.map((entry) => ({ coin: entry.order.coin, entry }))
+        const { spot } = partitionEntriesBySpot(mapped, spotPairs)
+        return spot.map(({ entry }) => entry)
+      },
+      filter: (entry) => {
+        if (pairFilter && entry.order.coin !== pairFilter) return false
+        if (status && entry.status.toLowerCase() !== status) return false
+        return true
+      },
+      limit,
+      toRow: mapSpotHistoryRow,
+      columns: [
+        'pair',
+        'status',
+        'side',
+        'size',
+        'origSize',
+        'limitPx',
+        'tif',
+        'reduceOnly',
+        'oid',
+        'cloid',
+        'statusTimestamp',
+      ],
+      title: `Spot Order History | ${walletName} (${user})`,
+      emptyMessage: `No historical spot orders for ${walletName} (${user})`,
+      dataKey: 'history',
+    })
   },
 })

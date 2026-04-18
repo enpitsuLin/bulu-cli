@@ -1,7 +1,26 @@
 import { defineCommand } from 'citty'
 import { fetchHistoricalOrders, fetchSpotMeta, partitionEntriesBySpot } from '../../../protocols/hyperliquid'
+import type { HistoricalOrder } from '../../../protocols/hyperliquid'
 import { resolvePerpOutput, resolvePerpQueryArgs, resolvePerpUserContext } from './shared'
-import { formatHistoryOrderRows, parseLimitArg } from './utils'
+import { runListCommand } from '../query-shared'
+import { parseLimitArg } from './utils'
+import { formatTimestamp } from '../../../core/time'
+
+function mapPerpHistoryRow(entry: HistoricalOrder) {
+  return {
+    coin: entry.order.coin,
+    status: entry.status,
+    side: entry.order.side === 'B' ? 'long' : 'short',
+    size: entry.order.sz,
+    origSize: entry.order.origSz,
+    limitPx: entry.order.limitPx,
+    tif: entry.order.tif,
+    reduceOnly: entry.order.reduceOnly,
+    oid: entry.order.oid,
+    cloid: entry.order.cloid ?? 'N/A',
+    statusTimestamp: formatTimestamp(entry.statusTimestamp),
+  }
+}
 
 export default defineCommand({
   meta: { name: 'history', description: 'Show historical perp orders' },
@@ -26,69 +45,45 @@ export default defineCommand({
     const coin = args.coin ? String(args.coin).toUpperCase() : undefined
     const status = args.status ? String(args.status).toLowerCase() : undefined
 
-    let limit: number
-    try {
-      limit = parseLimitArg(args.limit ? String(args.limit) : undefined)
-    } catch (error) {
-      out.warn(error instanceof Error ? error.message : String(error))
-      process.exit(1)
-    }
+    const limit = parseLimitArg(args.limit ? String(args.limit) : undefined)
 
-    try {
-      const history = await fetchHistoricalOrders(user, args.testnet)
-      const spotMeta = await fetchSpotMeta(args.testnet)
-      const { perps } = partitionEntriesBySpot(
-        history.map((entry) => ({ coin: entry.order.coin, entry })),
-        spotMeta,
-      )
-      const rows = formatHistoryOrderRows(
-        perps
-          .map(({ entry }) => entry)
-          .filter((entry) => !coin || entry.order.coin === coin)
-          .filter((entry) => !status || entry.status.toLowerCase() === status)
-          .slice(0, limit),
-      )
-
-      if (args.json || args.format === 'json') {
-        out.data({ wallet: walletName, user, history: rows })
-        return
-      }
-
-      if (rows.length === 0) {
-        out.success(`No historical perp orders for ${walletName} (${user})`)
-        return
-      }
-
-      if (args.format === 'csv') {
-        out.data('coin,status,side,size,origSize,limitPx,tif,reduceOnly,oid,cloid,statusTimestamp')
-        for (const row of rows) {
-          out.data(
-            `${row.coin},${row.status},${row.side},${row.size},${row.origSize},${row.limitPx},${row.tif},${row.reduceOnly},${row.oid},${row.cloid},${row.statusTimestamp}`,
-          )
-        }
-        return
-      }
-
-      out.table(rows, {
-        columns: [
-          'coin',
-          'status',
-          'side',
-          'size',
-          'origSize',
-          'limitPx',
-          'tif',
-          'reduceOnly',
-          'oid',
-          'cloid',
-          'statusTimestamp',
-        ],
-        title: `Perp Order History | ${walletName} (${user})`,
-      })
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      out.warn(`Failed to fetch historical orders: ${message}`)
-      process.exit(1)
-    }
+    await runListCommand({
+      out,
+      args,
+      walletName,
+      user,
+      fetchItems: async () => {
+        const [history, spotMeta] = await Promise.all([
+          fetchHistoricalOrders(user, args.testnet),
+          fetchSpotMeta(args.testnet),
+        ])
+        const mapped = history.map((entry) => ({ coin: entry.order.coin, entry }))
+        const { perps } = partitionEntriesBySpot(mapped, spotMeta)
+        return perps.map(({ entry }) => entry)
+      },
+      filter: (entry) => {
+        if (coin && entry.order.coin !== coin) return false
+        if (status && entry.status.toLowerCase() !== status) return false
+        return true
+      },
+      limit,
+      toRow: mapPerpHistoryRow,
+      columns: [
+        'coin',
+        'status',
+        'side',
+        'size',
+        'origSize',
+        'limitPx',
+        'tif',
+        'reduceOnly',
+        'oid',
+        'cloid',
+        'statusTimestamp',
+      ],
+      title: `Perp Order History | ${walletName} (${user})`,
+      emptyMessage: `No historical perp orders for ${walletName} (${user})`,
+      dataKey: 'history',
+    })
   },
 })

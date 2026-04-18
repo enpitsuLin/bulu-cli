@@ -1,7 +1,32 @@
 import { defineCommand } from 'citty'
 import { fetchFrontendOpenOrders, normalizeSpotPair, partitionEntriesBySpot } from '../../../protocols/hyperliquid'
+import type { FrontendOpenOrder } from '../../../protocols/hyperliquid'
 import { loadSpotPairNameSetOrExit, resolveSpotOutput, resolveSpotQueryArgs, resolveSpotUserContext } from './shared'
-import { formatSpotOpenOrderRows, mapSpotOpenOrders } from './utils'
+import { runListCommand } from '../query-shared'
+import { formatTimestamp } from '../../../core/time'
+
+function mapSpotOpenOrder(order: FrontendOpenOrder) {
+  return {
+    pair: order.coin,
+    side: order.side === 'B' ? 'buy' : 'sell',
+    size: order.sz,
+    origSize: order.origSz,
+    limitPx: order.limitPx,
+    tif: order.isTrigger ? `trigger (${order.tif})` : order.tif,
+    triggerPx: order.triggerPx ?? 'N/A',
+    reduceOnly: order.reduceOnly,
+    oid: order.oid,
+    cloid: order.cloid ?? 'N/A',
+    timestamp: order.timestamp,
+  }
+}
+
+function formatSpotOpenOrderRow(order: FrontendOpenOrder) {
+  return {
+    ...mapSpotOpenOrder(order),
+    timestamp: formatTimestamp(order.timestamp),
+  }
+}
 
 export default defineCommand({
   meta: { name: 'orders', description: 'Show open spot orders' },
@@ -17,45 +42,19 @@ export default defineCommand({
     const spotPairs = await loadSpotPairNameSetOrExit(args.testnet, out)
     const pairFilter = args.pair ? normalizeSpotPair(String(args.pair)) : undefined
 
-    let orders
-    try {
-      orders = await fetchFrontendOpenOrders(user, args.testnet)
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      out.warn(`Failed to fetch open orders: ${message}`)
-      process.exit(1)
-    }
-
-    const { spot } = partitionEntriesBySpot(orders, spotPairs)
-    const filtered = pairFilter ? spot.filter((order) => order.coin === pairFilter) : spot
-    const rawRows = mapSpotOpenOrders(filtered)
-    const displayRows = formatSpotOpenOrderRows(filtered)
-
-    if (rawRows.length === 0) {
-      if (args.json || args.format === 'json') {
-        out.data({ wallet: walletName, user, orders: [] })
-      } else {
-        out.success(`No open spot orders for ${walletName} (${user})`)
-      }
-      return
-    }
-
-    if (args.json || args.format === 'json') {
-      out.data({ wallet: walletName, user, orders: rawRows })
-      return
-    }
-
-    if (args.format === 'csv') {
-      out.data('pair,side,size,origSize,limitPx,tif,triggerPx,reduceOnly,oid,cloid,timestamp')
-      for (const row of displayRows) {
-        out.data(
-          `${row.pair},${row.side},${row.size},${row.origSize},${row.limitPx},${row.tif},${row.triggerPx},${row.reduceOnly},${row.oid},${row.cloid},${row.timestamp}`,
-        )
-      }
-      return
-    }
-
-    out.table(displayRows, {
+    await runListCommand({
+      out,
+      args,
+      walletName,
+      user,
+      fetchItems: async () => {
+        const orders = await fetchFrontendOpenOrders(user, args.testnet)
+        const { spot } = partitionEntriesBySpot(orders, spotPairs)
+        return spot
+      },
+      filter: pairFilter ? (order) => order.coin === pairFilter : undefined,
+      toRow: mapSpotOpenOrder,
+      toDisplayRow: formatSpotOpenOrderRow,
       columns: [
         'pair',
         'side',
@@ -70,6 +69,8 @@ export default defineCommand({
         'timestamp',
       ],
       title: `Open Spot Orders | ${walletName} (${user})`,
+      emptyMessage: `No open spot orders for ${walletName} (${user})`,
+      dataKey: 'orders',
     })
   },
 })

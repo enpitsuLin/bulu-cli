@@ -5,14 +5,10 @@ import {
   partitionEntriesBySpot,
   resolveOrderSide,
 } from '../../../protocols/hyperliquid'
+import type { FrontendOpenOrder } from '../../../protocols/hyperliquid'
 import { formatTimestamp } from '../../../core/time'
-import type { FrontendOpenOrder, SpotMeta } from '../../../protocols/hyperliquid'
 import { resolvePerpOutput, resolvePerpQueryArgs, resolvePerpUserContext } from './shared'
-
-function formatTif(tif: string, isTrigger: boolean): string {
-  if (isTrigger) return `trigger (${tif})`
-  return tif
-}
+import { runListCommand } from '../query-shared'
 
 function mapOpenOrder(order: FrontendOpenOrder) {
   return {
@@ -21,7 +17,7 @@ function mapOpenOrder(order: FrontendOpenOrder) {
     size: order.sz,
     origSize: order.origSz,
     limitPx: order.limitPx,
-    tif: formatTif(order.tif, order.isTrigger),
+    tif: order.isTrigger ? `trigger (${order.tif})` : order.tif,
     triggerPx: order.triggerPx ?? 'N/A',
     cloid: order.cloid ?? 'N/A',
     positionTpsl: order.isPositionTpsl ?? false,
@@ -31,11 +27,11 @@ function mapOpenOrder(order: FrontendOpenOrder) {
   }
 }
 
-export function formatOpenOrderRows(orders: FrontendOpenOrder[]) {
-  return orders.map((order) => ({
+function formatOpenOrderRow(order: FrontendOpenOrder) {
+  return {
     ...mapOpenOrder(order),
     timestamp: formatTimestamp(order.timestamp),
-  }))
+  }
 }
 
 export default defineCommand({
@@ -44,52 +40,24 @@ export default defineCommand({
   async run({ args }) {
     const out = resolvePerpOutput(args)
     const { walletName, user } = resolvePerpUserContext(args, out)
+    const coinFilter = args.coin ? String(args.coin).toUpperCase() : undefined
 
-    let orders: FrontendOpenOrder[] = []
-    let spotMeta: SpotMeta
-    try {
-      ;[orders, spotMeta] = await Promise.all([
-        fetchFrontendOpenOrders(user, args.testnet),
-        fetchSpotMeta(args.testnet),
-      ])
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      out.warn(`Failed to fetch open orders: ${message}`)
-      process.exit(1)
-    }
-
-    const { perps } = partitionEntriesBySpot(orders || [], spotMeta)
-    const rawRows = perps.map(mapOpenOrder)
-    const displayRows = formatOpenOrderRows(perps)
-
-    const isJson = args.json || args.format === 'json'
-    const isCsv = args.format === 'csv'
-
-    if (rawRows.length === 0) {
-      if (isJson) {
-        out.data({ wallet: walletName, user, orders: [] })
-      } else {
-        out.success(`No open perp orders for ${walletName} (${user})`)
-      }
-      return
-    }
-
-    if (isJson) {
-      out.data({ wallet: walletName, user, orders: rawRows })
-      return
-    }
-
-    if (isCsv) {
-      const header = 'coin,side,size,origSize,limitPx,tif,triggerPx,positionTpsl,reduceOnly,oid,cloid,timestamp'
-      out.data(header)
-      for (const row of displayRows) {
-        const line = `${row.coin},${row.side},${row.size},${row.origSize},${row.limitPx},${row.tif},${row.triggerPx},${row.positionTpsl},${row.reduceOnly},${row.oid},${row.cloid},${row.timestamp}`
-        out.data(line)
-      }
-      return
-    }
-
-    out.table(displayRows, {
+    await runListCommand({
+      out,
+      args,
+      walletName,
+      user,
+      fetchItems: async () => {
+        const [orders, spotMeta] = await Promise.all([
+          fetchFrontendOpenOrders(user, args.testnet),
+          fetchSpotMeta(args.testnet),
+        ])
+        const { perps } = partitionEntriesBySpot(orders, spotMeta)
+        return perps
+      },
+      filter: coinFilter ? (order) => order.coin === coinFilter : undefined,
+      toRow: mapOpenOrder,
+      toDisplayRow: formatOpenOrderRow,
       columns: [
         'coin',
         'side',
@@ -105,6 +73,8 @@ export default defineCommand({
         'timestamp',
       ],
       title: `Open Perp Orders | ${walletName} (${user})`,
+      emptyMessage: `No open perp orders for ${walletName} (${user})`,
+      dataKey: 'orders',
     })
   },
 })
