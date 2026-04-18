@@ -4,25 +4,20 @@ import {
   fetchSpotMarketAsset,
   fetchSpotMeta,
   fetchSpotMetaAndAssetCtxs,
-  formatOrderStatus,
   normalizeSpotPair,
   resolveSpotOrder,
 } from '../../../protocols/hyperliquid'
 import type {
   AssetCtx,
   HyperliquidSpotMarketAsset,
-  OrderResponse,
   ResolvedSpotOrder,
   SpotMeta,
   SpotOrderSide,
 } from '../../../protocols/hyperliquid'
-import {
-  handleCommandError,
-  resolveMarketOutput,
-  resolveMarketQueryArgs,
-  resolveMarketUserContext,
-  submitExchangeAction,
-} from '../shared'
+import { resolveMarketOutput, resolveMarketQueryArgs, resolveMarketUserContext } from '../shared'
+import { loadDataOrExit } from '../command-helpers'
+import { buildOrderPositionalArgs, submitOrderAndRender } from '../order-shared'
+import type { OrderSubmissionContext } from '../order-shared'
 
 export interface SpotCommandArgs {
   wallet?: string
@@ -47,22 +42,16 @@ export function resolveSpotQueryArgs(extraArgs: Record<string, unknown> = {}) {
 }
 
 export function resolveSpotOrderArgs() {
-  return resolveSpotQueryArgs({
-    pair: {
-      type: 'positional',
-      description: 'Exact Hyperliquid spot pair, e.g. PURR/USDC, UBTC/USDC, @107',
-      required: true,
-    },
-    size: {
-      type: 'string',
-      description: 'Order size in base asset units',
-      required: true,
-    },
-    price: {
-      type: 'string',
-      description: 'Limit price (omit for market order)',
-    },
-  })
+  return resolveSpotQueryArgs(
+    buildOrderPositionalArgs(
+      {},
+      {
+        symbolName: 'pair',
+        symbolDesc: 'Exact Hyperliquid spot pair, e.g. PURR/USDC, UBTC/USDC, @107',
+        sizeDesc: 'Order size in base asset units',
+      },
+    ),
+  )
 }
 
 export function resolveSpotOutput(args: Pick<SpotCommandArgs, 'json' | 'format'>) {
@@ -80,24 +69,14 @@ export async function loadSpotMarketStateOrExit(
   isTestnet: boolean | undefined,
   out: ReturnType<typeof createOutput>,
 ): Promise<SpotMarketState> {
-  try {
-    return await fetchSpotMetaAndAssetCtxs(isTestnet)
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    return handleCommandError(out, `Failed to fetch spot metadata: ${message}`)
-  }
+  return loadDataOrExit(out, fetchSpotMetaAndAssetCtxs(isTestnet), 'Failed to fetch spot metadata')
 }
 
 export async function loadSpotMetaOrExit(
   isTestnet: boolean | undefined,
   out: ReturnType<typeof createOutput>,
 ): Promise<SpotMeta> {
-  try {
-    return await fetchSpotMeta(isTestnet)
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    return handleCommandError(out, `Failed to fetch spot metadata: ${message}`)
-  }
+  return loadDataOrExit(out, fetchSpotMeta(isTestnet), 'Failed to fetch spot metadata')
 }
 
 export async function loadSpotPairNameSetOrExit(
@@ -113,59 +92,7 @@ export async function loadSpotMarketOrExit(
   isTestnet: boolean | undefined,
   out: ReturnType<typeof createOutput>,
 ): Promise<HyperliquidSpotMarketAsset> {
-  try {
-    return await fetchSpotMarketAsset(pair, isTestnet)
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    return handleCommandError(out, message)
-  }
-}
-
-export function renderSpotOrderSubmission(args: {
-  out: ReturnType<typeof createOutput>
-  commandArgs: Pick<SpotCommandArgs, 'json' | 'format'>
-  walletName: string
-  user: string
-  pair: string
-  order: ResolvedSpotOrder
-  response: OrderResponse
-  titlePrefix?: string
-}) {
-  const { out, commandArgs, walletName, user, pair, order, response, titlePrefix = 'Spot Order' } = args
-  const statuses = response.response.data.statuses
-  const rows = statuses.map((status, idx) => ({
-    orderIndex: idx + 1,
-    result: formatOrderStatus(status),
-  }))
-
-  const isJson = commandArgs.json || commandArgs.format === 'json'
-  const isCsv = commandArgs.format === 'csv'
-
-  if (isJson) {
-    out.data({
-      wallet: walletName,
-      user,
-      pair,
-      side: order.side,
-      size: order.size,
-      price: order.price,
-      statuses: rows,
-    })
-    return
-  }
-
-  if (isCsv) {
-    out.data('orderIndex,result')
-    for (const row of rows) {
-      out.data(`${row.orderIndex},${row.result}`)
-    }
-    return
-  }
-
-  out.table(rows, {
-    columns: ['orderIndex', 'result'],
-    title: `${titlePrefix} | ${walletName} | ${pair} ${order.side.toUpperCase()} ${order.size} @ ${order.price}`,
-  })
+  return loadDataOrExit(out, fetchSpotMarketAsset(pair, isTestnet), 'Failed to load spot market')
 }
 
 export async function runSpotOrderCommand(
@@ -185,39 +112,37 @@ export async function runSpotOrderCommand(
   const { walletName, user } = resolveSpotUserContext(args, out)
   const market = await loadSpotMarketOrExit(pair, args.testnet, out)
 
-  let order: ResolvedSpotOrder
-  try {
-    order = resolveSpotOrder({
-      pair,
-      market,
-      side,
-      size: String(args.size),
-      price: args.price ? String(args.price) : undefined,
-    })
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    handleCommandError(out, message)
-  }
+  const order: ResolvedSpotOrder = loadDataOrExit(
+    out,
+    () =>
+      resolveSpotOrder({
+        pair,
+        market,
+        side,
+        size: String(args.size),
+        price: args.price ? String(args.price) : undefined,
+      }),
+    'Failed to resolve order',
+  )
 
-  let response: OrderResponse
-  try {
-    response = await submitExchangeAction<OrderResponse>({
-      action: order.action,
-      walletName,
-      testnet: args.testnet,
-    })
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    handleCommandError(out, `Failed to submit order: ${message}`)
-  }
-
-  renderSpotOrderSubmission({
+  const ctx: OrderSubmissionContext = {
     out,
     commandArgs: args,
     walletName,
     user,
-    pair,
-    order,
-    response,
+    testnet: args.testnet,
+  }
+
+  await submitOrderAndRender(ctx, order.action, {
+    detail: `${pair} ${side.toUpperCase()} ${order.size} @ ${order.price}`,
+    titlePrefix: 'Spot Order',
+    jsonData: {
+      wallet: walletName,
+      user,
+      pair,
+      side: order.side,
+      size: order.size,
+      price: order.price,
+    },
   })
 }

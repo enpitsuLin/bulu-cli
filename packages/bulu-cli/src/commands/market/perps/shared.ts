@@ -1,24 +1,17 @@
 import { createOutput } from '../../../core/output'
-import {
-  handleCommandError,
-  resolveMarketOutput,
-  resolveMarketQueryArgs,
-  resolveMarketUserContext,
-  submitExchangeAction,
-} from '../shared'
-import {
-  fetchClearinghouseState,
-  fetchMarketAsset,
-  formatOrderStatus,
-  resolvePerpOrder,
-} from '../../../protocols/hyperliquid'
+import { fetchClearinghouseState, fetchMarketAsset, resolvePerpOrder } from '../../../protocols/hyperliquid'
 import type {
   ClearinghouseState,
   HyperliquidMarketAsset,
-  OrderResponse,
   OrderSide,
   ResolvedPerpOrder,
 } from '../../../protocols/hyperliquid'
+import { resolveMarketOutput, resolveMarketQueryArgs, resolveMarketUserContext } from '../shared'
+import { loadDataOrExit } from '../command-helpers'
+import { buildOrderPositionalArgs, submitOrderAndRender } from '../order-shared'
+import type { OrderSubmissionContext } from '../order-shared'
+
+export { handleCommandError, submitExchangeAction } from '../shared'
 
 export interface PerpOrderPreset {
   side?: OrderSide
@@ -37,32 +30,25 @@ export interface PerpUserContext {
   user: string
 }
 
-export { handleCommandError, submitExchangeAction } from '../shared'
-
 export function resolvePerpQueryArgs(extraArgs: Record<string, unknown> = {}) {
   return resolveMarketQueryArgs(extraArgs)
 }
 
 export function resolvePerpOrderArgs(mode: 'open' | 'close') {
-  return resolvePerpQueryArgs({
-    coin: {
-      type: 'positional',
-      description: 'Trading pair symbol, e.g. BTC, ETH',
-      required: true,
-    },
-    size: {
-      type: 'string',
-      description:
-        mode === 'close'
-          ? 'Order size in base asset units (omit to close the full position)'
-          : 'Order size in base asset units',
-      required: mode !== 'close',
-    },
-    price: {
-      type: 'string',
-      description: 'Limit price (omit for market order)',
-    },
-  })
+  return resolvePerpQueryArgs(
+    buildOrderPositionalArgs(
+      {},
+      {
+        symbolName: 'coin',
+        symbolDesc: 'Trading pair symbol, e.g. BTC, ETH',
+        sizeDesc:
+          mode === 'close'
+            ? 'Order size in base asset units (omit to close the full position)'
+            : 'Order size in base asset units',
+        sizeRequired: mode !== 'close',
+      },
+    ),
+  )
 }
 
 export function resolvePerpOutput(args: Pick<PerpCommandArgs, 'json' | 'format'>) {
@@ -81,12 +67,7 @@ export async function loadPerpMarketOrExit(
   isTestnet: boolean | undefined,
   out: ReturnType<typeof createOutput>,
 ): Promise<HyperliquidMarketAsset> {
-  try {
-    return await fetchMarketAsset(coin, isTestnet)
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    return handleCommandError(out, message)
-  }
+  return loadDataOrExit(out, fetchMarketAsset(coin, isTestnet), 'Failed to load perp market')
 }
 
 export async function loadPerpStateOrExit(
@@ -94,67 +75,7 @@ export async function loadPerpStateOrExit(
   isTestnet: boolean | undefined,
   out: ReturnType<typeof createOutput>,
 ): Promise<ClearinghouseState> {
-  try {
-    return await fetchClearinghouseState(user, isTestnet)
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    return handleCommandError(out, `Failed to fetch positions: ${message}`)
-  }
-}
-
-export function renderOrderSubmission(args: {
-  out: ReturnType<typeof createOutput>
-  commandArgs: Pick<PerpCommandArgs, 'json' | 'format'>
-  walletName: string
-  user: string
-  coin: string
-  order: ResolvedPerpOrder
-  response: OrderResponse
-  titlePrefix?: string
-}) {
-  const { out, commandArgs, walletName, user, coin, order, response, titlePrefix = 'Perp Order' } = args
-  const statuses = response.response.data.statuses
-  const rows = statuses.map((status, idx) => ({
-    orderIndex: idx + 1,
-    result: formatOrderStatus(status),
-  }))
-
-  const isJson = commandArgs.json || commandArgs.format === 'json'
-  const isCsv = commandArgs.format === 'csv'
-
-  if (isJson) {
-    out.data({
-      wallet: walletName,
-      user,
-      coin,
-      side: order.side,
-      size: order.size,
-      price: order.price,
-      triggerPx: order.triggerPx,
-      triggerKind: order.triggerKind,
-      reduceOnly: order.reduceOnly,
-      grouping: order.grouping,
-      statuses: rows,
-    })
-    return
-  }
-
-  if (isCsv) {
-    out.data('orderIndex,result')
-    for (const row of rows) {
-      out.data(`${row.orderIndex},${row.result}`)
-    }
-    return
-  }
-
-  const detail = order.isTrigger
-    ? `${coin} ${String(order.triggerKind).toUpperCase()} ${order.size} trigger ${order.triggerPx} -> ${order.price}`
-    : `${coin} ${order.side.toUpperCase()} ${order.size} @ ${order.price}`
-
-  out.table(rows, {
-    columns: ['orderIndex', 'result'],
-    title: `${titlePrefix} | ${walletName} | ${detail}`,
-  })
+  return loadDataOrExit(out, fetchClearinghouseState(user, isTestnet), 'Failed to fetch positions')
 }
 
 export async function runPerpOrderCommand(
@@ -176,41 +97,47 @@ export async function runPerpOrderCommand(
 
   const state = preset.close ? await loadPerpStateOrExit(user, args.testnet, out) : undefined
 
-  let order: ResolvedPerpOrder
-  try {
-    order = resolvePerpOrder({
-      coin,
-      market,
-      side: preset.side,
-      size: args.size ? String(args.size) : undefined,
-      price: args.price ? String(args.price) : undefined,
-      close: preset.close,
-      state,
-    })
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    handleCommandError(out, message)
-  }
+  const order: ResolvedPerpOrder = loadDataOrExit(
+    out,
+    () =>
+      resolvePerpOrder({
+        coin,
+        market,
+        side: preset.side,
+        size: args.size ? String(args.size) : undefined,
+        price: args.price ? String(args.price) : undefined,
+        close: preset.close,
+        state,
+      }),
+    'Failed to resolve order',
+  )
 
-  let response: OrderResponse
-  try {
-    response = await submitExchangeAction<OrderResponse>({
-      action: order.action,
-      walletName,
-      testnet: args.testnet,
-    })
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    handleCommandError(out, `Failed to submit order: ${message}`)
-  }
+  const detail = order.isTrigger
+    ? `${coin} ${String(order.triggerKind).toUpperCase()} ${order.size} trigger ${order.triggerPx} -> ${order.price}`
+    : `${coin} ${order.side.toUpperCase()} ${order.size} @ ${order.price}`
 
-  renderOrderSubmission({
+  const ctx: OrderSubmissionContext = {
     out,
     commandArgs: args,
     walletName,
     user,
-    coin,
-    order,
-    response,
+    testnet: args.testnet,
+  }
+
+  await submitOrderAndRender(ctx, order.action, {
+    detail,
+    titlePrefix: 'Perp Order',
+    jsonData: {
+      wallet: walletName,
+      user,
+      coin,
+      side: order.side,
+      size: order.size,
+      price: order.price,
+      triggerPx: order.triggerPx,
+      triggerKind: order.triggerKind,
+      reduceOnly: order.reduceOnly,
+      grouping: order.grouping,
+    },
   })
 }
