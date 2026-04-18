@@ -9,7 +9,8 @@ import {
 import { formatTimestamp } from '../../../core/time'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
 import { resolvePerpQueryArgs, resolvePerpUserContext } from './shared'
-import { loadDataOrExit, renderSingleResult } from '../command-helpers'
+import { loadDataOrExit } from '../../../utils/cli'
+import { renderSingleResult } from '../../../utils/output'
 
 export default defineCommand({
   meta: { name: 'status', description: 'Query perp order status by oid or cloid' },

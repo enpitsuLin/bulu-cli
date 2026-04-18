@@ -9,7 +9,8 @@ import {
 import { findOrderByIdentifier } from '../utils'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
 import { loadSpotMarketStateOrExit, resolveSpotQueryArgs, resolveSpotUserContext } from './shared'
-import { loadDataOrExit, renderResult } from '../command-helpers'
+import { loadDataOrExit } from '../../../utils/cli'
+import { renderResult } from '../../../utils/output'
 import { submitExchangeAction } from '../shared'
 
 export default defineCommand({

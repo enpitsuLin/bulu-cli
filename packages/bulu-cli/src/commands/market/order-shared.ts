@@ -2,7 +2,7 @@ import type { Output } from '../../core/output'
 import type { ExchangeAction, OrderResponse } from '../../protocols/hyperliquid'
 import { formatOrderStatus } from '../../protocols/hyperliquid'
 import { submitExchangeAction } from './shared'
-import type { CommandArgs } from './command-helpers'
+import type { CommandArgs } from '../../utils/output'
 
 export interface OrderSubmissionContext {
   out: Output

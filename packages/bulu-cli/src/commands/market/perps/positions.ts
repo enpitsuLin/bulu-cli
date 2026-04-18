@@ -3,7 +3,8 @@ import { fetchClearinghouseState } from '../../../protocols/hyperliquid'
 import type { PerpPosition } from '../../../protocols/hyperliquid'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
 import { resolvePerpQueryArgs, resolvePerpUserContext } from './shared'
-import { loadDataOrExit, renderResult } from '../command-helpers'
+import { loadDataOrExit } from '../../../utils/cli'
+import { renderResult } from '../../../utils/output'
 
 function formatLeverage(leverage: PerpPosition['leverage']): string {
   if (typeof leverage === 'object' && leverage !== null) {

@@ -2,7 +2,8 @@ import { defineCommand } from 'citty'
 import { fetchSpotClearinghouseState } from '../../../protocols/hyperliquid'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
 import { resolveSpotQueryArgs, resolveSpotUserContext } from './shared'
-import { loadDataOrExit, renderResult } from '../command-helpers'
+import { loadDataOrExit } from '../../../utils/cli'
+import { renderResult } from '../../../utils/output'
 
 export default defineCommand({
   meta: { name: 'positions', description: 'Show spot balances' },

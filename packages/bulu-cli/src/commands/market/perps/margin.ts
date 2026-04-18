@@ -8,7 +8,8 @@ import {
   resolvePerpUserContext,
   submitExchangeAction,
 } from './shared'
-import { executeOrExit, renderSingleResult } from '../command-helpers'
+import { executeOrExit } from '../../../utils/cli'
+import { renderSingleResult } from '../../../utils/output'
 
 function parseScaledUsdDelta(value: string): number {
   const trimmed = value.trim()

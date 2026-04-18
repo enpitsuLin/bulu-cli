@@ -2,7 +2,8 @@ import { defineCommand } from 'citty'
 import { buildScheduleCancelAction } from '../../../protocols/hyperliquid'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
 import { handleCommandError, resolvePerpQueryArgs, resolvePerpUserContext, submitExchangeAction } from './shared'
-import { executeOrExit, renderSingleResult } from '../command-helpers'
+import { executeOrExit } from '../../../utils/cli'
+import { renderSingleResult } from '../../../utils/output'
 import { parseTimeArg } from './utils'
 
 export default defineCommand({

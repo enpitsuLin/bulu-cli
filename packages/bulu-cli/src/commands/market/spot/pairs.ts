@@ -1,7 +1,7 @@
 import { defineCommand } from 'citty'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
 import { resolveSpotQueryArgs, loadSpotMarketStateOrExit } from './shared'
-import { renderResult } from '../command-helpers'
+import { renderResult } from '../../../utils/output'
 
 export default defineCommand({
   meta: { name: 'pairs', description: 'List tradable spot pairs' },

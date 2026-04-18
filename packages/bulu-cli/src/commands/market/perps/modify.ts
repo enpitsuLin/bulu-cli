@@ -13,7 +13,8 @@ import {
 import type { FrontendOpenOrder, HyperliquidMarketAsset } from '../../../protocols/hyperliquid'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
 import { resolvePerpQueryArgs, resolvePerpUserContext } from './shared'
-import { loadDataOrExit, renderSingleResult } from '../command-helpers'
+import { loadDataOrExit } from '../../../utils/cli'
+import { renderSingleResult } from '../../../utils/output'
 import { submitExchangeAction } from './shared'
 import { findOrderByIdentifier } from './utils'
 

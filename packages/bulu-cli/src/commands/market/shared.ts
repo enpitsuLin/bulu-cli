@@ -60,8 +60,3 @@ export async function submitExchangeAction<TResponse = DefaultExchangeResponse>(
     isTestnet: args.testnet,
   })
 }
-
-export function handleCommandError(out: ReturnType<typeof createOutput>, message: string): never {
-  out.warn(message)
-  process.exit(1)
-}

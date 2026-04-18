@@ -1,6 +1,7 @@
 import type { SpotMeta, FrontendOpenOrder } from '../../protocols/hyperliquid'
 import { partitionEntriesBySpot } from '../../protocols/hyperliquid'
-import { loadDataOrExit, renderResult, type CommandArgs } from './command-helpers'
+import { loadDataOrExit } from '../../utils/cli'
+import { renderResult, type CommandArgs } from '../../utils/output'
 import type { Output } from '../../core/output'
 import { findOrderByIdentifier } from './utils'
 

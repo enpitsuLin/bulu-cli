@@ -1,4 +1,4 @@
-import type { Output } from '../../core/output'
+import type { Output } from '../core/output'
 
 export interface RenderResultOptions<T> {
   /** Output rows for table/csv modes */
@@ -22,34 +22,6 @@ export interface RenderResultOptions<T> {
 export interface CommandArgs {
   json?: boolean
   format?: string
-}
-
-/**
- * Execute a synchronous function and exit on error.
- * Eliminates repetitive try/catch + process.exit(1) blocks.
- */
-export function executeOrExit<T>(out: Output, fn: () => T, errorPrefix: string): T {
-  try {
-    return fn()
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    out.warn(`${errorPrefix}: ${message}`)
-    process.exit(1)
-  }
-}
-
-/**
- * Await a promise and exit on rejection.
- * Eliminates repetitive try/catch around fetch calls.
- */
-export async function loadDataOrExit<T>(out: Output, promise: Promise<T>, errorMessage: string): Promise<T> {
-  try {
-    return await promise
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    out.warn(`${errorMessage}: ${message}`)
-    process.exit(1)
-  }
 }
 
 /**

@@ -7,11 +7,12 @@ import type {
   ResolvedPerpOrder,
 } from '../../../protocols/hyperliquid'
 import { resolveMarketQueryArgs, resolveMarketUserContext } from '../shared'
-import { loadDataOrExit } from '../command-helpers'
+import { executeOrExit, loadDataOrExit } from '../../../utils/cli'
 import { buildOrderPositionalArgs, submitOrderAndRender } from '../order-shared'
 import type { OrderSubmissionContext } from '../order-shared'
 
-export { handleCommandError, submitExchangeAction } from '../shared'
+export { handleCommandError } from '../../../utils/cli'
+export { submitExchangeAction } from '../shared'
 
 export interface PerpOrderPreset {
   side?: OrderSide
@@ -93,7 +94,7 @@ export async function runPerpOrderCommand(
 
   const state = preset.close ? await loadPerpStateOrExit(user, args.testnet, out) : undefined
 
-  const order: ResolvedPerpOrder = loadDataOrExit(
+  const order: ResolvedPerpOrder = executeOrExit(
     out,
     () =>
       resolvePerpOrder({

@@ -15,7 +15,7 @@ import type {
   SpotOrderSide,
 } from '../../../protocols/hyperliquid'
 import { resolveMarketQueryArgs, resolveMarketUserContext } from '../shared'
-import { loadDataOrExit } from '../command-helpers'
+import { executeOrExit, loadDataOrExit } from '../../../utils/cli'
 import { buildOrderPositionalArgs, submitOrderAndRender } from '../order-shared'
 import type { OrderSubmissionContext } from '../order-shared'
 
@@ -108,7 +108,7 @@ export async function runSpotOrderCommand(
   const { walletName, user } = resolveSpotUserContext(args, out)
   const market = await loadSpotMarketOrExit(pair, args.testnet, out)
 
-  const order: ResolvedSpotOrder = loadDataOrExit(
+  const order: ResolvedSpotOrder = executeOrExit(
     out,
     () =>
       resolveSpotOrder({
