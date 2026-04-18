@@ -14,7 +14,8 @@ import type {
   SpotMeta,
   SpotOrderSide,
 } from '../../../protocols/hyperliquid'
-import { resolveMarketQueryArgs, resolveMarketUserContext } from '../shared'
+import { resolveMarketUserContext } from '../shared'
+import { withDefaultArgs } from '../../../core/args-def'
 import { executeOrExit, loadDataOrExit } from '../../../utils/cli'
 import { buildOrderPositionalArgs, submitOrder } from '../order-shared'
 
@@ -37,7 +38,18 @@ export interface SpotMarketState {
 }
 
 export function resolveSpotQueryArgs(extraArgs: Record<string, unknown> = {}) {
-  return resolveMarketQueryArgs(extraArgs)
+  return withDefaultArgs({
+    ...extraArgs,
+    testnet: {
+      type: 'boolean',
+      description: 'Use Hyperliquid testnet',
+      default: false,
+    },
+    wallet: {
+      type: 'string',
+      description: 'Wallet name or id (defaults to active wallet)',
+    },
+  })
 }
 
 export function resolveSpotOrderArgs() {

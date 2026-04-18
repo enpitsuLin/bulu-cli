@@ -2,7 +2,6 @@ import { getVaultPath } from '../../core/config'
 import { createOutput } from '../../core/output'
 import { resolveTCXPassphrase } from '../../core/tcx'
 import { requireChainAccount, resolveWallet } from '../../core/wallet'
-import { withDefaultArgs } from '../../core/args-def'
 import { signAndSubmitL1Action } from '../../protocols/hyperliquid'
 import type { DefaultExchangeResponse, ExchangeAction } from '../../protocols/hyperliquid'
 
@@ -16,21 +15,6 @@ export interface MarketCommandArgs {
 export interface MarketUserContext {
   walletName: string
   user: string
-}
-
-export function resolveMarketQueryArgs(extraArgs: Record<string, unknown> = {}) {
-  return withDefaultArgs({
-    ...extraArgs,
-    testnet: {
-      type: 'boolean',
-      description: 'Use Hyperliquid testnet',
-      default: false,
-    },
-    wallet: {
-      type: 'string',
-      description: 'Wallet name or id (defaults to active wallet)',
-    },
-  })
 }
 
 export function resolveMarketUserContext(
