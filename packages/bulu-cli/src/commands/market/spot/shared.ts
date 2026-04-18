@@ -1,4 +1,4 @@
-import { createOutput } from '../../../core/output'
+import { createOutput, resolveOutputOptions } from '../../../core/output'
 import {
   buildSpotPairNameSet,
   fetchSpotMarketAsset,
@@ -14,7 +14,7 @@ import type {
   SpotMeta,
   SpotOrderSide,
 } from '../../../protocols/hyperliquid'
-import { resolveMarketOutput, resolveMarketQueryArgs, resolveMarketUserContext } from '../shared'
+import { resolveMarketQueryArgs, resolveMarketUserContext } from '../shared'
 import { loadDataOrExit } from '../command-helpers'
 import { buildOrderPositionalArgs, submitOrderAndRender } from '../order-shared'
 import type { OrderSubmissionContext } from '../order-shared'
@@ -52,10 +52,6 @@ export function resolveSpotOrderArgs() {
       },
     ),
   )
-}
-
-export function resolveSpotOutput(args: Pick<SpotCommandArgs, 'json' | 'format'>) {
-  return resolveMarketOutput(args)
 }
 
 export function resolveSpotUserContext(
@@ -108,7 +104,7 @@ export async function runSpotOrderCommand(
   side: SpotOrderSide,
 ): Promise<void> {
   const pair = normalizeSpotPair(String(args.pair))
-  const out = resolveSpotOutput(args)
+  const out = createOutput(resolveOutputOptions(args))
   const { walletName, user } = resolveSpotUserContext(args, out)
   const market = await loadSpotMarketOrExit(pair, args.testnet, out)
 

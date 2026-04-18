@@ -7,7 +7,8 @@ import {
   partitionEntriesBySpot,
 } from '../../../protocols/hyperliquid'
 import { findOrderByIdentifier } from '../utils'
-import { loadSpotMarketStateOrExit, resolveSpotOutput, resolveSpotQueryArgs, resolveSpotUserContext } from './shared'
+import { createOutput, resolveOutputOptions } from '../../../core/output'
+import { loadSpotMarketStateOrExit, resolveSpotQueryArgs, resolveSpotUserContext } from './shared'
 import { loadDataOrExit, renderResult } from '../command-helpers'
 import { submitExchangeAction } from '../shared'
 
@@ -30,7 +31,7 @@ export default defineCommand({
     },
   }),
   async run({ args }) {
-    const out = resolveSpotOutput(args)
+    const out = createOutput(resolveOutputOptions(args))
     const { walletName, user } = resolveSpotUserContext(args, out)
     const pairFilter = args.pair ? normalizeSpotPair(String(args.pair)) : undefined
 

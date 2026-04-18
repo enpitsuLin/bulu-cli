@@ -6,7 +6,8 @@ import {
   partitionEntriesBySpot,
   resolveOrderSide,
 } from '../../../protocols/hyperliquid'
-import { resolvePerpOutput, resolvePerpQueryArgs, resolvePerpUserContext } from './shared'
+import { createOutput, resolveOutputOptions } from '../../../core/output'
+import { resolvePerpQueryArgs, resolvePerpUserContext } from './shared'
 import { runListCommand } from '../query-shared'
 import { parseLimitArg, parseTimeArg } from './utils'
 import { formatTimestamp } from '../../../core/time'
@@ -53,7 +54,7 @@ export default defineCommand({
     },
   }),
   async run({ args }) {
-    const out = resolvePerpOutput(args)
+    const out = createOutput(resolveOutputOptions(args))
     const { walletName, user } = resolvePerpUserContext(args, out)
     const coin = args.coin ? String(args.coin).toUpperCase() : undefined
     const aggregateByTime = args.aggregateByTime === true

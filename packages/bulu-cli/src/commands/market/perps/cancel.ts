@@ -8,7 +8,8 @@ import {
 } from '../../../protocols/hyperliquid'
 import type { FrontendOpenOrder } from '../../../protocols/hyperliquid'
 import { findOrderByIdentifier } from './utils'
-import { resolvePerpOutput, resolvePerpQueryArgs, resolvePerpUserContext } from './shared'
+import { createOutput, resolveOutputOptions } from '../../../core/output'
+import { resolvePerpQueryArgs, resolvePerpUserContext } from './shared'
 import { loadDataOrExit, renderResult } from '../command-helpers'
 import { submitExchangeAction } from './shared'
 
@@ -31,7 +32,7 @@ export default defineCommand({
     },
   }),
   async run({ args }) {
-    const out = resolvePerpOutput(args)
+    const out = createOutput(resolveOutputOptions(args))
     const { walletName, user } = resolvePerpUserContext(args, out)
     const coinFilter = args.coin ? String(args.coin).toUpperCase() : undefined
 

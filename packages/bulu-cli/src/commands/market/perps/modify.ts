@@ -11,7 +11,8 @@ import {
   resolveTriggerKindFromOrder,
 } from '../../../protocols/hyperliquid'
 import type { FrontendOpenOrder, HyperliquidMarketAsset } from '../../../protocols/hyperliquid'
-import { resolvePerpOutput, resolvePerpQueryArgs, resolvePerpUserContext } from './shared'
+import { createOutput, resolveOutputOptions } from '../../../core/output'
+import { resolvePerpQueryArgs, resolvePerpUserContext } from './shared'
 import { loadDataOrExit, renderSingleResult } from '../command-helpers'
 import { submitExchangeAction } from './shared'
 import { findOrderByIdentifier } from './utils'
@@ -52,7 +53,7 @@ export default defineCommand({
     },
   }),
   async run({ args }) {
-    const out = resolvePerpOutput(args)
+    const out = createOutput(resolveOutputOptions(args))
     const { walletName, user } = resolvePerpUserContext(args, out)
     if (!args.price && !args.size && !args.trigger && !args.tp && !args.sl) {
       out.warn('Provide at least one of --price, --size, --trigger, --tp, or --sl')

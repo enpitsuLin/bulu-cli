@@ -1,11 +1,11 @@
 import { defineCommand } from 'citty'
 import { resolvePerpTpslOrder } from '../../../protocols/hyperliquid'
 import type { ResolvedPerpOrder } from '../../../protocols/hyperliquid'
+import { createOutput, resolveOutputOptions } from '../../../core/output'
 import {
   handleCommandError,
   loadPerpMarketOrExit,
   loadPerpStateOrExit,
-  resolvePerpOutput,
   resolvePerpQueryArgs,
   resolvePerpUserContext,
 } from './shared'
@@ -35,7 +35,7 @@ function buildTpslArgs() {
 }
 
 async function runTpslCommand(args: Record<string, unknown>, tpsl: 'sl' | 'tp', titlePrefix: string): Promise<void> {
-  const out = resolvePerpOutput(args)
+  const out = createOutput(resolveOutputOptions(args))
   const { walletName, user } = resolvePerpUserContext(args, out)
   const coin = String(args.coin).toUpperCase()
   const market = await loadPerpMarketOrExit(coin, args.testnet as boolean | undefined, out)

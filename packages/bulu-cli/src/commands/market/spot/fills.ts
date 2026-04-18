@@ -5,7 +5,8 @@ import {
   normalizeSpotPair,
   partitionEntriesBySpot,
 } from '../../../protocols/hyperliquid'
-import { loadSpotPairNameSetOrExit, resolveSpotOutput, resolveSpotQueryArgs, resolveSpotUserContext } from './shared'
+import { createOutput, resolveOutputOptions } from '../../../core/output'
+import { loadSpotPairNameSetOrExit, resolveSpotQueryArgs, resolveSpotUserContext } from './shared'
 import { runListCommand } from '../query-shared'
 import { parseLimitArg, parseTimeArg } from '../utils'
 import { formatTimestamp } from '../../../core/time'
@@ -52,7 +53,7 @@ export default defineCommand({
     },
   }),
   async run({ args }) {
-    const out = resolveSpotOutput(args)
+    const out = createOutput(resolveOutputOptions(args))
     const { walletName, user } = resolveSpotUserContext(args, out)
     const spotPairs = await loadSpotPairNameSetOrExit(args.testnet, out)
     const pairFilter = args.pair ? normalizeSpotPair(String(args.pair)) : undefined

@@ -1,12 +1,7 @@
 import { defineCommand } from 'citty'
 import { buildScheduleCancelAction } from '../../../protocols/hyperliquid'
-import {
-  handleCommandError,
-  resolvePerpOutput,
-  resolvePerpQueryArgs,
-  resolvePerpUserContext,
-  submitExchangeAction,
-} from './shared'
+import { createOutput, resolveOutputOptions } from '../../../core/output'
+import { handleCommandError, resolvePerpQueryArgs, resolvePerpUserContext, submitExchangeAction } from './shared'
 import { executeOrExit, renderSingleResult } from '../command-helpers'
 import { parseTimeArg } from './utils'
 
@@ -24,7 +19,7 @@ export default defineCommand({
     },
   }),
   async run({ args }) {
-    const out = resolvePerpOutput(args)
+    const out = createOutput(resolveOutputOptions(args))
     const { walletName, user } = resolvePerpUserContext(args, out)
     if (args.clear && args.at) {
       out.warn('Use either --clear or --at, not both')

@@ -1,4 +1,4 @@
-import { createOutput } from '../../../core/output'
+import { createOutput, resolveOutputOptions } from '../../../core/output'
 import { fetchClearinghouseState, fetchMarketAsset, resolvePerpOrder } from '../../../protocols/hyperliquid'
 import type {
   ClearinghouseState,
@@ -6,7 +6,7 @@ import type {
   OrderSide,
   ResolvedPerpOrder,
 } from '../../../protocols/hyperliquid'
-import { resolveMarketOutput, resolveMarketQueryArgs, resolveMarketUserContext } from '../shared'
+import { resolveMarketQueryArgs, resolveMarketUserContext } from '../shared'
 import { loadDataOrExit } from '../command-helpers'
 import { buildOrderPositionalArgs, submitOrderAndRender } from '../order-shared'
 import type { OrderSubmissionContext } from '../order-shared'
@@ -51,10 +51,6 @@ export function resolvePerpOrderArgs(mode: 'open' | 'close') {
   )
 }
 
-export function resolvePerpOutput(args: Pick<PerpCommandArgs, 'json' | 'format'>) {
-  return resolveMarketOutput(args)
-}
-
 export function resolvePerpUserContext(
   args: Pick<PerpCommandArgs, 'wallet'>,
   out: ReturnType<typeof createOutput>,
@@ -91,7 +87,7 @@ export async function runPerpOrderCommand(
   preset: PerpOrderPreset,
 ): Promise<void> {
   const coin = String(args.coin).toUpperCase()
-  const out = resolvePerpOutput(args)
+  const out = createOutput(resolveOutputOptions(args))
   const { walletName, user } = resolvePerpUserContext(args, out)
   const market = await loadPerpMarketOrExit(coin, args.testnet, out)
 

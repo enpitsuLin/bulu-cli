@@ -1,12 +1,13 @@
 import { defineCommand } from 'citty'
-import { resolveSpotOutput, resolveSpotQueryArgs, loadSpotMarketStateOrExit } from './shared'
+import { createOutput, resolveOutputOptions } from '../../../core/output'
+import { resolveSpotQueryArgs, loadSpotMarketStateOrExit } from './shared'
 import { renderResult } from '../command-helpers'
 
 export default defineCommand({
   meta: { name: 'pairs', description: 'List tradable spot pairs' },
   args: resolveSpotQueryArgs(),
   async run({ args }) {
-    const out = resolveSpotOutput(args)
+    const out = createOutput(resolveOutputOptions(args))
     const spotMarket = await loadSpotMarketStateOrExit(args.testnet, out)
     const tokenByIndex = new Map(spotMarket.meta.tokens.map((token) => [token.index, token]))
     const rows = spotMarket.meta.universe.map((pairMeta, idx) => {

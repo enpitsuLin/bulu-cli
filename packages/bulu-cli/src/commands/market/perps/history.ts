@@ -1,7 +1,8 @@
 import { defineCommand } from 'citty'
 import { fetchHistoricalOrders, fetchSpotMeta, partitionEntriesBySpot } from '../../../protocols/hyperliquid'
 import type { HistoricalOrder } from '../../../protocols/hyperliquid'
-import { resolvePerpOutput, resolvePerpQueryArgs, resolvePerpUserContext } from './shared'
+import { createOutput, resolveOutputOptions } from '../../../core/output'
+import { resolvePerpQueryArgs, resolvePerpUserContext } from './shared'
 import { runListCommand } from '../query-shared'
 import { parseLimitArg } from './utils'
 import { formatTimestamp } from '../../../core/time'
@@ -40,7 +41,7 @@ export default defineCommand({
     },
   }),
   async run({ args }) {
-    const out = resolvePerpOutput(args)
+    const out = createOutput(resolveOutputOptions(args))
     const { walletName, user } = resolvePerpUserContext(args, out)
     const coin = args.coin ? String(args.coin).toUpperCase() : undefined
     const status = args.status ? String(args.status).toLowerCase() : undefined

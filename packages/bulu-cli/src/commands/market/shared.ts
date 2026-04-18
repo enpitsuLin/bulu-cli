@@ -1,5 +1,5 @@
 import { getVaultPath } from '../../core/config'
-import { createOutput, resolveOutputOptions } from '../../core/output'
+import { createOutput } from '../../core/output'
 import { resolveTCXPassphrase } from '../../core/tcx'
 import { requireChainAccount, resolveWallet } from '../../core/wallet'
 import { withDefaultArgs } from '../../core/args-def'
@@ -31,10 +31,6 @@ export function resolveMarketQueryArgs(extraArgs: Record<string, unknown> = {}) 
       description: 'Wallet name or id (defaults to active wallet)',
     },
   })
-}
-
-export function resolveMarketOutput(args: Pick<MarketCommandArgs, 'json' | 'format'>) {
-  return createOutput(resolveOutputOptions(args))
 }
 
 export function resolveMarketUserContext(

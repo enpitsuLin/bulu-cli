@@ -1,9 +1,9 @@
 import { defineCommand } from 'citty'
 import { buildUpdateIsolatedMarginAction } from '../../../protocols/hyperliquid'
+import { createOutput, resolveOutputOptions } from '../../../core/output'
 import {
   handleCommandError,
   loadPerpMarketOrExit,
-  resolvePerpOutput,
   resolvePerpQueryArgs,
   resolvePerpUserContext,
   submitExchangeAction,
@@ -44,7 +44,7 @@ export default defineCommand({
     },
   }),
   async run({ args }) {
-    const out = resolvePerpOutput(args)
+    const out = createOutput(resolveOutputOptions(args))
     const { walletName, user } = resolvePerpUserContext(args, out)
     const coin = String(args.coin).toUpperCase()
     const market = await loadPerpMarketOrExit(coin, args.testnet, out)

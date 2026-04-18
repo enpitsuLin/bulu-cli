@@ -1,6 +1,7 @@
 import { defineCommand } from 'citty'
 import { fetchSpotClearinghouseState } from '../../../protocols/hyperliquid'
-import { resolveSpotOutput, resolveSpotQueryArgs, resolveSpotUserContext } from './shared'
+import { createOutput, resolveOutputOptions } from '../../../core/output'
+import { resolveSpotQueryArgs, resolveSpotUserContext } from './shared'
 import { loadDataOrExit, renderResult } from '../command-helpers'
 
 export default defineCommand({
@@ -13,7 +14,7 @@ export default defineCommand({
     },
   }),
   async run({ args }) {
-    const out = resolveSpotOutput(args)
+    const out = createOutput(resolveOutputOptions(args))
     const { walletName, user } = resolveSpotUserContext(args, out)
 
     const state = await loadDataOrExit(

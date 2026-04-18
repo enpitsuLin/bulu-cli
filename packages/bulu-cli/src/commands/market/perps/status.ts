@@ -7,7 +7,8 @@ import {
   resolveOrderSide,
 } from '../../../protocols/hyperliquid'
 import { formatTimestamp } from '../../../core/time'
-import { resolvePerpOutput, resolvePerpQueryArgs, resolvePerpUserContext } from './shared'
+import { createOutput, resolveOutputOptions } from '../../../core/output'
+import { resolvePerpQueryArgs, resolvePerpUserContext } from './shared'
 import { loadDataOrExit, renderSingleResult } from '../command-helpers'
 
 export default defineCommand({
@@ -20,7 +21,7 @@ export default defineCommand({
     },
   }),
   async run({ args }) {
-    const out = resolvePerpOutput(args)
+    const out = createOutput(resolveOutputOptions(args))
     const { walletName, user } = resolvePerpUserContext(args, out)
 
     const [response, spotMeta] = await loadDataOrExit(
