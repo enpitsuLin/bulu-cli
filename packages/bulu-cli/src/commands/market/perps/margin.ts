@@ -51,7 +51,7 @@ export default defineCommand({
 
     const ntli = executeOrExit(out, () => parseScaledUsdDelta(String(args.delta)), 'Invalid margin delta')
 
-    const _response = await submitExchangeAction({
+    await submitExchangeAction({
       action: buildUpdateIsolatedMarginAction({
         asset: market.assetIndex,
         ntli,

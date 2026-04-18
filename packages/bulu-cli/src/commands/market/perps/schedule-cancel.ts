@@ -35,7 +35,7 @@ export default defineCommand({
       ? executeOrExit(out, () => parseTimeArg(String(args.at), 'schedule time'), 'Invalid time')
       : undefined
 
-    const _response = await submitExchangeAction({
+    await submitExchangeAction({
       action: buildScheduleCancelAction(args.clear ? undefined : scheduledTime),
       walletName,
       testnet: args.testnet,

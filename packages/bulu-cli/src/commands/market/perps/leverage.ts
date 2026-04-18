@@ -45,7 +45,7 @@ export default defineCommand({
 
     const leverage = executeOrExit(out, () => parseLeverage(String(args.value)), 'Invalid leverage')
 
-    const _response = await submitExchangeAction({
+    await submitExchangeAction({
       action: buildUpdateLeverageAction({
         asset: market.assetIndex,
         leverage,

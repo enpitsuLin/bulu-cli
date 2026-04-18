@@ -5,6 +5,7 @@ import {
   resolveOrderSide,
 } from '../../../protocols/hyperliquid'
 import type { FrontendOpenOrder } from '../../../protocols/hyperliquid'
+import { defineCommand } from 'citty'
 import { formatTimestamp } from '../../../core/time'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
 import { resolvePerpQueryArgs, resolvePerpUserContext } from './shared'
