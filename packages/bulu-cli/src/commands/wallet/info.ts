@@ -1,10 +1,10 @@
 import { defineCommand } from 'citty'
-import { getVaultPath } from '../../core/config'
-import { createOutput } from '../../core/output'
+import { getVaultPath } from '#/core/config'
+import { createOutput } from '#/core/output'
 import { getWallet } from '@bulu-cli/tcx-core'
-import { withOutputArgs } from '../../core/output'
+import { withOutputArgs } from '#/core/output'
 import { styleText } from 'node:util'
-import { formatTimestamp } from '../../core/time'
+import { formatTimestamp } from '#/core/time'
 
 export default defineCommand({
   meta: { name: 'info', description: 'Show detailed information for a wallet' },

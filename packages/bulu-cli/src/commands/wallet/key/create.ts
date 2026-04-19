@@ -1,10 +1,10 @@
 import { createApiKey } from '@bulu-cli/tcx-core'
 import { defineCommand } from 'citty'
-import { getActiveWallet, getVaultPath } from '../../../core/config'
-import { createOutput } from '../../../core/output'
-import { withOutputArgs } from '../../../core/output'
-import { resolveTCXPassphrase } from '../../../core/tcx'
-import { formatTimestamp } from '../../../core/time'
+import { getActiveWallet, getVaultPath } from '#/core/config'
+import { createOutput } from '#/core/output'
+import { withOutputArgs } from '#/core/output'
+import { resolveTCXPassphrase } from '#/core/tcx'
+import { formatTimestamp } from '#/core/time'
 
 function splitIds(value?: string): string[] {
   if (!value) return []

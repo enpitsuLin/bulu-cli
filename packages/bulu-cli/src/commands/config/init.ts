@@ -1,6 +1,6 @@
 import { defineCommand } from 'citty'
-import { initBuluConfigSync } from '../../core/config'
-import { createOutput } from '../../core/output'
+import { initBuluConfigSync } from '#/core/config'
+import { createOutput } from '#/core/output'
 
 export default defineCommand({
   meta: { name: 'init', description: 'Create the default bulu config file' },

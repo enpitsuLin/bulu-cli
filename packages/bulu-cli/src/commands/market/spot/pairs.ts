@@ -1,5 +1,5 @@
 import { defineCommand } from 'citty'
-import { createOutput, withOutputArgs } from '../../../core/output'
+import { createOutput, withOutputArgs } from '#/core/output'
 import { listSpotPairs } from '../../../hyperliquid/features/spot/use-cases/spot'
 import { marketBaseArgs } from '../../../hyperliquid/shared/args'
 import { createHyperliquidCommandContext } from '../../../hyperliquid/shared/context'

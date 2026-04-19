@@ -1,6 +1,6 @@
 import { defineCommand } from 'citty'
-import { formatTimestamp } from '../../../core/time'
-import { createOutput, withOutputArgs } from '../../../core/output'
+import { formatTimestamp } from '#/core/time'
+import { createOutput, withOutputArgs } from '#/core/output'
 import { resolveOrderSide } from '../../../hyperliquid/domain/orders/resolve'
 import { listPerpOrders } from '../../../hyperliquid/features/perps/use-cases/perps'
 import { marketBaseArgs } from '../../../hyperliquid/shared/args'

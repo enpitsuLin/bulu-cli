@@ -5,9 +5,9 @@ import {
   loadUserConfigSync,
   saveUserConfigSync,
   setConfigValueByPath,
-} from '../../core/config'
+} from '#/core/config'
 import { formatConfigValue, parseConfigValue } from './shared'
-import { createOutput, withOutputArgs } from '../../core/output'
+import { createOutput, withOutputArgs } from '#/core/output'
 
 export default defineCommand({
   meta: { name: 'set', description: 'Write a config value by dot path' },

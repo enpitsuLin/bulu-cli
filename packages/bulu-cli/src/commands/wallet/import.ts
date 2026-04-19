@@ -3,10 +3,10 @@ import { importWalletKeystore, importWalletMnemonic, importWalletPrivateKey } fr
 import { defineCommand } from 'citty'
 import { styleText } from 'node:util'
 import { readFileSync } from 'node:fs'
-import { getVaultPath, setActiveWallet } from '../../core/config'
-import { resolveTCXPassphrase } from '../../core/tcx'
-import { createOutput } from '../../core/output'
-import { withOutputArgs } from '../../core/output'
+import { getVaultPath, setActiveWallet } from '#/core/config'
+import { resolveTCXPassphrase } from '#/core/tcx'
+import { createOutput } from '#/core/output'
+import { withOutputArgs } from '#/core/output'
 
 function parseIndex(indexValue?: string): number | undefined {
   if (!indexValue) return undefined

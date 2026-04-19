@@ -1,5 +1,5 @@
 import { $fetch } from 'ofetch'
-import { getHyperliquidBaseUrl } from '../../core/config'
+import { getHyperliquidBaseUrl } from '#/core/config'
 
 const clientCache = new Map<string, ReturnType<typeof $fetch.create>>()
 

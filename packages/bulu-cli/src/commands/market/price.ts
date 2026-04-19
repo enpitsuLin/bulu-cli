@@ -1,6 +1,6 @@
 import { defineCommand } from 'citty'
-import { withOutputArgs } from '../../core/output'
-import { createOutput } from '../../core/output'
+import { withOutputArgs } from '#/core/output'
+import { createOutput } from '#/core/output'
 import { getPriceSummary } from '../../hyperliquid/features/price/use-cases/get-price-summary'
 import { runHyperliquidCommand } from '../../hyperliquid/shared/errors'
 

@@ -1,5 +1,5 @@
 import { defineCommand } from 'citty'
-import { createOutput, withOutputArgs } from '../../../core/output'
+import { createOutput, withOutputArgs } from '#/core/output'
 import { resolveOrderSide } from '../../../hyperliquid/domain/orders/resolve'
 import { modifyPerpOrder } from '../../../hyperliquid/features/perps/use-cases/perps'
 import { marketBaseArgs } from '../../../hyperliquid/shared/args'

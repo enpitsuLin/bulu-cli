@@ -1,9 +1,9 @@
 import { deleteWallet } from '@bulu-cli/tcx-core'
 import { defineCommand } from 'citty'
 import { join } from 'node:path'
-import { createOutput } from '../../core/output'
-import { getConfigDir } from '../../core/config'
-import { withOutputArgs } from '../../core/output'
+import { createOutput } from '#/core/output'
+import { getConfigDir } from '#/core/config'
+import { withOutputArgs } from '#/core/output'
 
 export default defineCommand({
   meta: { name: 'delete', description: 'Delete a wallet from the local vault' },

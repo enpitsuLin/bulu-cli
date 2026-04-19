@@ -1,6 +1,6 @@
 import { defineCommand } from 'citty'
-import { getConfigValueByPath, loadBuluConfigSync } from '../../core/config'
-import { createOutput, withOutputArgs } from '../../core/output'
+import { getConfigValueByPath, loadBuluConfigSync } from '#/core/config'
+import { createOutput, withOutputArgs } from '#/core/output'
 
 export default defineCommand({
   meta: { name: 'get', description: 'Read a config value by dot path' },

@@ -1,8 +1,8 @@
 import { revokeApiKey } from '@bulu-cli/tcx-core'
 import { defineCommand } from 'citty'
-import { getVaultPath } from '../../../core/config'
-import { createOutput } from '../../../core/output'
-import { withOutputArgs } from '../../../core/output'
+import { getVaultPath } from '#/core/config'
+import { createOutput } from '#/core/output'
+import { withOutputArgs } from '#/core/output'
 
 export default defineCommand({
   meta: { name: 'revoke', description: 'Revoke an API key' },

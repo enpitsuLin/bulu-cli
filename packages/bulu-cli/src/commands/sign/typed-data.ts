@@ -1,9 +1,9 @@
 import { defineCommand } from 'citty'
 import { signTypedData } from '@bulu-cli/tcx-core'
-import { getVaultPath } from '../../core/config'
-import { createOutput } from '../../core/output'
-import { withOutputArgs } from '../../core/output'
-import { resolveTCXPassphrase } from '../../core/tcx'
+import { getVaultPath } from '#/core/config'
+import { createOutput } from '#/core/output'
+import { withOutputArgs } from '#/core/output'
+import { resolveTCXPassphrase } from '#/core/tcx'
 
 export default defineCommand({
   meta: { name: 'typed-data', description: 'Sign typed structured data (EIP-712 / TIP-712)' },

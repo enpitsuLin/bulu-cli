@@ -1,6 +1,6 @@
 import { defineCommand } from 'citty'
-import { formatTimestamp } from '../../../core/time'
-import { createOutput, withOutputArgs } from '../../../core/output'
+import { formatTimestamp } from '#/core/time'
+import { createOutput, withOutputArgs } from '#/core/output'
 import { listSpotOrders } from '../../../hyperliquid/features/spot/use-cases/spot'
 import { marketBaseArgs } from '../../../hyperliquid/shared/args'
 import { requireHyperliquidWalletContext } from '../../../hyperliquid/shared/context'

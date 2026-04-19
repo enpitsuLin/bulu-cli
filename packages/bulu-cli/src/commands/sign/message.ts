@@ -1,9 +1,9 @@
 import { defineCommand } from 'citty'
 import { signMessage } from '@bulu-cli/tcx-core'
-import { getVaultPath } from '../../core/config'
-import { createOutput } from '../../core/output'
-import { withOutputArgs } from '../../core/output'
-import { resolveTCXPassphrase } from '../../core/tcx'
+import { getVaultPath } from '#/core/config'
+import { createOutput } from '#/core/output'
+import { withOutputArgs } from '#/core/output'
+import { resolveTCXPassphrase } from '#/core/tcx'
 
 export default defineCommand({
   meta: { name: 'message', description: 'Sign a message' },

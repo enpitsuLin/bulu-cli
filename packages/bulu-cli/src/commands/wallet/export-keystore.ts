@@ -1,10 +1,10 @@
 import { defineCommand } from 'citty'
 import { renderUnicodeCompact } from 'uqr'
-import { getVaultPath } from '../../core/config'
-import { createOutput } from '../../core/output'
+import { getVaultPath } from '#/core/config'
+import { createOutput } from '#/core/output'
 import { exportEthKeystoreV3 } from '@bulu-cli/tcx-core'
-import { withOutputArgs } from '../../core/output'
-import { resolveTCXPassphrase } from '../../core/tcx'
+import { withOutputArgs } from '#/core/output'
+import { resolveTCXPassphrase } from '#/core/tcx'
 
 export default defineCommand({
   meta: {

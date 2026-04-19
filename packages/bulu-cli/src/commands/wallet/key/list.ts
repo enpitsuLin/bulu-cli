@@ -1,9 +1,9 @@
 import { listApiKey, type ApiKeyInfo } from '@bulu-cli/tcx-core'
 import { defineCommand } from 'citty'
-import { getVaultPath } from '../../../core/config'
-import { createOutput } from '../../../core/output'
-import { withOutputArgs } from '../../../core/output'
-import { formatOptionalTimestamp } from '../../../core/time'
+import { getVaultPath } from '#/core/config'
+import { createOutput } from '#/core/output'
+import { withOutputArgs } from '#/core/output'
+import { formatOptionalTimestamp } from '#/core/time'
 
 function formatApiKeysForTable(apiKeys: ApiKeyInfo[]) {
   return apiKeys.map((k) => ({

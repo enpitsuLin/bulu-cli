@@ -1,9 +1,9 @@
 import { listPolicy, type PolicyInfo } from '@bulu-cli/tcx-core'
 import { defineCommand } from 'citty'
-import { getVaultPath } from '../../../core/config'
-import { createOutput } from '../../../core/output'
-import { withOutputArgs } from '../../../core/output'
-import { formatTimestamp } from '../../../core/time'
+import { getVaultPath } from '#/core/config'
+import { createOutput } from '#/core/output'
+import { withOutputArgs } from '#/core/output'
+import { formatTimestamp } from '#/core/time'
 
 function formatPoliciesForTable(policies: PolicyInfo[]) {
   return policies.map((p) => ({

@@ -1,4 +1,4 @@
-import type { Output } from '../../core/output'
+import type { Output } from '#/core/output'
 
 export class HyperliquidCliError extends Error {
   constructor(message: string) {
