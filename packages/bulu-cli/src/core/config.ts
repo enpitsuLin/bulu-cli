@@ -44,7 +44,7 @@ export const configCtx = createContext<ConfigOptions>({
 })
 
 export function useConfig(): BuluConfig {
-  return defu({}, CONFIG_DEFAULTS, configCtx.tryUse()?.config)
+  return configCtx.use().config
 }
 
 export function getConfigDir(): string {
