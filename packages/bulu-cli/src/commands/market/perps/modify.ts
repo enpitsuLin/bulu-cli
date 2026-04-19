@@ -1,8 +1,11 @@
 import { defineCommand } from 'citty'
+import { marketBaseArgs } from '../../../core/hyperliquid/command'
+import { resolvePerpUserContext, submitExchangeAction } from '../../../core/hyperliquid/perps'
 import {
   buildModifyAction,
   buildOrderWire,
   fetchFrontendOpenOrders,
+  findOrderByIdentifier,
   fetchMarketAsset,
   fetchSpotMeta,
   partitionEntriesBySpot,
@@ -13,10 +16,7 @@ import {
 import type { FrontendOpenOrder, HyperliquidMarketAsset } from '../../../protocols/hyperliquid'
 import { withDefaultArgs } from '../../../core/args-def'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
-import { marketBaseArgs } from '../shared'
-import { resolvePerpUserContext, submitExchangeAction } from './shared'
 import { loadDataOrExit } from '../../../utils/cli'
-import { findOrderByIdentifier } from './utils'
 
 function isMarketTrigger(order: FrontendOpenOrder): boolean {
   return order.orderType.toLowerCase().includes('market')

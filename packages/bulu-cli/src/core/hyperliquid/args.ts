@@ -1,6 +1,3 @@
-import { parseOrderIdentifier } from '../../protocols/hyperliquid'
-import type { FrontendOpenOrder } from '../../protocols/hyperliquid'
-
 export function parseTimeArg(value: string, label: string): number {
   const trimmed = value.trim()
   if (!trimmed) {
@@ -28,14 +25,4 @@ export function parseLimitArg(value: string | undefined, defaultValue = 50): num
     throw new Error(`Invalid limit: ${value}`)
   }
   return limit
-}
-
-export function findOrderByIdentifier(
-  orders: FrontendOpenOrder[],
-  identifier: string | number | `0x${string}`,
-): FrontendOpenOrder | undefined {
-  const parsed = typeof identifier === 'string' ? parseOrderIdentifier(identifier) : identifier
-  return orders.find((order) =>
-    typeof parsed === 'string' ? order.cloid?.toLowerCase() === parsed.toLowerCase() : order.oid === parsed,
-  )
 }

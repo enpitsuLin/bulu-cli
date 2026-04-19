@@ -1,4 +1,6 @@
 import { defineCommand } from 'citty'
+import { marketBaseArgs } from '../../../core/hyperliquid/command'
+import { resolvePerpUserContext } from '../../../core/hyperliquid/perps'
 import {
   fetchOrderStatus,
   fetchSpotMeta,
@@ -9,8 +11,6 @@ import {
 import { withDefaultArgs } from '../../../core/args-def'
 import { formatTimestamp } from '../../../core/time'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
-import { marketBaseArgs } from '../shared'
-import { resolvePerpUserContext } from './shared'
 import { loadDataOrExit } from '../../../utils/cli'
 
 export default defineCommand({

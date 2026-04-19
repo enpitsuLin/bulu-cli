@@ -1,4 +1,8 @@
 import { defineCommand } from 'citty'
+import { parseLimitArg, parseTimeArg } from '../../../core/hyperliquid/args'
+import { marketBaseArgs } from '../../../core/hyperliquid/command'
+import { fetchListItems } from '../../../core/hyperliquid/query'
+import { formatSpotFillRow, loadSpotPairNameSetOrExit, resolveSpotUserContext } from '../../../core/hyperliquid/spot'
 import {
   fetchUserFills,
   fetchUserFillsByTime,
@@ -7,26 +11,6 @@ import {
 } from '../../../protocols/hyperliquid'
 import { withDefaultArgs } from '../../../core/args-def'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
-import { marketBaseArgs } from '../shared'
-import { loadSpotPairNameSetOrExit, resolveSpotUserContext } from './shared'
-import { fetchListItems } from '../query-shared'
-import { parseLimitArg, parseTimeArg } from '../utils'
-import { formatTimestamp } from '../../../core/time'
-import type { UserFill } from '../../../protocols/hyperliquid'
-
-function mapSpotFillRow(fill: UserFill) {
-  return {
-    time: formatTimestamp(fill.time),
-    pair: fill.coin,
-    dir: fill.dir ?? 'N/A',
-    side: fill.side === 'B' ? 'buy' : 'sell',
-    size: fill.sz,
-    price: fill.px,
-    fee: fill.fee ?? 'N/A',
-    closedPnl: fill.closedPnl ?? 'N/A',
-    oid: fill.oid,
-  }
-}
 
 export default defineCommand({
   meta: { name: 'fills', description: 'Show recent spot fills' },
@@ -82,7 +66,7 @@ export default defineCommand({
       },
       filter: pairFilter ? (fill) => fill.coin === pairFilter : undefined,
       limit,
-      toRow: mapSpotFillRow,
+      toRow: formatSpotFillRow,
     })
 
     out.table(rows, {

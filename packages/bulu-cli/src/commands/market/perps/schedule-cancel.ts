@@ -1,12 +1,11 @@
 import { defineCommand } from 'citty'
+import { parseTimeArg } from '../../../core/hyperliquid/args'
+import { marketBaseArgs } from '../../../core/hyperliquid/command'
+import { handleCommandError, resolvePerpUserContext, submitExchangeAction } from '../../../core/hyperliquid/perps'
 import { buildScheduleCancelAction } from '../../../protocols/hyperliquid'
 import { withDefaultArgs } from '../../../core/args-def'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
-import { marketBaseArgs } from '../shared'
-import { handleCommandError, resolvePerpUserContext, submitExchangeAction } from './shared'
 import { executeOrExit } from '../../../utils/cli'
-
-import { parseTimeArg } from './utils'
 
 export default defineCommand({
   meta: { name: 'schedule-cancel', description: "Manage Hyperliquid's scheduled cancel-all deadline" },

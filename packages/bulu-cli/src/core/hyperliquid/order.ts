@@ -1,11 +1,7 @@
-import type { ExchangeAction, OrderResponse } from '../../protocols/hyperliquid'
 import { formatOrderStatus } from '../../protocols/hyperliquid'
-import { submitExchangeAction } from './shared'
+import type { ExchangeAction, OrderResponse } from '../../protocols/hyperliquid'
+import { submitExchangeAction } from './command'
 
-/**
- * Submit an order action and return formatted status rows.
- * Callers control output.
- */
 export async function submitOrder(
   ctx: { walletName: string; testnet?: boolean },
   action: ExchangeAction,

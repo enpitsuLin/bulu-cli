@@ -1,16 +1,16 @@
 import { defineCommand } from 'citty'
+import { marketBaseArgs, submitExchangeAction } from '../../../core/hyperliquid/command'
+import { loadSpotMarketStateOrExit, resolveSpotUserContext } from '../../../core/hyperliquid/spot'
 import {
   buildCancelAction,
   fetchFrontendOpenOrders,
+  findOrderByIdentifier,
   findSpotMarketAsset,
   normalizeSpotPair,
   partitionEntriesBySpot,
 } from '../../../protocols/hyperliquid'
-import { findOrderByIdentifier } from '../utils'
 import { withDefaultArgs } from '../../../core/args-def'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
-import { marketBaseArgs, submitExchangeAction } from '../shared'
-import { loadSpotMarketStateOrExit, resolveSpotUserContext } from './shared'
 import { loadDataOrExit } from '../../../utils/cli'
 
 export default defineCommand({

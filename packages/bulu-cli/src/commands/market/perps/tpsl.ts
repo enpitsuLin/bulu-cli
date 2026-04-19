@@ -1,11 +1,16 @@
 import { defineCommand } from 'citty'
+import { marketBaseArgs } from '../../../core/hyperliquid/command'
+import { submitOrder } from '../../../core/hyperliquid/order'
+import {
+  handleCommandError,
+  loadPerpMarketOrExit,
+  loadPerpStateOrExit,
+  resolvePerpUserContext,
+} from '../../../core/hyperliquid/perps'
 import { resolvePerpTpslOrder } from '../../../protocols/hyperliquid'
 import type { ResolvedPerpOrder } from '../../../protocols/hyperliquid'
 import { withDefaultArgs } from '../../../core/args-def'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
-import { marketBaseArgs } from '../shared'
-import { handleCommandError, loadPerpMarketOrExit, loadPerpStateOrExit, resolvePerpUserContext } from './shared'
-import { submitOrder } from '../order-shared'
 
 async function runTpslCommand(args: Record<string, unknown>, tpsl: 'sl' | 'tp', titlePrefix: string): Promise<void> {
   const out = createOutput(resolveOutputOptions(args))

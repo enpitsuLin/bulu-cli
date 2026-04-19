@@ -1,33 +1,16 @@
 import { defineCommand } from 'citty'
+import { parseLimitArg, parseTimeArg } from '../../../core/hyperliquid/args'
+import { marketBaseArgs } from '../../../core/hyperliquid/command'
+import { fetchListItems } from '../../../core/hyperliquid/query'
+import { formatPerpFillRow, resolvePerpUserContext } from '../../../core/hyperliquid/perps'
 import {
   fetchSpotMeta,
   fetchUserFills,
   fetchUserFillsByTime,
   partitionEntriesBySpot,
-  resolveOrderSide,
 } from '../../../protocols/hyperliquid'
 import { withDefaultArgs } from '../../../core/args-def'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
-import { marketBaseArgs } from '../shared'
-import { resolvePerpUserContext } from './shared'
-import { fetchListItems } from '../query-shared'
-import { parseLimitArg, parseTimeArg } from './utils'
-import { formatTimestamp } from '../../../core/time'
-import type { UserFill } from '../../../protocols/hyperliquid'
-
-function mapPerpFillRow(fill: UserFill) {
-  return {
-    time: formatTimestamp(fill.time),
-    coin: fill.coin,
-    dir: fill.dir ?? 'N/A',
-    side: resolveOrderSide(fill.side),
-    size: fill.sz,
-    price: fill.px,
-    fee: fill.fee ?? 'N/A',
-    closedPnl: fill.closedPnl ?? 'N/A',
-    oid: fill.oid,
-  }
-}
 
 export default defineCommand({
   meta: { name: 'fills', description: 'Show recent perp fills' },
@@ -84,7 +67,7 @@ export default defineCommand({
       },
       filter: coin ? (fill) => fill.coin === coin : undefined,
       limit,
-      toRow: mapPerpFillRow,
+      toRow: formatPerpFillRow,
     })
 
     out.table(rows, {

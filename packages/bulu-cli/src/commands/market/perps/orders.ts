@@ -1,34 +1,10 @@
-import {
-  fetchFrontendOpenOrders,
-  fetchSpotMeta,
-  partitionEntriesBySpot,
-  resolveOrderSide,
-} from '../../../protocols/hyperliquid'
-import type { FrontendOpenOrder } from '../../../protocols/hyperliquid'
 import { defineCommand } from 'citty'
 import { withDefaultArgs } from '../../../core/args-def'
-import { formatTimestamp } from '../../../core/time'
+import { marketBaseArgs } from '../../../core/hyperliquid/command'
+import { fetchListItems } from '../../../core/hyperliquid/query'
+import { formatPerpOpenOrderRow, resolvePerpUserContext } from '../../../core/hyperliquid/perps'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
-import { marketBaseArgs } from '../shared'
-import { resolvePerpUserContext } from './shared'
-import { fetchListItems } from '../query-shared'
-
-function mapOpenOrder(order: FrontendOpenOrder) {
-  return {
-    coin: order.coin,
-    side: resolveOrderSide(order.side),
-    size: order.sz,
-    origSize: order.origSz,
-    limitPx: order.limitPx,
-    tif: order.isTrigger ? `trigger (${order.tif})` : order.tif,
-    triggerPx: order.triggerPx ?? 'N/A',
-    cloid: order.cloid ?? 'N/A',
-    positionTpsl: order.isPositionTpsl ?? false,
-    reduceOnly: order.reduceOnly,
-    oid: order.oid,
-    timestamp: formatTimestamp(order.timestamp),
-  }
-}
+import { fetchFrontendOpenOrders, fetchSpotMeta, partitionEntriesBySpot } from '../../../protocols/hyperliquid'
 
 export default defineCommand({
   meta: { name: 'orders', description: 'Show open perp orders' },
@@ -55,7 +31,7 @@ export default defineCommand({
         return perps
       },
       filter: coinFilter ? (order) => order.coin === coinFilter : undefined,
-      toRow: mapOpenOrder,
+      toRow: formatPerpOpenOrderRow,
     })
 
     out.table(rows, {

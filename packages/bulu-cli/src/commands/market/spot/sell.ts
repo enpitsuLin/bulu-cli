@@ -1,8 +1,8 @@
 import { defineCommand } from 'citty'
 import { withDefaultArgs } from '../../../core/args-def'
+import { marketBaseArgs } from '../../../core/hyperliquid/command'
+import { executeSpotOrderCommand, renderSpotOrderResult } from '../../../core/hyperliquid/spot'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
-import { marketBaseArgs } from '../shared'
-import { executeSpotOrderCommand, renderSpotOrderResult } from './shared'
 
 export default defineCommand({
   meta: { name: 'sell', description: 'Place a spot sell order on Hyperliquid' },

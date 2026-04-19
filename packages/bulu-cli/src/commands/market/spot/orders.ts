@@ -1,28 +1,14 @@
 import { defineCommand } from 'citty'
+import { marketBaseArgs } from '../../../core/hyperliquid/command'
+import { fetchListItems } from '../../../core/hyperliquid/query'
+import {
+  formatSpotOpenOrderRow,
+  loadSpotPairNameSetOrExit,
+  resolveSpotUserContext,
+} from '../../../core/hyperliquid/spot'
 import { fetchFrontendOpenOrders, normalizeSpotPair, partitionEntriesBySpot } from '../../../protocols/hyperliquid'
-import type { FrontendOpenOrder } from '../../../protocols/hyperliquid'
 import { withDefaultArgs } from '../../../core/args-def'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
-import { marketBaseArgs } from '../shared'
-import { loadSpotPairNameSetOrExit, resolveSpotUserContext } from './shared'
-import { fetchListItems } from '../query-shared'
-import { formatTimestamp } from '../../../core/time'
-
-function mapSpotOpenOrder(order: FrontendOpenOrder) {
-  return {
-    pair: order.coin,
-    side: order.side === 'B' ? 'buy' : 'sell',
-    size: order.sz,
-    origSize: order.origSz,
-    limitPx: order.limitPx,
-    tif: order.isTrigger ? `trigger (${order.tif})` : order.tif,
-    triggerPx: order.triggerPx ?? 'N/A',
-    reduceOnly: order.reduceOnly,
-    oid: order.oid,
-    cloid: order.cloid ?? 'N/A',
-    timestamp: formatTimestamp(order.timestamp),
-  }
-}
 
 export default defineCommand({
   meta: { name: 'orders', description: 'Show open spot orders' },
@@ -47,7 +33,7 @@ export default defineCommand({
         return spot
       },
       filter: pairFilter ? (order) => order.coin === pairFilter : undefined,
-      toRow: mapSpotOpenOrder,
+      toRow: formatSpotOpenOrderRow,
     })
 
     out.table(rows, {

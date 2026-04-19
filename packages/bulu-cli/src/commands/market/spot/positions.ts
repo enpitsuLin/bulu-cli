@@ -1,9 +1,9 @@
 import { defineCommand } from 'citty'
+import { marketBaseArgs } from '../../../core/hyperliquid/command'
+import { resolveSpotUserContext } from '../../../core/hyperliquid/spot'
 import { fetchSpotClearinghouseState } from '../../../protocols/hyperliquid'
 import { withDefaultArgs } from '../../../core/args-def'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
-import { marketBaseArgs } from '../shared'
-import { resolveSpotUserContext } from './shared'
 import { loadDataOrExit } from '../../../utils/cli'
 
 export default defineCommand({

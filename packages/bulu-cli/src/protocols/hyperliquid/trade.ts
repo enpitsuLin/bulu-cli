@@ -112,6 +112,16 @@ export function buildScheduleCancelAction(time?: number): ExchangeScheduleCancel
   return time === undefined ? { type: 'scheduleCancel' } : { type: 'scheduleCancel', time }
 }
 
+export function findOrderByIdentifier(
+  orders: FrontendOpenOrder[],
+  identifier: string | number | `0x${string}`,
+): FrontendOpenOrder | undefined {
+  const parsed = typeof identifier === 'string' ? parseOrderIdentifier(identifier) : identifier
+  return orders.find((order) =>
+    typeof parsed === 'string' ? order.cloid?.toLowerCase() === parsed.toLowerCase() : order.oid === parsed,
+  )
+}
+
 export function findPerpPosition(
   coin: string,
   state: Pick<ClearinghouseState, 'assetPositions'>,

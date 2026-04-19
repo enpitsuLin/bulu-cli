@@ -1,29 +1,11 @@
 import { defineCommand } from 'citty'
+import { parseLimitArg } from '../../../core/hyperliquid/args'
+import { marketBaseArgs } from '../../../core/hyperliquid/command'
+import { fetchListItems } from '../../../core/hyperliquid/query'
+import { formatHistoryOrderRow, resolvePerpUserContext } from '../../../core/hyperliquid/perps'
 import { fetchHistoricalOrders, fetchSpotMeta, partitionEntriesBySpot } from '../../../protocols/hyperliquid'
-import type { HistoricalOrder } from '../../../protocols/hyperliquid'
 import { withDefaultArgs } from '../../../core/args-def'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
-import { marketBaseArgs } from '../shared'
-import { resolvePerpUserContext } from './shared'
-import { fetchListItems } from '../query-shared'
-import { parseLimitArg } from './utils'
-import { formatTimestamp } from '../../../core/time'
-
-function mapPerpHistoryRow(entry: HistoricalOrder) {
-  return {
-    coin: entry.order.coin,
-    status: entry.status,
-    side: entry.order.side === 'B' ? 'long' : 'short',
-    size: entry.order.sz,
-    origSize: entry.order.origSz,
-    limitPx: entry.order.limitPx,
-    tif: entry.order.tif,
-    reduceOnly: entry.order.reduceOnly,
-    oid: entry.order.oid,
-    cloid: entry.order.cloid ?? 'N/A',
-    statusTimestamp: formatTimestamp(entry.statusTimestamp),
-  }
-}
 
 export default defineCommand({
   meta: { name: 'history', description: 'Show historical perp orders' },
@@ -68,7 +50,7 @@ export default defineCommand({
         return true
       },
       limit,
-      toRow: mapPerpHistoryRow,
+      toRow: formatHistoryOrderRow,
     })
 
     out.table(rows, {

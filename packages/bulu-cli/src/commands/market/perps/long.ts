@@ -1,8 +1,8 @@
 import { defineCommand } from 'citty'
 import { withDefaultArgs } from '../../../core/args-def'
+import { marketBaseArgs } from '../../../core/hyperliquid/command'
+import { executePerpOrderCommand, renderPerpOrderResult } from '../../../core/hyperliquid/perps'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
-import { marketBaseArgs } from '../shared'
-import { executePerpOrderCommand, renderPerpOrderResult } from './shared'
 
 export default defineCommand({
   meta: { name: 'long', description: 'Open or increase a long perp position on Hyperliquid' },

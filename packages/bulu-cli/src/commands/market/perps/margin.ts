@@ -1,9 +1,14 @@
 import { defineCommand } from 'citty'
+import { marketBaseArgs } from '../../../core/hyperliquid/command'
+import {
+  handleCommandError,
+  loadPerpMarketOrExit,
+  resolvePerpUserContext,
+  submitExchangeAction,
+} from '../../../core/hyperliquid/perps'
 import { buildUpdateIsolatedMarginAction } from '../../../protocols/hyperliquid'
 import { withDefaultArgs } from '../../../core/args-def'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
-import { marketBaseArgs } from '../shared'
-import { handleCommandError, loadPerpMarketOrExit, resolvePerpUserContext, submitExchangeAction } from './shared'
 import { executeOrExit } from '../../../utils/cli'
 
 function parseScaledUsdDelta(value: string): number {

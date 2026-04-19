@@ -41,6 +41,7 @@ export {
   buildScheduleCancelAction,
   buildUpdateIsolatedMarginAction,
   buildUpdateLeverageAction,
+  findOrderByIdentifier,
   findPerpPosition,
   isCloid,
   parseOrderIdentifier,

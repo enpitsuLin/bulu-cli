@@ -1,8 +1,8 @@
 import { defineCommand } from 'citty'
 import { withDefaultArgs } from '../../../core/args-def'
+import { marketBaseArgs } from '../../../core/hyperliquid/command'
+import { loadSpotMarketStateOrExit } from '../../../core/hyperliquid/spot'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
-import { marketBaseArgs } from '../shared'
-import { loadSpotMarketStateOrExit } from './shared'
 
 export default defineCommand({
   meta: { name: 'pairs', description: 'List tradable spot pairs' },

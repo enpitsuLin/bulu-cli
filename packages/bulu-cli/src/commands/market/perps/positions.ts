@@ -1,10 +1,10 @@
 import { defineCommand } from 'citty'
+import { marketBaseArgs } from '../../../core/hyperliquid/command'
+import { resolvePerpUserContext } from '../../../core/hyperliquid/perps'
 import { fetchClearinghouseState } from '../../../protocols/hyperliquid'
 import type { PerpPosition } from '../../../protocols/hyperliquid'
 import { withDefaultArgs } from '../../../core/args-def'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
-import { marketBaseArgs } from '../shared'
-import { resolvePerpUserContext } from './shared'
 import { loadDataOrExit } from '../../../utils/cli'
 
 function formatLeverage(leverage: PerpPosition['leverage']): string {
