@@ -10,6 +10,8 @@ const BULU_CONFIG_DEFAULT_DIR = 'bulu'
 const BULU_CONFIG_FILENAME = 'bulu.config.json'
 
 export type UserConfig = Record<string, unknown>
+type ConfigPath = readonly string[]
+type ConfigRecord = Record<string, unknown>
 
 export interface BuluConfig {
   default?: {
@@ -41,8 +43,8 @@ export const configCtx = createContext<ConfigOptions>({
   AsyncLocalStorage,
 })
 
-export function useConfig() {
-  return configCtx.use().config
+export function useConfig(): BuluConfig {
+  return defu({}, CONFIG_DEFAULTS, configCtx.tryUse()?.config)
 }
 
 export function getConfigDir(): string {
@@ -100,37 +102,17 @@ export function saveUserConfigSync(config: UserConfig, cwd = getConfigDir()): vo
   writeFileSync(getConfigPath(cwd), JSON.stringify(config, null, 2))
 }
 
-export function loadBuluConfigSync(cwd?: string): BuluConfig {
-  const overrides = loadUserConfigSync(cwd || getConfigDir())
+export function loadBuluConfigSync(cwd = getConfigDir()): BuluConfig {
+  const overrides = loadUserConfigSync(cwd)
   return defu(CONFIG_DEFAULTS as Record<string, unknown>, overrides)
 }
 
 export function getConfigValueByPath(config: unknown, keyPath: string): unknown {
-  let current = config
-
-  for (const segment of parseConfigKeyPath(keyPath)) {
-    if (!isRecord(current)) {
-      return undefined
-    }
-    current = current[segment]
-  }
-
-  return current
+  return getValueAtPath(config, parseConfigKeyPath(keyPath))
 }
 
 export function setConfigValueByPath(config: UserConfig, keyPath: string, value: unknown): void {
-  const segments = parseConfigKeyPath(keyPath)
-  let current = config
-
-  for (const segment of segments.slice(0, -1)) {
-    const next = current[segment]
-    if (!isRecord(next)) {
-      current[segment] = {}
-    }
-    current = current[segment] as UserConfig
-  }
-
-  current[segments[segments.length - 1]] = value
+  setValueAtPath(config, parseConfigKeyPath(keyPath), value)
 }
 
 export function setConfigValue(keyPath: string, value: unknown): void {
@@ -145,7 +127,7 @@ export function setConfigValue(keyPath: string, value: unknown): void {
   saveUserConfigSync(userConfig)
 }
 
-function getValueAtPath(source: unknown, path: readonly string[]): unknown {
+function getValueAtPath(source: unknown, path: ConfigPath): unknown {
   let current = source
 
   for (const segment of path) {
@@ -159,25 +141,25 @@ function getValueAtPath(source: unknown, path: readonly string[]): unknown {
   return current
 }
 
-function unwrapValue(value: unknown): unknown {
+function clonePlainValue(value: unknown): unknown {
   if (Array.isArray(value)) {
-    return value.map((item) => unwrapValue(item))
+    return value.map((item) => clonePlainValue(item))
   }
 
   if (!isRecord(value)) {
     return value
   }
 
-  const result: Record<string, unknown> = {}
+  const result: ConfigRecord = {}
 
   for (const [key, nestedValue] of Object.entries(value)) {
-    result[key] = unwrapValue(nestedValue)
+    result[key] = clonePlainValue(nestedValue)
   }
 
   return result
 }
 
-function setValueAtPath(target: UserConfig, path: readonly string[], value: unknown): void {
+function getParentRecord(target: UserConfig, path: ConfigPath): UserConfig {
   let current = target
 
   for (const segment of path.slice(0, -1)) {
@@ -190,12 +172,16 @@ function setValueAtPath(target: UserConfig, path: readonly string[], value: unkn
     current = current[segment] as UserConfig
   }
 
-  current[path[path.length - 1]] = unwrapValue(value)
+  return current
 }
 
-function deleteValueAtPath(target: UserConfig, path: readonly string[]): boolean {
-  const parents: Array<[Record<string, unknown>, string]> = []
-  let current: Record<string, unknown> = target
+function setValueAtPath(target: UserConfig, path: ConfigPath, value: unknown): void {
+  getParentRecord(target, path)[path[path.length - 1]] = clonePlainValue(value)
+}
+
+function deleteValueAtPath(target: UserConfig, path: ConfigPath): boolean {
+  const parents: Array<[ConfigRecord, string]> = []
+  let current: ConfigRecord = target
 
   for (const segment of path.slice(0, -1)) {
     const next = current[segment]
@@ -228,29 +214,41 @@ function deleteValueAtPath(target: UserConfig, path: readonly string[]): boolean
   return true
 }
 
-export function createRuntimeConfig(): BuluConfig {
-  let config = loadBuluConfigSync() as Record<string, unknown>
-  let userConfig = loadUserConfigSync()
-  const proxyCache = new Map<string, Record<string, unknown>>()
+function loadConfigState(cwd = getConfigDir()) {
+  return {
+    config: loadBuluConfigSync(cwd) as ConfigRecord,
+    userConfig: loadUserConfigSync(cwd),
+  }
+}
+
+export function createRuntimeConfig(cwd = getConfigDir()): BuluConfig {
+  const state = loadConfigState(cwd)
+  const proxyCache = new Map<string, ConfigRecord>()
 
   const reload = () => {
-    config = loadBuluConfigSync() as Record<string, unknown>
-    userConfig = loadUserConfigSync()
+    Object.assign(state, loadConfigState(cwd))
   }
 
-  const getRecordAtPath = (path: readonly string[]) => {
-    const value = getValueAtPath(config, path)
+  const getConfigValue = (path: ConfigPath) => getValueAtPath(state.config, path)
+
+  const getConfigRecord = (path: ConfigPath): ConfigRecord => {
+    const value = getConfigValue(path)
     return isRecord(value) ? value : {}
   }
 
-  const createProxy = (path: readonly string[]): Record<string, unknown> => {
+  const persist = () => {
+    saveUserConfigSync(state.userConfig, cwd)
+    reload()
+  }
+
+  const createProxy = (path: ConfigPath): ConfigRecord => {
     const cacheKey = path.join('\0')
     const cachedProxy = proxyCache.get(cacheKey)
     if (cachedProxy) {
       return cachedProxy
     }
 
-    const proxy = new Proxy<Record<string, unknown>>(
+    const proxy = new Proxy<ConfigRecord>(
       {},
       {
         get(_, property) {
@@ -259,10 +257,10 @@ export function createRuntimeConfig(): BuluConfig {
           }
 
           if (property === 'toJSON') {
-            return () => getValueAtPath(config, path)
+            return () => getConfigValue(path)
           }
 
-          const value = getValueAtPath(config, [...path, property])
+          const value = getConfigValue([...path, property])
           return isRecord(value) ? createProxy([...path, property]) : value
         },
         set(_, property, value) {
@@ -270,9 +268,8 @@ export function createRuntimeConfig(): BuluConfig {
             return false
           }
 
-          setValueAtPath(userConfig, [...path, property], value)
-          saveUserConfigSync(userConfig)
-          reload()
+          setValueAtPath(state.userConfig, [...path, property], value)
+          persist()
           return true
         },
         deleteProperty(_, property) {
@@ -280,26 +277,25 @@ export function createRuntimeConfig(): BuluConfig {
             return false
           }
 
-          if (!deleteValueAtPath(userConfig, [...path, property])) {
+          if (!deleteValueAtPath(state.userConfig, [...path, property])) {
             return true
           }
 
-          saveUserConfigSync(userConfig)
-          reload()
+          persist()
           return true
         },
         has(_, property) {
-          return typeof property === 'string' && property in getRecordAtPath(path)
+          return typeof property === 'string' && property in getConfigRecord(path)
         },
         ownKeys() {
-          return Reflect.ownKeys(getRecordAtPath(path))
+          return Reflect.ownKeys(getConfigRecord(path))
         },
         getOwnPropertyDescriptor(_, property) {
           if (typeof property !== 'string') {
             return undefined
           }
 
-          const value = getValueAtPath(config, [...path, property])
+          const value = getConfigValue([...path, property])
           if (value === undefined) {
             return undefined
           }
