@@ -45,12 +45,6 @@ export function useConfig() {
   return configCtx.use().config
 }
 
-export interface InitBuluConfigResult {
-  action: 'created' | 'overwritten' | 'unchanged'
-  config: BuluConfig
-  path: string
-}
-
 export function getConfigDir(): string {
   return process.env[BULU_CONFIG_DIR_ENV] || join(homedir(), '.config', BULU_CONFIG_DEFAULT_DIR)
 }
@@ -71,10 +65,6 @@ export function ensureConfigDir(cwd = getConfigDir()): void {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
-function cloneConfig<T>(value: T): T {
-  return structuredClone(value)
 }
 
 function parseConfigKeyPath(keyPath: string): string[] {
@@ -108,29 +98,6 @@ export function loadUserConfigSync(cwd = getConfigDir()): UserConfig {
 export function saveUserConfigSync(config: UserConfig, cwd = getConfigDir()): void {
   ensureConfigDir(cwd)
   writeFileSync(getConfigPath(cwd), JSON.stringify(config, null, 2))
-}
-
-export function initBuluConfigSync(options?: { cwd?: string; force?: boolean }): InitBuluConfigResult {
-  const cwd = options?.cwd ?? getConfigDir()
-  const configPath = getConfigPath(cwd)
-  const existed = existsSync(configPath)
-
-  if (existed && !options?.force) {
-    return {
-      action: 'unchanged',
-      config: loadBuluConfigSync(cwd),
-      path: configPath,
-    }
-  }
-
-  const config = cloneConfig(CONFIG_DEFAULTS)
-  saveUserConfigSync(config as UserConfig, cwd)
-
-  return {
-    action: existed ? 'overwritten' : 'created',
-    config,
-    path: configPath,
-  }
 }
 
 export function loadBuluConfigSync(cwd?: string): BuluConfig {
