@@ -1,11 +1,12 @@
 import { defineCommand } from 'citty'
-import { parseLimitArg } from '../../../core/hyperliquid/args'
-import { marketBaseArgs } from '../../../core/hyperliquid/command'
-import { fetchListItems } from '../../../core/hyperliquid/query'
-import { formatHistoryOrderRow, resolvePerpUserContext } from '../../../core/hyperliquid/perps'
-import { fetchHistoricalOrders, fetchSpotMeta, partitionEntriesBySpot } from '../../../protocols/hyperliquid'
 import { withDefaultArgs } from '../../../core/args-def'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
+import { presentPerpHistory } from '../../../hyperliquid/features/perps/presenters/perps'
+import { listPerpHistory } from '../../../hyperliquid/features/perps/use-cases/perps'
+import { marketBaseArgs } from '../../../hyperliquid/shared/args'
+import { requireHyperliquidWalletContext } from '../../../hyperliquid/shared/context'
+import { runHyperliquidCommand } from '../../../hyperliquid/shared/errors'
+import { renderView } from '../../../hyperliquid/shared/view'
 
 export default defineCommand({
   meta: { name: 'history', description: 'Show historical perp orders' },
@@ -27,47 +28,14 @@ export default defineCommand({
   }),
   async run({ args }) {
     const out = createOutput(resolveOutputOptions(args))
-    const { walletName, user } = resolvePerpUserContext(args, out)
-    const coin = args.coin ? String(args.coin).toUpperCase() : undefined
-    const status = args.status ? String(args.status).toLowerCase() : undefined
-
-    const limit = parseLimitArg(args.limit ? String(args.limit) : undefined)
-
-    const rows = await fetchListItems({
-      out,
-      fetchItems: async () => {
-        const [history, spotMeta] = await Promise.all([
-          fetchHistoricalOrders(user, args.testnet),
-          fetchSpotMeta(args.testnet),
-        ])
-        const mapped = history.map((entry) => ({ coin: entry.order.coin, entry }))
-        const { perps } = partitionEntriesBySpot(mapped, spotMeta)
-        return perps.map(({ entry }) => entry)
-      },
-      filter: (entry) => {
-        if (coin && entry.order.coin !== coin) return false
-        if (status && entry.status.toLowerCase() !== status) return false
-        return true
-      },
-      limit,
-      toRow: formatHistoryOrderRow,
-    })
-
-    out.table(rows, {
-      columns: [
-        'coin',
-        'status',
-        'side',
-        'size',
-        'origSize',
-        'limitPx',
-        'tif',
-        'reduceOnly',
-        'oid',
-        'cloid',
-        'statusTimestamp',
-      ],
-      title: `Perp Order History | ${walletName} (${user})`,
+    await runHyperliquidCommand(out, async () => {
+      const ctx = requireHyperliquidWalletContext(args, out)
+      const result = await listPerpHistory(ctx, {
+        coin: args.coin ? String(args.coin) : undefined,
+        status: args.status ? String(args.status) : undefined,
+        limit: args.limit ? String(args.limit) : undefined,
+      })
+      renderView(out, presentPerpHistory(result))
     })
   },
 })

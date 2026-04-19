@@ -1,14 +1,12 @@
 import { defineCommand } from 'citty'
-import { marketBaseArgs } from '../../../core/hyperliquid/command'
-import { fetchListItems } from '../../../core/hyperliquid/query'
-import {
-  formatSpotOpenOrderRow,
-  loadSpotPairNameSetOrExit,
-  resolveSpotUserContext,
-} from '../../../core/hyperliquid/spot'
-import { fetchFrontendOpenOrders, normalizeSpotPair, partitionEntriesBySpot } from '../../../protocols/hyperliquid'
 import { withDefaultArgs } from '../../../core/args-def'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
+import { presentSpotOrders } from '../../../hyperliquid/features/spot/presenters/spot'
+import { listSpotOrders } from '../../../hyperliquid/features/spot/use-cases/spot'
+import { marketBaseArgs } from '../../../hyperliquid/shared/args'
+import { requireHyperliquidWalletContext } from '../../../hyperliquid/shared/context'
+import { runHyperliquidCommand } from '../../../hyperliquid/shared/errors'
+import { renderView } from '../../../hyperliquid/shared/view'
 
 export default defineCommand({
   meta: { name: 'orders', description: 'Show open spot orders' },
@@ -21,36 +19,12 @@ export default defineCommand({
   }),
   async run({ args }) {
     const out = createOutput(resolveOutputOptions(args))
-    const { walletName, user } = resolveSpotUserContext(args, out)
-    const spotPairs = await loadSpotPairNameSetOrExit(args.testnet, out)
-    const pairFilter = args.pair ? normalizeSpotPair(String(args.pair)) : undefined
-
-    const rows = await fetchListItems({
-      out,
-      fetchItems: async () => {
-        const orders = await fetchFrontendOpenOrders(user, args.testnet)
-        const { spot } = partitionEntriesBySpot(orders, spotPairs)
-        return spot
-      },
-      filter: pairFilter ? (order) => order.coin === pairFilter : undefined,
-      toRow: formatSpotOpenOrderRow,
-    })
-
-    out.table(rows, {
-      columns: [
-        'pair',
-        'side',
-        'size',
-        'origSize',
-        'limitPx',
-        'tif',
-        'triggerPx',
-        'reduceOnly',
-        'oid',
-        'cloid',
-        'timestamp',
-      ],
-      title: `Open Spot Orders | ${walletName} (${user})`,
+    await runHyperliquidCommand(out, async () => {
+      const ctx = requireHyperliquidWalletContext(args, out)
+      const result = await listSpotOrders(ctx, {
+        pair: args.pair ? String(args.pair) : undefined,
+      })
+      renderView(out, presentSpotOrders(result))
     })
   },
 })

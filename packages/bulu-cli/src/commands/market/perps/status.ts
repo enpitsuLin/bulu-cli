@@ -1,17 +1,12 @@
 import { defineCommand } from 'citty'
-import { marketBaseArgs } from '../../../core/hyperliquid/command'
-import { resolvePerpUserContext } from '../../../core/hyperliquid/perps'
-import {
-  fetchOrderStatus,
-  fetchSpotMeta,
-  isSpotPairName,
-  parseOrderIdentifier,
-  resolveOrderSide,
-} from '../../../protocols/hyperliquid'
 import { withDefaultArgs } from '../../../core/args-def'
-import { formatTimestamp } from '../../../core/time'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
-import { loadDataOrExit } from '../../../utils/cli'
+import { presentPerpStatus } from '../../../hyperliquid/features/perps/presenters/perps'
+import { getPerpOrderStatus } from '../../../hyperliquid/features/perps/use-cases/perps'
+import { marketBaseArgs } from '../../../hyperliquid/shared/args'
+import { requireHyperliquidWalletContext } from '../../../hyperliquid/shared/context'
+import { runHyperliquidCommand } from '../../../hyperliquid/shared/errors'
+import { renderView } from '../../../hyperliquid/shared/view'
 
 export default defineCommand({
   meta: { name: 'status', description: 'Query perp order status by oid or cloid' },
@@ -25,60 +20,12 @@ export default defineCommand({
   }),
   async run({ args }) {
     const out = createOutput(resolveOutputOptions(args))
-    const { walletName, user } = resolvePerpUserContext(args, out)
-
-    const [response, spotMeta] = await loadDataOrExit(
-      out,
-      Promise.all([
-        fetchOrderStatus({
-          user,
-          oid: parseOrderIdentifier(String(args.id)),
-          isTestnet: args.testnet,
-        }),
-        fetchSpotMeta(args.testnet),
-      ]),
-      'Failed to fetch order status',
-    )
-
-    if (response && typeof response === 'object' && 'order' in response && response.order) {
-      if (isSpotPairName(response.order.coin, spotMeta)) {
-        out.warn(`Order ${args.id} belongs to spot; use \`bulu market spot orders\` or \`bulu market spot history\``)
-        process.exit(1)
-      }
-    }
-
-    if (response && typeof response === 'object' && 'order' in response && response.order && 'status' in response) {
-      const row = {
-        coin: response.order.coin,
-        status: String(response.status),
-        side: resolveOrderSide(response.order.side),
-        size: response.order.sz,
-        limitPx: response.order.limitPx,
-        isTrigger: response.order.isTrigger,
-        reduceOnly: response.order.reduceOnly,
-        oid: response.order.oid,
-        cloid: response.order.cloid ?? 'N/A',
-        statusTimestamp: 'statusTimestamp' in response ? formatTimestamp(Number(response.statusTimestamp)) : 'N/A',
-      }
-
-      out.table([row], {
-        columns: [
-          'coin',
-          'status',
-          'side',
-          'size',
-          'limitPx',
-          'isTrigger',
-          'reduceOnly',
-          'oid',
-          'cloid',
-          'statusTimestamp',
-        ],
-        title: `Perp Order Status | ${walletName} (${user})`,
+    await runHyperliquidCommand(out, async () => {
+      const ctx = requireHyperliquidWalletContext(args, out)
+      const result = await getPerpOrderStatus(ctx, {
+        id: args.id ? String(args.id) : undefined,
       })
-      return
-    }
-
-    out.data(response)
+      renderView(out, presentPerpStatus(result))
+    })
   },
 })

@@ -1,8 +1,12 @@
 import { defineCommand } from 'citty'
 import { withDefaultArgs } from '../../../core/args-def'
-import { marketBaseArgs } from '../../../core/hyperliquid/command'
-import { executeSpotOrderCommand, renderSpotOrderResult } from '../../../core/hyperliquid/spot'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
+import { presentSpotOrderResult } from '../../../hyperliquid/features/spot/presenters/spot'
+import { placeSpotOrder } from '../../../hyperliquid/features/spot/use-cases/spot'
+import { marketBaseArgs } from '../../../hyperliquid/shared/args'
+import { requireHyperliquidWalletContext } from '../../../hyperliquid/shared/context'
+import { runHyperliquidCommand } from '../../../hyperliquid/shared/errors'
+import { renderView } from '../../../hyperliquid/shared/view'
 
 export default defineCommand({
   meta: { name: 'sell', description: 'Place a spot sell order on Hyperliquid' },
@@ -25,7 +29,15 @@ export default defineCommand({
   }),
   async run({ args }) {
     const out = createOutput(resolveOutputOptions(args))
-    const result = await executeSpotOrderCommand(args, 'sell', out)
-    renderSpotOrderResult(result, out)
+    await runHyperliquidCommand(out, async () => {
+      const ctx = requireHyperliquidWalletContext(args, out)
+      const result = await placeSpotOrder(ctx, {
+        pair: args.pair ? String(args.pair) : undefined,
+        size: args.size ? String(args.size) : undefined,
+        price: args.price ? String(args.price) : undefined,
+        side: 'sell',
+      })
+      renderView(out, presentSpotOrderResult(result))
+    })
   },
 })

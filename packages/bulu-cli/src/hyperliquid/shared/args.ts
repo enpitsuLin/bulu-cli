@@ -1,3 +1,24 @@
+import type { ArgsDef } from 'citty'
+
+export interface HyperliquidCommandArgs {
+  wallet?: string
+  testnet?: boolean
+  json?: boolean
+  format?: string
+}
+
+export const marketBaseArgs = {
+  testnet: {
+    type: 'boolean',
+    description: 'Use Hyperliquid testnet',
+    default: false,
+  },
+  wallet: {
+    type: 'string',
+    description: 'Wallet name or id (defaults to active wallet)',
+  },
+} satisfies ArgsDef
+
 export function parseTimeArg(value: string, label: string): number {
   const trimmed = value.trim()
   if (!trimmed) {

@@ -1,34 +1,12 @@
 import { defineCommand } from 'citty'
-import { marketBaseArgs } from '../../../core/hyperliquid/command'
-import {
-  handleCommandError,
-  loadPerpMarketOrExit,
-  resolvePerpUserContext,
-  submitExchangeAction,
-} from '../../../core/hyperliquid/perps'
-import { buildUpdateIsolatedMarginAction } from '../../../protocols/hyperliquid'
 import { withDefaultArgs } from '../../../core/args-def'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
-import { executeOrExit } from '../../../utils/cli'
-
-function parseScaledUsdDelta(value: string): number {
-  const trimmed = value.trim()
-  if (!/^-?\d+(\.\d+)?$/.test(trimmed)) {
-    throw new Error(`Invalid margin delta: ${value}`)
-  }
-
-  const sign = trimmed.startsWith('-') ? -1 : 1
-  const unsigned = sign === -1 ? trimmed.slice(1) : trimmed
-  const [whole, frac = ''] = unsigned.split('.')
-  const paddedFrac = (frac + '000000').slice(0, 6)
-  const scaled = Number(whole) * 1_000_000 + Number(paddedFrac)
-
-  if (!Number.isSafeInteger(scaled) || scaled === 0) {
-    throw new Error(`Invalid margin delta: ${value}`)
-  }
-
-  return sign * scaled
-}
+import { presentUpdatedPerpMargin } from '../../../hyperliquid/features/perps/presenters/perps'
+import { updatePerpMargin } from '../../../hyperliquid/features/perps/use-cases/perps'
+import { marketBaseArgs } from '../../../hyperliquid/shared/args'
+import { requireHyperliquidWalletContext } from '../../../hyperliquid/shared/context'
+import { runHyperliquidCommand } from '../../../hyperliquid/shared/errors'
+import { renderView } from '../../../hyperliquid/shared/view'
 
 export default defineCommand({
   meta: { name: 'margin', description: 'Add or remove isolated margin for a perp position' },
@@ -47,30 +25,13 @@ export default defineCommand({
   }),
   async run({ args }) {
     const out = createOutput(resolveOutputOptions(args))
-    const { walletName, user } = resolvePerpUserContext(args, out)
-    const coin = String(args.coin).toUpperCase()
-    const market = await loadPerpMarketOrExit(coin, args.testnet, out)
-
-    const ntli = executeOrExit(out, () => parseScaledUsdDelta(String(args.delta)), 'Invalid margin delta')
-
-    await submitExchangeAction({
-      action: buildUpdateIsolatedMarginAction({
-        asset: market.assetIndex,
-        ntli,
-      }),
-      walletName,
-      testnet: args.testnet,
-    }).catch((error) => {
-      const message = error instanceof Error ? error.message : String(error)
-      handleCommandError(out, `Failed to update isolated margin: ${message}`)
+    await runHyperliquidCommand(out, async () => {
+      const ctx = requireHyperliquidWalletContext(args, out)
+      const result = await updatePerpMargin(ctx, {
+        coin: args.coin ? String(args.coin) : undefined,
+        delta: args.delta ? String(args.delta) : undefined,
+      })
+      renderView(out, presentUpdatedPerpMargin(result))
     })
-
-    const row = {
-      coin,
-      delta: String(args.delta),
-      ntli,
-    }
-
-    out.table([row], { columns: ['coin', 'delta', 'ntli'], title: `Updated Isolated Margin | ${walletName} (${user})` })
   },
 })

@@ -1,11 +1,12 @@
 import { defineCommand } from 'citty'
-import { parseTimeArg } from '../../../core/hyperliquid/args'
-import { marketBaseArgs } from '../../../core/hyperliquid/command'
-import { handleCommandError, resolvePerpUserContext, submitExchangeAction } from '../../../core/hyperliquid/perps'
-import { buildScheduleCancelAction } from '../../../protocols/hyperliquid'
 import { withDefaultArgs } from '../../../core/args-def'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
-import { executeOrExit } from '../../../utils/cli'
+import { presentScheduledCancel } from '../../../hyperliquid/features/perps/presenters/perps'
+import { updatePerpScheduleCancel } from '../../../hyperliquid/features/perps/use-cases/perps'
+import { marketBaseArgs } from '../../../hyperliquid/shared/args'
+import { requireHyperliquidWalletContext } from '../../../hyperliquid/shared/context'
+import { runHyperliquidCommand } from '../../../hyperliquid/shared/errors'
+import { renderView } from '../../../hyperliquid/shared/view'
 
 export default defineCommand({
   meta: { name: 'schedule-cancel', description: "Manage Hyperliquid's scheduled cancel-all deadline" },
@@ -23,34 +24,13 @@ export default defineCommand({
   }),
   async run({ args }) {
     const out = createOutput(resolveOutputOptions(args))
-    const { walletName, user } = resolvePerpUserContext(args, out)
-    if (args.clear && args.at) {
-      out.warn('Use either --clear or --at, not both')
-      process.exit(1)
-    }
-    if (!args.clear && !args.at) {
-      out.warn('Provide --at to schedule a cancel or --clear to remove it')
-      process.exit(1)
-    }
-
-    const scheduledTime = args.at
-      ? executeOrExit(out, () => parseTimeArg(String(args.at), 'schedule time'), 'Invalid time')
-      : undefined
-
-    await submitExchangeAction({
-      action: buildScheduleCancelAction(args.clear ? undefined : scheduledTime),
-      walletName,
-      testnet: args.testnet,
-    }).catch((error) => {
-      const message = error instanceof Error ? error.message : String(error)
-      handleCommandError(out, `Failed to update scheduled cancel: ${message}`)
+    await runHyperliquidCommand(out, async () => {
+      const ctx = requireHyperliquidWalletContext(args, out)
+      const result = await updatePerpScheduleCancel(ctx, {
+        at: args.at ? String(args.at) : undefined,
+        clear: args.clear === true,
+      })
+      renderView(out, presentScheduledCancel(result))
     })
-
-    const row = {
-      mode: args.clear ? 'cleared' : 'scheduled',
-      time: scheduledTime ?? 'N/A',
-    }
-
-    out.table([row], { columns: ['mode', 'time'], title: `Scheduled Cancel | ${walletName} (${user})` })
   },
 })

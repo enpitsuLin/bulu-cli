@@ -1,8 +1,12 @@
 import { defineCommand } from 'citty'
 import { withDefaultArgs } from '../../../core/args-def'
-import { marketBaseArgs } from '../../../core/hyperliquid/command'
-import { executePerpOrderCommand, renderPerpOrderResult } from '../../../core/hyperliquid/perps'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
+import { presentPerpOrderResult } from '../../../hyperliquid/features/perps/presenters/perps'
+import { placePerpOrder } from '../../../hyperliquid/features/perps/use-cases/perps'
+import { marketBaseArgs } from '../../../hyperliquid/shared/args'
+import { requireHyperliquidWalletContext } from '../../../hyperliquid/shared/context'
+import { runHyperliquidCommand } from '../../../hyperliquid/shared/errors'
+import { renderView } from '../../../hyperliquid/shared/view'
 
 export default defineCommand({
   meta: { name: 'long', description: 'Open or increase a long perp position on Hyperliquid' },
@@ -25,7 +29,15 @@ export default defineCommand({
   }),
   async run({ args }) {
     const out = createOutput(resolveOutputOptions(args))
-    const result = await executePerpOrderCommand(args, { side: 'long', close: false }, out)
-    renderPerpOrderResult(result, out)
+    await runHyperliquidCommand(out, async () => {
+      const ctx = requireHyperliquidWalletContext(args, out)
+      const result = await placePerpOrder(ctx, {
+        coin: args.coin ? String(args.coin) : undefined,
+        size: args.size ? String(args.size) : undefined,
+        price: args.price ? String(args.price) : undefined,
+        side: 'long',
+      })
+      renderView(out, presentPerpOrderResult(result))
+    })
   },
 })

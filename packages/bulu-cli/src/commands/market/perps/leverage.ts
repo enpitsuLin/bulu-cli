@@ -1,23 +1,12 @@
 import { defineCommand } from 'citty'
-import { marketBaseArgs } from '../../../core/hyperliquid/command'
-import {
-  handleCommandError,
-  loadPerpMarketOrExit,
-  resolvePerpUserContext,
-  submitExchangeAction,
-} from '../../../core/hyperliquid/perps'
-import { buildUpdateLeverageAction } from '../../../protocols/hyperliquid'
 import { withDefaultArgs } from '../../../core/args-def'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
-import { executeOrExit } from '../../../utils/cli'
-
-function parseLeverage(value: string): number {
-  const parsed = Number(value)
-  if (!Number.isSafeInteger(parsed) || parsed <= 0) {
-    throw new Error(`Invalid leverage: ${value}`)
-  }
-  return parsed
-}
+import { presentUpdatedPerpLeverage } from '../../../hyperliquid/features/perps/presenters/perps'
+import { updatePerpLeverage } from '../../../hyperliquid/features/perps/use-cases/perps'
+import { marketBaseArgs } from '../../../hyperliquid/shared/args'
+import { requireHyperliquidWalletContext } from '../../../hyperliquid/shared/context'
+import { runHyperliquidCommand } from '../../../hyperliquid/shared/errors'
+import { renderView } from '../../../hyperliquid/shared/view'
 
 export default defineCommand({
   meta: { name: 'leverage', description: 'Update perp leverage and margin mode for a coin' },
@@ -41,34 +30,14 @@ export default defineCommand({
   }),
   async run({ args }) {
     const out = createOutput(resolveOutputOptions(args))
-    const { walletName, user } = resolvePerpUserContext(args, out)
-    const coin = String(args.coin).toUpperCase()
-    const market = await loadPerpMarketOrExit(coin, args.testnet, out)
-
-    const leverage = executeOrExit(out, () => parseLeverage(String(args.value)), 'Invalid leverage')
-
-    await submitExchangeAction({
-      action: buildUpdateLeverageAction({
-        asset: market.assetIndex,
-        leverage,
-        isCross: !args.isolated,
-      }),
-      walletName,
-      testnet: args.testnet,
-    }).catch((error) => {
-      const message = error instanceof Error ? error.message : String(error)
-      handleCommandError(out, `Failed to update leverage: ${message}`)
-    })
-
-    const row = {
-      coin,
-      leverage,
-      mode: args.isolated ? 'isolated' : 'cross',
-    }
-
-    out.table([row], {
-      columns: ['coin', 'leverage', 'mode'],
-      title: `Updated Perp Leverage | ${walletName} (${user})`,
+    await runHyperliquidCommand(out, async () => {
+      const ctx = requireHyperliquidWalletContext(args, out)
+      const result = await updatePerpLeverage(ctx, {
+        coin: args.coin ? String(args.coin) : undefined,
+        value: args.value ? String(args.value) : undefined,
+        isolated: args.isolated === true,
+      })
+      renderView(out, presentUpdatedPerpLeverage(result))
     })
   },
 })

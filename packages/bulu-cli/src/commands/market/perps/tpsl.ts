@@ -1,50 +1,12 @@
 import { defineCommand } from 'citty'
-import { marketBaseArgs } from '../../../core/hyperliquid/command'
-import { submitOrder } from '../../../core/hyperliquid/order'
-import {
-  handleCommandError,
-  loadPerpMarketOrExit,
-  loadPerpStateOrExit,
-  resolvePerpUserContext,
-} from '../../../core/hyperliquid/perps'
-import { resolvePerpTpslOrder } from '../../../protocols/hyperliquid'
-import type { ResolvedPerpOrder } from '../../../protocols/hyperliquid'
 import { withDefaultArgs } from '../../../core/args-def'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
-
-async function runTpslCommand(args: Record<string, unknown>, tpsl: 'sl' | 'tp', titlePrefix: string): Promise<void> {
-  const out = createOutput(resolveOutputOptions(args))
-  const { walletName, user } = resolvePerpUserContext(args, out)
-  const coin = String(args.coin).toUpperCase()
-  const market = await loadPerpMarketOrExit(coin, args.testnet as boolean | undefined, out)
-  const state = await loadPerpStateOrExit(user, args.testnet as boolean | undefined, out)
-
-  const order: ResolvedPerpOrder = (() => {
-    try {
-      return resolvePerpTpslOrder({
-        coin,
-        market,
-        triggerPrice: String(args.trigger),
-        price: args.price ? String(args.price) : undefined,
-        size: args.size ? String(args.size) : undefined,
-        state,
-        tpsl,
-      })
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      return handleCommandError(out, message)
-    }
-  })()
-
-  const detail = `${coin} ${String(order.triggerKind).toUpperCase()} ${order.size} trigger ${order.triggerPx} -> ${order.price}`
-
-  const statuses = await submitOrder({ walletName, testnet: args.testnet as boolean | undefined }, order.action)
-
-  out.table(statuses, {
-    columns: ['orderIndex', 'result'],
-    title: `${titlePrefix} | ${walletName} | ${detail}`,
-  })
-}
+import { presentPerpOrderResult } from '../../../hyperliquid/features/perps/presenters/perps'
+import { placePerpTpsl } from '../../../hyperliquid/features/perps/use-cases/perps'
+import { marketBaseArgs } from '../../../hyperliquid/shared/args'
+import { requireHyperliquidWalletContext } from '../../../hyperliquid/shared/context'
+import { runHyperliquidCommand } from '../../../hyperliquid/shared/errors'
+import { renderView } from '../../../hyperliquid/shared/view'
 
 export default defineCommand({
   meta: { name: 'tpsl', description: 'Place take-profit and stop-loss orders for perp positions' },
@@ -73,7 +35,18 @@ export default defineCommand({
         },
       }),
       async run({ args }) {
-        await runTpslCommand(args, 'sl', 'Perp Stop Loss')
+        const out = createOutput(resolveOutputOptions(args))
+        await runHyperliquidCommand(out, async () => {
+          const ctx = requireHyperliquidWalletContext(args, out)
+          const result = await placePerpTpsl(ctx, {
+            coin: args.coin ? String(args.coin) : undefined,
+            trigger: args.trigger ? String(args.trigger) : undefined,
+            size: args.size ? String(args.size) : undefined,
+            price: args.price ? String(args.price) : undefined,
+            tpsl: 'sl',
+          })
+          renderView(out, presentPerpOrderResult(result))
+        })
       },
     }),
     'take-profit': defineCommand({
@@ -100,7 +73,18 @@ export default defineCommand({
         },
       }),
       async run({ args }) {
-        await runTpslCommand(args, 'tp', 'Perp Take Profit')
+        const out = createOutput(resolveOutputOptions(args))
+        await runHyperliquidCommand(out, async () => {
+          const ctx = requireHyperliquidWalletContext(args, out)
+          const result = await placePerpTpsl(ctx, {
+            coin: args.coin ? String(args.coin) : undefined,
+            trigger: args.trigger ? String(args.trigger) : undefined,
+            size: args.size ? String(args.size) : undefined,
+            price: args.price ? String(args.price) : undefined,
+            tpsl: 'tp',
+          })
+          renderView(out, presentPerpOrderResult(result))
+        })
       },
     }),
   },

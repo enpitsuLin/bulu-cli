@@ -1,7 +1,7 @@
 import { signTypedData } from '@bulu-cli/tcx-core'
 import { postHyperliquidExchange } from './client'
-import { buildHyperliquidTypedData, createL1ActionHash, splitSignature } from './crypto'
-import type { ExchangeAction, ExchangeRequestBody, OrderResponse } from './types'
+import { buildHyperliquidTypedData, createL1ActionHash, splitSignature } from '../domain/crypto'
+import type { ExchangeAction, ExchangeRequestBody, OrderResponse } from '../domain/types'
 
 export async function signAndSubmitL1Action<TResponse = OrderResponse>(args: {
   action: ExchangeAction

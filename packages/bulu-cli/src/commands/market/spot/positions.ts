@@ -1,10 +1,12 @@
 import { defineCommand } from 'citty'
-import { marketBaseArgs } from '../../../core/hyperliquid/command'
-import { resolveSpotUserContext } from '../../../core/hyperliquid/spot'
-import { fetchSpotClearinghouseState } from '../../../protocols/hyperliquid'
 import { withDefaultArgs } from '../../../core/args-def'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
-import { loadDataOrExit } from '../../../utils/cli'
+import { presentSpotPositions } from '../../../hyperliquid/features/spot/presenters/spot'
+import { listSpotPositions } from '../../../hyperliquid/features/spot/use-cases/spot'
+import { marketBaseArgs } from '../../../hyperliquid/shared/args'
+import { requireHyperliquidWalletContext } from '../../../hyperliquid/shared/context'
+import { runHyperliquidCommand } from '../../../hyperliquid/shared/errors'
+import { renderView } from '../../../hyperliquid/shared/view'
 
 export default defineCommand({
   meta: { name: 'positions', description: 'Show spot balances' },
@@ -13,24 +15,10 @@ export default defineCommand({
   }),
   async run({ args }) {
     const out = createOutput(resolveOutputOptions(args))
-    const { walletName, user } = resolveSpotUserContext(args, out)
-
-    const state = await loadDataOrExit(
-      out,
-      fetchSpotClearinghouseState(user, args.testnet),
-      'Failed to fetch spot balances',
-    )
-
-    const rows = (state.balances || []).map((b) => ({
-      coin: b.coin,
-      total: b.total,
-      hold: b.hold,
-      entryNtl: b.entryNtl,
-    }))
-
-    out.table(rows, {
-      columns: ['coin', 'total', 'hold', 'entryNtl'],
-      title: `Spot Balances | ${walletName} (${user})`,
+    await runHyperliquidCommand(out, async () => {
+      const ctx = requireHyperliquidWalletContext(args, out)
+      const result = await listSpotPositions(ctx)
+      renderView(out, presentSpotPositions(result))
     })
   },
 })

@@ -1,8 +1,12 @@
 import { defineCommand } from 'citty'
 import { withDefaultArgs } from '../../../core/args-def'
-import { marketBaseArgs } from '../../../core/hyperliquid/command'
-import { loadSpotMarketStateOrExit } from '../../../core/hyperliquid/spot'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
+import { presentSpotPairs } from '../../../hyperliquid/features/spot/presenters/spot'
+import { listSpotPairs } from '../../../hyperliquid/features/spot/use-cases/spot'
+import { marketBaseArgs } from '../../../hyperliquid/shared/args'
+import { createHyperliquidCommandContext } from '../../../hyperliquid/shared/context'
+import { runHyperliquidCommand } from '../../../hyperliquid/shared/errors'
+import { renderView } from '../../../hyperliquid/shared/view'
 
 export default defineCommand({
   meta: { name: 'pairs', description: 'List tradable spot pairs' },
@@ -11,25 +15,10 @@ export default defineCommand({
   }),
   async run({ args }) {
     const out = createOutput(resolveOutputOptions(args))
-    const spotMarket = await loadSpotMarketStateOrExit(args.testnet, out)
-    const tokenByIndex = new Map(spotMarket.meta.tokens.map((token) => [token.index, token]))
-    const rows = spotMarket.meta.universe.map((pairMeta, idx) => {
-      const [baseIndex, quoteIndex] = pairMeta.tokens
-      return {
-        pair: pairMeta.name,
-        base: tokenByIndex.get(baseIndex)?.name ?? String(baseIndex),
-        quote: tokenByIndex.get(quoteIndex)?.name ?? String(quoteIndex),
-        assetId: 10_000 + pairMeta.index,
-        markPx: spotMarket.contexts[idx]?.markPx ?? 'N/A',
-        midPx: spotMarket.contexts[idx]?.midPx ?? 'N/A',
-        dayNtlVlm: spotMarket.contexts[idx]?.dayNtlVlm ?? 'N/A',
-        canonical: pairMeta.isCanonical,
-      }
-    })
-
-    out.table(rows, {
-      columns: ['pair', 'base', 'quote', 'assetId', 'markPx', 'midPx', 'dayNtlVlm', 'canonical'],
-      title: 'Hyperliquid Spot Pairs',
+    await runHyperliquidCommand(out, async () => {
+      const ctx = createHyperliquidCommandContext(args, out)
+      const result = await listSpotPairs(ctx.testnet)
+      renderView(out, presentSpotPairs(result))
     })
   },
 })

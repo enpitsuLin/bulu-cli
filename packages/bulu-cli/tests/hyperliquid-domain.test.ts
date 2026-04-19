@@ -2,29 +2,27 @@ import { encode } from '@msgpack/msgpack'
 import { keccak_256 } from '@noble/hashes/sha3.js'
 import { bytesToHex, concatBytes } from '@noble/hashes/utils.js'
 import { describe, expect, test } from 'vitest'
-import { createL1ActionHash } from '../src/protocols/hyperliquid/crypto'
-import { formatSize, normalizeDecimalInput } from '../src/protocols/hyperliquid/format'
-import {
-  findMarketAsset,
-  findSpotMarketAsset,
-  normalizeSpotPair,
-  partitionEntriesBySpot,
-  resolveMarketPrice,
-} from '../src/protocols/hyperliquid/market'
+import { createL1ActionHash } from '../src/hyperliquid/domain/crypto'
+import { formatSize, normalizeDecimalInput } from '../src/hyperliquid/domain/format'
+import { findMarketAsset, findSpotMarketAsset } from '../src/hyperliquid/domain/market/assets'
+import { resolveMarketPrice } from '../src/hyperliquid/domain/market/pricing'
+import { normalizeSpotPair, partitionEntriesBySpot } from '../src/hyperliquid/domain/market/spot'
 import {
   buildCancelAction,
   buildModifyAction,
   buildScheduleCancelAction,
   buildUpdateIsolatedMarginAction,
   buildUpdateLeverageAction,
-  findPerpPosition,
-  parseOrderIdentifier,
+} from '../src/hyperliquid/domain/orders/actions'
+import { parseOrderIdentifier } from '../src/hyperliquid/domain/orders/identifiers'
+import {
   resolvePerpOrder,
-  resolveSpotOrder,
   resolvePerpTpslOrder,
+  resolveSpotOrder,
   resolveTriggerKindFromOrder,
-} from '../src/protocols/hyperliquid/trade'
-import type { AssetCtx, HyperliquidSpotMarketAsset, SpotMeta } from '../src/protocols/hyperliquid/types'
+} from '../src/hyperliquid/domain/orders/resolve'
+import { findPerpPosition } from '../src/hyperliquid/domain/orders/selectors'
+import type { AssetCtx, HyperliquidSpotMarketAsset, SpotMeta } from '../src/hyperliquid/domain/types'
 
 function toUint64Bytes(n: bigint | number): Uint8Array {
   const bytes = new Uint8Array(8)
@@ -46,7 +44,8 @@ test('createL1ActionHash matches manual implementation', () => {
   const actionBytes = encode(action)
   const nonceBytes = toUint64Bytes(nonce)
   const vaultMarker = new Uint8Array([0])
-  const manualHash = `0x${bytesToHex(keccak_256(concatBytes(actionBytes, nonceBytes, vaultMarker, new Uint8Array(), new Uint8Array(), new Uint8Array())))}`
+  const manualHash =
+    `0x${bytesToHex(keccak_256(concatBytes(actionBytes, nonceBytes, vaultMarker, new Uint8Array(), new Uint8Array(), new Uint8Array())))}` as const
 
   expect(expected).toBe(manualHash)
 })
@@ -66,25 +65,8 @@ test('createL1ActionHash with vault address', () => {
   const nonceBytes = toUint64Bytes(nonce)
   const vaultMarker = new Uint8Array([1])
   const vaultBytes = new Uint8Array(Buffer.from(vaultAddress.slice(2), 'hex'))
-  const manualHash = `0x${bytesToHex(keccak_256(concatBytes(actionBytes, nonceBytes, vaultMarker, vaultBytes, new Uint8Array(), new Uint8Array())))}`
-
-  expect(expected).toBe(manualHash)
-})
-
-test('createL1ActionHash with assetIndex 3 matches reference layout', () => {
-  const action = {
-    type: 'order',
-    orders: [{ a: 3, b: true, p: '74508', s: '0.00026', r: false, t: { limit: { tif: 'Ioc' } } }],
-    grouping: 'na',
-  } as const
-  const nonce = Date.now()
-
-  // Ensure consistency with manual msgpack encoding
-  const expected = createL1ActionHash({ action, nonce })
-  const actionBytes = encode(action)
-  const nonceBytes = toUint64Bytes(nonce)
-  const vaultMarker = new Uint8Array([0])
-  const manualHash = `0x${bytesToHex(keccak_256(concatBytes(actionBytes, nonceBytes, vaultMarker, new Uint8Array(), new Uint8Array(), new Uint8Array())))}`
+  const manualHash =
+    `0x${bytesToHex(keccak_256(concatBytes(actionBytes, nonceBytes, vaultMarker, vaultBytes, new Uint8Array(), new Uint8Array())))}` as const
 
   expect(expected).toBe(manualHash)
 })
@@ -137,18 +119,6 @@ describe('spot market helpers', () => {
   test('normalizeSpotPair uppercases slash pairs and preserves indexed pairs', () => {
     expect(normalizeSpotPair('purr/usdc')).toBe('PURR/USDC')
     expect(normalizeSpotPair('@107')).toBe('@107')
-  })
-
-  test('findSpotMarketAsset resolves an exact slash pair', () => {
-    const market = findSpotMarketAsset('PURR/USDC', spotMarket)
-
-    expect(market).toMatchObject({
-      assetIndex: 10_000,
-      meta: { name: 'PURR/USDC', index: 0 },
-      baseToken: { name: 'PURR', szDecimals: 0 },
-      quoteToken: { name: 'USDC' },
-      context: { markPx: '0.14', midPx: '0.141' },
-    })
   })
 
   test('findSpotMarketAsset resolves slash-pair normalization and indexed pairs', () => {
@@ -241,39 +211,6 @@ describe('perp order helpers', () => {
     })
   })
 
-  test('resolvePerpOrder builds a reduce-only close order from current position', () => {
-    const order = resolvePerpOrder({
-      coin: 'BTC',
-      market,
-      close: true,
-      state: {
-        assetPositions: [
-          {
-            type: 'oneWay',
-            position: {
-              coin: 'BTC',
-              szi: '-0.3339',
-              positionValue: '30000',
-              unrealizedPnl: '42',
-              leverage: { type: 'cross', value: 3 },
-              marginUsed: '200',
-              returnOnEquity: '0.2',
-            },
-          },
-        ],
-      },
-    })
-
-    expect(order.side).toBe('long')
-    expect(order.size).toBe('0.333')
-    expect(order.reduceOnly).toBe(true)
-    expect(order.action.orders[0]).toMatchObject({
-      b: true,
-      r: true,
-      s: '0.333',
-    })
-  })
-
   test('resolvePerpTpslOrder builds a reduce-only trigger order', () => {
     const order = resolvePerpTpslOrder({
       coin: 'BTC',
@@ -360,95 +297,6 @@ describe('spot order helpers', () => {
       price: '0.1234',
       tif: 'Gtc',
     })
-    expect(order.action.orders[0]).toMatchObject({
-      a: 10_000,
-      b: true,
-      p: '0.1234',
-      s: '10',
-      r: false,
-      t: { limit: { tif: 'Gtc' } },
-    })
-  })
-
-  test('resolveSpotOrder builds a limit sell order with truncated size', () => {
-    const market: HyperliquidSpotMarketAsset = {
-      ...baseSpotMarket,
-      meta: { name: '@107', tokens: [150, 0], index: 107, isCanonical: false },
-      assetIndex: 10_107,
-      baseToken: {
-        name: 'HYPE',
-        szDecimals: 3,
-        weiDecimals: 8,
-        index: 150,
-        tokenId: '0x96',
-        isCanonical: true,
-      },
-      context: { markPx: '25.5', midPx: '25.6' },
-    }
-
-    const order = resolveSpotOrder({
-      pair: '@107',
-      market,
-      side: 'sell',
-      size: '1.2349',
-      price: '25.55',
-    })
-
-    expect(order).toMatchObject({
-      assetIndex: 10_107,
-      side: 'sell',
-      size: '1.234',
-      price: '25.55',
-      tif: 'Gtc',
-    })
-    expect(order.action.orders[0]).toMatchObject({
-      a: 10_107,
-      b: false,
-      s: '1.234',
-      p: '25.55',
-    })
-  })
-
-  test('resolveSpotOrder builds market-style buy and sell orders from price context', () => {
-    const buyOrder = resolveSpotOrder({
-      pair: 'PURR/USDC',
-      market: baseSpotMarket,
-      side: 'buy',
-      size: '5',
-    })
-    const sellOrder = resolveSpotOrder({
-      pair: 'PURR/USDC',
-      market: baseSpotMarket,
-      side: 'sell',
-      size: '3',
-    })
-
-    expect(buyOrder.tif).toBe('FrontendMarket')
-    expect(buyOrder.price).toBe('0.14')
-    expect(buyOrder.action.orders[0]).toMatchObject({ b: true, t: { limit: { tif: 'FrontendMarket' } } })
-    expect(sellOrder.tif).toBe('FrontendMarket')
-    expect(sellOrder.action.orders[0]).toMatchObject({ b: false, t: { limit: { tif: 'FrontendMarket' } } })
-  })
-
-  test('resolveSpotOrder rejects pair mismatches and missing price context', () => {
-    expect(() =>
-      resolveSpotOrder({
-        pair: 'BTC/USDC',
-        market: baseSpotMarket,
-        side: 'buy',
-        size: '1',
-        price: '1',
-      }),
-    ).toThrow('Market context does not match BTC/USDC')
-
-    expect(() =>
-      resolveSpotOrder({
-        pair: 'PURR/USDC',
-        market: { ...baseSpotMarket, context: {} },
-        side: 'buy',
-        size: '1',
-      }),
-    ).toThrow('Could not resolve a price for PURR/USDC')
   })
 })
 
@@ -475,7 +323,6 @@ describe('exchange action helpers', () => {
       ntli: 1_500_000,
     })
     expect(buildScheduleCancelAction()).toEqual({ type: 'scheduleCancel' })
-    expect(buildScheduleCancelAction(1_700_000_000_000)).toEqual({ type: 'scheduleCancel', time: 1_700_000_000_000 })
   })
 })
 

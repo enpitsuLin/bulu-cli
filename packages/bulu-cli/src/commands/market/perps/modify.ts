@@ -1,26 +1,12 @@
 import { defineCommand } from 'citty'
-import { marketBaseArgs } from '../../../core/hyperliquid/command'
-import { resolvePerpUserContext, submitExchangeAction } from '../../../core/hyperliquid/perps'
-import {
-  buildModifyAction,
-  buildOrderWire,
-  fetchFrontendOpenOrders,
-  findOrderByIdentifier,
-  fetchMarketAsset,
-  fetchSpotMeta,
-  partitionEntriesBySpot,
-  resolveOrderSide,
-  resolveOrderTimeInForce,
-  resolveTriggerKindFromOrder,
-} from '../../../protocols/hyperliquid'
-import type { FrontendOpenOrder, HyperliquidMarketAsset } from '../../../protocols/hyperliquid'
 import { withDefaultArgs } from '../../../core/args-def'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
-import { loadDataOrExit } from '../../../utils/cli'
-
-function isMarketTrigger(order: FrontendOpenOrder): boolean {
-  return order.orderType.toLowerCase().includes('market')
-}
+import { presentPerpModify } from '../../../hyperliquid/features/perps/presenters/perps'
+import { modifyPerpOrder } from '../../../hyperliquid/features/perps/use-cases/perps'
+import { marketBaseArgs } from '../../../hyperliquid/shared/args'
+import { requireHyperliquidWalletContext } from '../../../hyperliquid/shared/context'
+import { runHyperliquidCommand } from '../../../hyperliquid/shared/errors'
+import { renderView } from '../../../hyperliquid/shared/view'
 
 export default defineCommand({
   meta: { name: 'modify', description: 'Modify an open perp order by oid or cloid' },
@@ -56,88 +42,17 @@ export default defineCommand({
   }),
   async run({ args }) {
     const out = createOutput(resolveOutputOptions(args))
-    const { walletName, user } = resolvePerpUserContext(args, out)
-    if (!args.price && !args.size && !args.trigger && !args.tp && !args.sl) {
-      out.warn('Provide at least one of --price, --size, --trigger, --tp, or --sl')
-      process.exit(1)
-    }
-
-    const [orders, spotMeta] = await loadDataOrExit(
-      out,
-      Promise.all([fetchFrontendOpenOrders(user, args.testnet), fetchSpotMeta(args.testnet)]),
-      'Failed to fetch open orders',
-    )
-
-    const { perps, spot } = partitionEntriesBySpot(orders, spotMeta)
-    const currentOrder = findOrderByIdentifier(perps, String(args.id))
-    if (!currentOrder) {
-      const spotOrder = findOrderByIdentifier(spot, String(args.id))
-      if (spotOrder) {
-        out.warn(`Order ${args.id} belongs to spot; use \`bulu market spot cancel\` and place a new spot order`)
-        process.exit(1)
-      }
-      out.warn(`Order not found: ${args.id}`)
-      process.exit(1)
-    }
-
-    const market: HyperliquidMarketAsset = await loadDataOrExit(
-      out,
-      fetchMarketAsset(currentOrder.coin, args.testnet),
-      'Failed to load market',
-    )
-
-    const triggerKind = currentOrder.isTrigger
-      ? resolveTriggerKindFromOrder(currentOrder, args.tp ? 'tp' : args.sl ? 'sl' : undefined)
-      : undefined
-
-    const wire = buildOrderWire({
-      assetIndex: market.assetIndex,
-      isBuy: currentOrder.side === 'B',
-      size: args.size ? String(args.size) : currentOrder.sz,
-      price: args.price
-        ? String(args.price)
-        : currentOrder.isTrigger && isMarketTrigger(currentOrder)
-          ? (currentOrder.triggerPx ?? currentOrder.limitPx)
-          : currentOrder.limitPx,
-      reduceOnly: currentOrder.reduceOnly,
-      tif: currentOrder.isTrigger ? undefined : resolveOrderTimeInForce(currentOrder),
-      trigger: currentOrder.isTrigger
-        ? {
-            isMarket: args.price ? false : isMarketTrigger(currentOrder),
-            triggerPx: args.trigger ? String(args.trigger) : (currentOrder.triggerPx ?? currentOrder.limitPx),
-            tpsl: triggerKind!,
-          }
-        : undefined,
-      cloid: currentOrder.cloid ?? undefined,
-    })
-
-    await loadDataOrExit(
-      out,
-      submitExchangeAction({
-        action: buildModifyAction({
-          oid: currentOrder.cloid ?? currentOrder.oid,
-          order: wire,
-        }),
-        walletName,
-        testnet: args.testnet,
-      }),
-      'Failed to modify order',
-    )
-
-    const row = {
-      coin: currentOrder.coin,
-      side: resolveOrderSide(currentOrder.side),
-      size: wire.s,
-      limitPx: wire.p,
-      triggerPx: 'trigger' in wire.t ? wire.t.trigger.triggerPx : 'N/A',
-      reduceOnly: wire.r,
-      oid: currentOrder.oid,
-      cloid: currentOrder.cloid ?? 'N/A',
-    }
-
-    out.table([row], {
-      columns: ['coin', 'side', 'size', 'limitPx', 'triggerPx', 'reduceOnly', 'oid', 'cloid'],
-      title: `Modified Perp Order | ${walletName} (${user})`,
+    await runHyperliquidCommand(out, async () => {
+      const ctx = requireHyperliquidWalletContext(args, out)
+      const result = await modifyPerpOrder(ctx, {
+        id: args.id ? String(args.id) : undefined,
+        price: args.price ? String(args.price) : undefined,
+        size: args.size ? String(args.size) : undefined,
+        trigger: args.trigger ? String(args.trigger) : undefined,
+        tp: args.tp === true,
+        sl: args.sl === true,
+      })
+      renderView(out, presentPerpModify(result))
     })
   },
 })

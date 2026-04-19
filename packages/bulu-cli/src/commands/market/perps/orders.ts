@@ -1,10 +1,12 @@
 import { defineCommand } from 'citty'
 import { withDefaultArgs } from '../../../core/args-def'
-import { marketBaseArgs } from '../../../core/hyperliquid/command'
-import { fetchListItems } from '../../../core/hyperliquid/query'
-import { formatPerpOpenOrderRow, resolvePerpUserContext } from '../../../core/hyperliquid/perps'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
-import { fetchFrontendOpenOrders, fetchSpotMeta, partitionEntriesBySpot } from '../../../protocols/hyperliquid'
+import { presentPerpOrders } from '../../../hyperliquid/features/perps/presenters/perps'
+import { listPerpOrders } from '../../../hyperliquid/features/perps/use-cases/perps'
+import { marketBaseArgs } from '../../../hyperliquid/shared/args'
+import { requireHyperliquidWalletContext } from '../../../hyperliquid/shared/context'
+import { runHyperliquidCommand } from '../../../hyperliquid/shared/errors'
+import { renderView } from '../../../hyperliquid/shared/view'
 
 export default defineCommand({
   meta: { name: 'orders', description: 'Show open perp orders' },
@@ -17,39 +19,12 @@ export default defineCommand({
   }),
   async run({ args }) {
     const out = createOutput(resolveOutputOptions(args))
-    const { walletName, user } = resolvePerpUserContext(args, out)
-    const coinFilter = args.coin ? String(args.coin).toUpperCase() : undefined
-
-    const rows = await fetchListItems({
-      out,
-      fetchItems: async () => {
-        const [orders, spotMeta] = await Promise.all([
-          fetchFrontendOpenOrders(user, args.testnet),
-          fetchSpotMeta(args.testnet),
-        ])
-        const { perps } = partitionEntriesBySpot(orders, spotMeta)
-        return perps
-      },
-      filter: coinFilter ? (order) => order.coin === coinFilter : undefined,
-      toRow: formatPerpOpenOrderRow,
-    })
-
-    out.table(rows, {
-      columns: [
-        'coin',
-        'side',
-        'size',
-        'origSize',
-        'limitPx',
-        'tif',
-        'triggerPx',
-        'positionTpsl',
-        'reduceOnly',
-        'oid',
-        'cloid',
-        'timestamp',
-      ],
-      title: `Open Perp Orders | ${walletName} (${user})`,
+    await runHyperliquidCommand(out, async () => {
+      const ctx = requireHyperliquidWalletContext(args, out)
+      const result = await listPerpOrders(ctx, {
+        coin: args.coin ? String(args.coin) : undefined,
+      })
+      renderView(out, presentPerpOrders(result))
     })
   },
 })
