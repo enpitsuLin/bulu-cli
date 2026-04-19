@@ -1,16 +1,15 @@
 import { defineCommand } from 'citty'
-import { withDefaultArgs } from '../../../core/args-def'
-import { createOutput, resolveOutputOptions } from '../../../core/output'
+import { withOutputArgs } from '../../../core/output'
+import { createOutput } from '../../../core/output'
 import { presentPerpModify } from '../../../hyperliquid/features/perps/presenters/perps'
 import { modifyPerpOrder } from '../../../hyperliquid/features/perps/use-cases/perps'
 import { marketBaseArgs } from '../../../hyperliquid/shared/args'
 import { requireHyperliquidWalletContext } from '../../../hyperliquid/shared/context'
 import { runHyperliquidCommand } from '../../../hyperliquid/shared/errors'
-import { renderView } from '../../../hyperliquid/shared/view'
 
 export default defineCommand({
   meta: { name: 'modify', description: 'Modify an open perp order by oid or cloid' },
-  args: withDefaultArgs({
+  args: withOutputArgs({
     ...marketBaseArgs,
     id: {
       type: 'positional',
@@ -41,7 +40,7 @@ export default defineCommand({
     },
   }),
   async run({ args }) {
-    const out = createOutput(resolveOutputOptions(args))
+    const out = createOutput()
     await runHyperliquidCommand(out, async () => {
       const ctx = requireHyperliquidWalletContext(args, out)
       const result = await modifyPerpOrder(ctx, {
@@ -52,7 +51,7 @@ export default defineCommand({
         tp: args.tp === true,
         sl: args.sl === true,
       })
-      renderView(out, presentPerpModify(result))
+      out.data(presentPerpModify(result))
     })
   },
 })

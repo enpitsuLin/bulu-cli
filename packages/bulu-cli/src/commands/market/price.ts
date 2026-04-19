@@ -1,14 +1,12 @@
 import { defineCommand } from 'citty'
-import { withDefaultArgs } from '../../core/args-def'
-import { createOutput, resolveOutputOptions } from '../../core/output'
-import { presentPriceSummary } from '../../hyperliquid/features/price/presenters/present-price-summary'
+import { withOutputArgs } from '../../core/output'
+import { createOutput } from '../../core/output'
 import { getPriceSummary } from '../../hyperliquid/features/price/use-cases/get-price-summary'
 import { runHyperliquidCommand } from '../../hyperliquid/shared/errors'
-import { renderView } from '../../hyperliquid/shared/view'
 
 export default defineCommand({
   meta: { name: 'price', description: 'Get Hyperliquid price for a trading pair' },
-  args: withDefaultArgs({
+  args: withOutputArgs({
     pair: {
       type: 'positional',
       description: 'Trading pair symbol, e.g. BTC, ETH, SOL',
@@ -21,14 +19,14 @@ export default defineCommand({
     },
   }),
   async run({ args }) {
-    const out = createOutput(resolveOutputOptions(args))
+    const out = createOutput()
     await runHyperliquidCommand(out, async () => {
       const result = await getPriceSummary({
         pair: args.pair ? String(args.pair) : undefined,
         period: args.period ? String(args.period) : undefined,
         testnet: false,
       })
-      renderView(out, presentPriceSummary(result, resolveOutputOptions(args)))
+      out.data(result)
     })
   },
 })

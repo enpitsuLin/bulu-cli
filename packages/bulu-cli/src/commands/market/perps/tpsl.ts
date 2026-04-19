@@ -1,19 +1,18 @@
 import { defineCommand } from 'citty'
-import { withDefaultArgs } from '../../../core/args-def'
-import { createOutput, resolveOutputOptions } from '../../../core/output'
+import { withOutputArgs } from '../../../core/output'
+import { createOutput } from '../../../core/output'
 import { presentPerpOrderResult } from '../../../hyperliquid/features/perps/presenters/perps'
 import { placePerpTpsl } from '../../../hyperliquid/features/perps/use-cases/perps'
 import { marketBaseArgs } from '../../../hyperliquid/shared/args'
 import { requireHyperliquidWalletContext } from '../../../hyperliquid/shared/context'
 import { runHyperliquidCommand } from '../../../hyperliquid/shared/errors'
-import { renderView } from '../../../hyperliquid/shared/view'
 
 export default defineCommand({
   meta: { name: 'tpsl', description: 'Place take-profit and stop-loss orders for perp positions' },
   subCommands: {
     'stop-loss': defineCommand({
       meta: { name: 'stop-loss', description: 'Place a reduce-only stop loss for an open perp position' },
-      args: withDefaultArgs({
+      args: withOutputArgs({
         ...marketBaseArgs,
         coin: {
           type: 'positional',
@@ -35,7 +34,7 @@ export default defineCommand({
         },
       }),
       async run({ args }) {
-        const out = createOutput(resolveOutputOptions(args))
+        const out = createOutput()
         await runHyperliquidCommand(out, async () => {
           const ctx = requireHyperliquidWalletContext(args, out)
           const result = await placePerpTpsl(ctx, {
@@ -45,13 +44,13 @@ export default defineCommand({
             price: args.price ? String(args.price) : undefined,
             tpsl: 'sl',
           })
-          renderView(out, presentPerpOrderResult(result))
+          out.data(presentPerpOrderResult(result))
         })
       },
     }),
     'take-profit': defineCommand({
       meta: { name: 'take-profit', description: 'Place a reduce-only take profit for an open perp position' },
-      args: withDefaultArgs({
+      args: withOutputArgs({
         ...marketBaseArgs,
         coin: {
           type: 'positional',
@@ -73,7 +72,7 @@ export default defineCommand({
         },
       }),
       async run({ args }) {
-        const out = createOutput(resolveOutputOptions(args))
+        const out = createOutput()
         await runHyperliquidCommand(out, async () => {
           const ctx = requireHyperliquidWalletContext(args, out)
           const result = await placePerpTpsl(ctx, {
@@ -83,7 +82,7 @@ export default defineCommand({
             price: args.price ? String(args.price) : undefined,
             tpsl: 'tp',
           })
-          renderView(out, presentPerpOrderResult(result))
+          out.data(presentPerpOrderResult(result))
         })
       },
     }),

@@ -1,12 +1,12 @@
 import { revokeApiKey } from '@bulu-cli/tcx-core'
 import { defineCommand } from 'citty'
 import { getVaultPath } from '../../../core/config'
-import { createOutput, resolveOutputOptions } from '../../../core/output'
-import { withDefaultArgs } from '../../../core/args-def'
+import { createOutput } from '../../../core/output'
+import { withOutputArgs } from '../../../core/output'
 
 export default defineCommand({
   meta: { name: 'revoke', description: 'Revoke an API key' },
-  args: withDefaultArgs({
+  args: withOutputArgs({
     name: {
       type: 'positional',
       description: 'API key name or ID',
@@ -19,7 +19,7 @@ export default defineCommand({
     },
   }),
   async run({ args }) {
-    const out = createOutput(resolveOutputOptions(args))
+    const out = createOutput()
     if (!args.confirm) {
       out.warn('This will permanently revoke the API key. Pass --confirm to proceed.')
       process.exit(1)

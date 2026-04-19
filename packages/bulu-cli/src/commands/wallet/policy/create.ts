@@ -2,15 +2,15 @@ import { readFileSync } from 'node:fs'
 import { createPolicy } from '@bulu-cli/tcx-core'
 import { defineCommand } from 'citty'
 import { getVaultPath } from '../../../core/config'
-import { createOutput, resolveOutputOptions } from '../../../core/output'
-import { withDefaultArgs } from '../../../core/args-def'
+import { createOutput } from '../../../core/output'
+import { withOutputArgs } from '../../../core/output'
 
 export default defineCommand({
   meta: {
     name: 'create',
     description: 'Create a signing policy from a JSON file',
   },
-  args: withDefaultArgs({
+  args: withOutputArgs({
     file: {
       type: 'positional',
       description: 'Path to the policy JSON file',
@@ -21,7 +21,7 @@ export default defineCommand({
     const policyJson = readFileSync(args.file, 'utf-8')
     const obj = JSON.parse(policyJson)
     createPolicy({ name: obj.name, rules: obj.rules }, getVaultPath())
-    const out = createOutput(resolveOutputOptions(args))
+    const out = createOutput()
     out.success('Policy created successfully')
   },
 })

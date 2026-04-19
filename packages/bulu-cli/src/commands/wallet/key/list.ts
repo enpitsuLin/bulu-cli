@@ -1,8 +1,8 @@
 import { listApiKey, type ApiKeyInfo } from '@bulu-cli/tcx-core'
 import { defineCommand } from 'citty'
 import { getVaultPath } from '../../../core/config'
-import { createOutput, resolveOutputOptions } from '../../../core/output'
-import { withDefaultArgs } from '../../../core/args-def'
+import { createOutput } from '../../../core/output'
+import { withOutputArgs } from '../../../core/output'
 import { formatOptionalTimestamp } from '../../../core/time'
 
 function formatApiKeysForTable(apiKeys: ApiKeyInfo[]) {
@@ -17,11 +17,11 @@ function formatApiKeysForTable(apiKeys: ApiKeyInfo[]) {
 
 export default defineCommand({
   meta: { name: 'list', description: 'List all API keys' },
-  args: withDefaultArgs({}),
-  async run({ args }) {
+  args: withOutputArgs({}),
+  async run() {
     const vaultPath = getVaultPath()
     const apiKeys = listApiKey(vaultPath)
-    const output = createOutput(resolveOutputOptions(args))
+    const output = createOutput()
 
     if (apiKeys.length === 0) {
       output.warn('No API keys found')

@@ -1,14 +1,14 @@
 import { defineCommand } from 'citty'
 import { getVaultPath } from '../../core/config'
-import { createOutput, resolveOutputOptions } from '../../core/output'
+import { createOutput } from '../../core/output'
 import { getWallet } from '@bulu-cli/tcx-core'
-import { withDefaultArgs } from '../../core/args-def'
+import { withOutputArgs } from '../../core/output'
 import { styleText } from 'node:util'
 import { formatTimestamp } from '../../core/time'
 
 export default defineCommand({
   meta: { name: 'info', description: 'Show detailed information for a wallet' },
-  args: withDefaultArgs({
+  args: withOutputArgs({
     wallet: {
       type: 'positional',
       description: 'Wallet name or id',
@@ -19,7 +19,7 @@ export default defineCommand({
     const vaultPath = getVaultPath()
     const wallet = getWallet(args.wallet, vaultPath)
 
-    const out = createOutput(resolveOutputOptions(args))
+    const out = createOutput()
 
     const created = formatTimestamp(wallet.meta.timestamp)
 

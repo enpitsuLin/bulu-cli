@@ -1,16 +1,15 @@
 import { defineCommand } from 'citty'
-import { withDefaultArgs } from '../../../core/args-def'
-import { createOutput, resolveOutputOptions } from '../../../core/output'
+import { withOutputArgs } from '../../../core/output'
+import { createOutput } from '../../../core/output'
 import { presentUpdatedPerpMargin } from '../../../hyperliquid/features/perps/presenters/perps'
 import { updatePerpMargin } from '../../../hyperliquid/features/perps/use-cases/perps'
 import { marketBaseArgs } from '../../../hyperliquid/shared/args'
 import { requireHyperliquidWalletContext } from '../../../hyperliquid/shared/context'
 import { runHyperliquidCommand } from '../../../hyperliquid/shared/errors'
-import { renderView } from '../../../hyperliquid/shared/view'
 
 export default defineCommand({
   meta: { name: 'margin', description: 'Add or remove isolated margin for a perp position' },
-  args: withDefaultArgs({
+  args: withOutputArgs({
     ...marketBaseArgs,
     coin: {
       type: 'positional',
@@ -24,14 +23,14 @@ export default defineCommand({
     },
   }),
   async run({ args }) {
-    const out = createOutput(resolveOutputOptions(args))
+    const out = createOutput()
     await runHyperliquidCommand(out, async () => {
       const ctx = requireHyperliquidWalletContext(args, out)
       const result = await updatePerpMargin(ctx, {
         coin: args.coin ? String(args.coin) : undefined,
         delta: args.delta ? String(args.delta) : undefined,
       })
-      renderView(out, presentUpdatedPerpMargin(result))
+      out.data(presentUpdatedPerpMargin(result))
     })
   },
 })

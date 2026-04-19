@@ -1,13 +1,13 @@
 import { defineCommand } from 'citty'
 import { signTransaction } from '@bulu-cli/tcx-core'
 import { getVaultPath } from '../../core/config'
-import { createOutput, resolveOutputOptions } from '../../core/output'
-import { withDefaultArgs } from '../../core/args-def'
+import { createOutput } from '../../core/output'
+import { withOutputArgs } from '../../core/output'
 import { resolveTCXPassphrase } from '../../core/tcx'
 
 export default defineCommand({
   meta: { name: 'tx', description: 'Sign a transaction' },
-  args: withDefaultArgs({
+  args: withOutputArgs({
     txHex: {
       type: 'positional',
       description: 'Unsigned transaction hex',
@@ -26,7 +26,7 @@ export default defineCommand({
   }),
   async run({ args }) {
     const vaultPath = getVaultPath()
-    const out = createOutput(resolveOutputOptions(args))
+    const out = createOutput()
 
     const passphrase = await resolveTCXPassphrase()
 

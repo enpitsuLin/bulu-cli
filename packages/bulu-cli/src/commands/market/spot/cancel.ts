@@ -1,16 +1,15 @@
 import { defineCommand } from 'citty'
-import { withDefaultArgs } from '../../../core/args-def'
-import { createOutput, resolveOutputOptions } from '../../../core/output'
+import { withOutputArgs } from '../../../core/output'
+import { createOutput } from '../../../core/output'
 import { presentSpotCancel } from '../../../hyperliquid/features/spot/presenters/spot'
 import { cancelSpotOrders } from '../../../hyperliquid/features/spot/use-cases/spot'
 import { marketBaseArgs } from '../../../hyperliquid/shared/args'
 import { requireHyperliquidWalletContext } from '../../../hyperliquid/shared/context'
 import { runHyperliquidCommand } from '../../../hyperliquid/shared/errors'
-import { renderView } from '../../../hyperliquid/shared/view'
 
 export default defineCommand({
   meta: { name: 'cancel', description: 'Cancel open spot orders' },
-  args: withDefaultArgs({
+  args: withOutputArgs({
     ...marketBaseArgs,
     id: {
       type: 'positional',
@@ -28,7 +27,7 @@ export default defineCommand({
     },
   }),
   async run({ args }) {
-    const out = createOutput(resolveOutputOptions(args))
+    const out = createOutput()
     await runHyperliquidCommand(out, async () => {
       const ctx = requireHyperliquidWalletContext(args, out)
       const result = await cancelSpotOrders(ctx, {
@@ -36,7 +35,7 @@ export default defineCommand({
         pair: args.pair ? String(args.pair) : undefined,
         all: args.all === true,
       })
-      renderView(out, presentSpotCancel(result))
+      out.data(presentSpotCancel(result))
     })
   },
 })

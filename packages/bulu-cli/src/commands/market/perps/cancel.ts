@@ -1,16 +1,15 @@
 import { defineCommand } from 'citty'
-import { withDefaultArgs } from '../../../core/args-def'
-import { createOutput, resolveOutputOptions } from '../../../core/output'
+import { withOutputArgs } from '../../../core/output'
+import { createOutput } from '../../../core/output'
 import { presentPerpCancel } from '../../../hyperliquid/features/perps/presenters/perps'
 import { cancelPerpOrders } from '../../../hyperliquid/features/perps/use-cases/perps'
 import { marketBaseArgs } from '../../../hyperliquid/shared/args'
 import { requireHyperliquidWalletContext } from '../../../hyperliquid/shared/context'
 import { runHyperliquidCommand } from '../../../hyperliquid/shared/errors'
-import { renderView } from '../../../hyperliquid/shared/view'
 
 export default defineCommand({
   meta: { name: 'cancel', description: 'Cancel open perp orders' },
-  args: withDefaultArgs({
+  args: withOutputArgs({
     ...marketBaseArgs,
     id: {
       type: 'positional',
@@ -28,7 +27,7 @@ export default defineCommand({
     },
   }),
   async run({ args }) {
-    const out = createOutput(resolveOutputOptions(args))
+    const out = createOutput()
     await runHyperliquidCommand(out, async () => {
       const ctx = requireHyperliquidWalletContext(args, out)
       const result = await cancelPerpOrders(ctx, {
@@ -36,7 +35,7 @@ export default defineCommand({
         coin: args.coin ? String(args.coin) : undefined,
         all: args.all === true,
       })
-      renderView(out, presentPerpCancel(result))
+      out.data(presentPerpCancel(result))
     })
   },
 })

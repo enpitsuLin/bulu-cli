@@ -5,8 +5,8 @@ import { styleText } from 'node:util'
 import { readFileSync } from 'node:fs'
 import { getVaultPath, setActiveWallet } from '../../core/config'
 import { resolveTCXPassphrase } from '../../core/tcx'
-import { createOutput, resolveOutputOptions } from '../../core/output'
-import { withDefaultArgs } from '../../core/args-def'
+import { createOutput } from '../../core/output'
+import { withOutputArgs } from '../../core/output'
 
 function parseIndex(indexValue?: string): number | undefined {
   if (!indexValue) return undefined
@@ -46,7 +46,7 @@ export default defineCommand({
     name: 'import',
     description: 'Import a wallet from private key, mnemonic, or keystore JSON',
   },
-  args: withDefaultArgs({
+  args: withOutputArgs({
     name: {
       type: 'positional',
       description: 'Wallet name',
@@ -78,7 +78,7 @@ export default defineCommand({
   }),
   async run({ args }) {
     const name = args.name.trim()
-    const out = createOutput(resolveOutputOptions(args))
+    const out = createOutput()
 
     if (!name) {
       out.warn('Wallet name is required')

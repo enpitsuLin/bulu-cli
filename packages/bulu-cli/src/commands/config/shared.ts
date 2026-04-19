@@ -1,13 +1,3 @@
-import { createOutput, resolveOutputOptions, type Output, type OutputOptions } from '../../core/output'
-
-export interface ConfigJsonOutputArgs {
-  json?: boolean
-}
-
-export interface ConfigListOutputArgs extends ConfigJsonOutputArgs {
-  format?: string
-}
-
 export type ConfigRow = Record<string, string> & {
   Key: string
   Value: string
@@ -15,18 +5,6 @@ export type ConfigRow = Record<string, string> & {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
-export function createConfigCommandOutput(args: ConfigJsonOutputArgs): Output {
-  return createOutput(args.json ? { json: true, format: 'json' } : { json: false, format: 'table' })
-}
-
-export function resolveConfigListOutput(args: ConfigListOutputArgs): { output: Output; outputOpts: OutputOptions } {
-  const outputOpts = resolveOutputOptions(args)
-  return {
-    output: createOutput(outputOpts),
-    outputOpts,
-  }
 }
 
 export function formatConfigValue(value: unknown): string {

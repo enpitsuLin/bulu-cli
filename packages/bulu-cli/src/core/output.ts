@@ -1,5 +1,20 @@
 import { styleText } from 'node:util'
 import { Table } from 'console-table-printer'
+import { createContext } from 'unctx'
+import { AsyncLocalStorage } from 'node:async_hooks'
+import type { ArgsDef, Resolvable } from 'citty'
+
+export const outputCtx = createContext<OutputOptions>({
+  asyncContext: true,
+  AsyncLocalStorage,
+})
+
+export function useOutput(): OutputOptions {
+  const args = outputCtx.use()
+  if (args.json) return { json: true, format: 'json' }
+  const format = (args.format as OutputOptions['format']) || 'table'
+  return { json: false, format }
+}
 
 export interface OutputOptions {
   json: boolean
@@ -18,11 +33,36 @@ export interface Output {
   warn(msg: string): void
 }
 
+const outputArgs = {
+  json: {
+    type: 'boolean',
+    description: 'Force JSON output',
+    default: false,
+  },
+  format: {
+    type: 'string',
+    description: 'Output format: table, csv, json',
+    default: 'table',
+  },
+} satisfies ArgsDef
+
+export type OutputArgs = typeof outputArgs
+
+export async function withOutputArgs<T extends ArgsDef = ArgsDef>(args: Resolvable<T>): Promise<typeof outputArgs & T> {
+  const resolveArgs = typeof args === 'function' ? args() : args
+
+  return {
+    ...(await resolveArgs),
+    ...outputArgs,
+  }
+}
+
 function write(str: string) {
   process.stdout.write(`${str}\n`)
 }
 
-export function createOutput(opts: OutputOptions): Output {
+export function createOutput(): Output {
+  const opts = useOutput()
   const isJson = opts.json || opts.format === 'json'
 
   return {

@@ -1,13 +1,13 @@
 import { defineCommand } from 'citty'
 import { getVaultPath } from '../../core/config'
-import { createOutput, resolveOutputOptions } from '../../core/output'
+import { createOutput } from '../../core/output'
 import { exportWallet } from '@bulu-cli/tcx-core'
-import { withDefaultArgs } from '../../core/args-def'
+import { withOutputArgs } from '../../core/output'
 import { resolveTCXPassphrase } from '../../core/tcx'
 
 export default defineCommand({
   meta: { name: 'export', description: 'Export wallet mnemonic or private key' },
-  args: withDefaultArgs({
+  args: withOutputArgs({
     wallet: {
       type: 'positional',
       description: 'Wallet name or id',
@@ -20,7 +20,7 @@ export default defineCommand({
     },
   }),
   async run({ args }) {
-    const out = createOutput(resolveOutputOptions(args))
+    const out = createOutput()
     if (!args.confirm) {
       out.warn(
         [

@@ -1,4 +1,5 @@
 import { defineCommand, runMain } from 'citty'
+import OutputArgs from './plugins/0.output-args'
 
 export const main = defineCommand({
   subCommands: {
@@ -7,6 +8,7 @@ export const main = defineCommand({
     sign: import('./commands/sign/index').then((m) => m.default),
     market: import('./commands/market/index').then((m) => m.default),
   },
+  plugins: [OutputArgs],
 })
 
 if (import.meta.main) {

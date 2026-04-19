@@ -1,16 +1,15 @@
 import { defineCommand } from 'citty'
-import { withDefaultArgs } from '../../../core/args-def'
-import { createOutput, resolveOutputOptions } from '../../../core/output'
+import { withOutputArgs } from '../../../core/output'
+import { createOutput } from '../../../core/output'
 import { presentSpotOrderResult } from '../../../hyperliquid/features/spot/presenters/spot'
 import { placeSpotOrder } from '../../../hyperliquid/features/spot/use-cases/spot'
 import { marketBaseArgs } from '../../../hyperliquid/shared/args'
 import { requireHyperliquidWalletContext } from '../../../hyperliquid/shared/context'
 import { runHyperliquidCommand } from '../../../hyperliquid/shared/errors'
-import { renderView } from '../../../hyperliquid/shared/view'
 
 export default defineCommand({
   meta: { name: 'buy', description: 'Place a spot buy order on Hyperliquid' },
-  args: withDefaultArgs({
+  args: withOutputArgs({
     ...marketBaseArgs,
     pair: {
       type: 'positional',
@@ -28,7 +27,7 @@ export default defineCommand({
     },
   }),
   async run({ args }) {
-    const out = createOutput(resolveOutputOptions(args))
+    const out = createOutput()
     await runHyperliquidCommand(out, async () => {
       const ctx = requireHyperliquidWalletContext(args, out)
       const result = await placeSpotOrder(ctx, {
@@ -37,7 +36,7 @@ export default defineCommand({
         price: args.price ? String(args.price) : undefined,
         side: 'buy',
       })
-      renderView(out, presentSpotOrderResult(result))
+      out.data(presentSpotOrderResult(result))
     })
   },
 })

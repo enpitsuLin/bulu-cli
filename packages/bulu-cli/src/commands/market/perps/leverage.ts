@@ -1,16 +1,15 @@
 import { defineCommand } from 'citty'
-import { withDefaultArgs } from '../../../core/args-def'
-import { createOutput, resolveOutputOptions } from '../../../core/output'
+import { withOutputArgs } from '../../../core/output'
+import { createOutput } from '../../../core/output'
 import { presentUpdatedPerpLeverage } from '../../../hyperliquid/features/perps/presenters/perps'
 import { updatePerpLeverage } from '../../../hyperliquid/features/perps/use-cases/perps'
 import { marketBaseArgs } from '../../../hyperliquid/shared/args'
 import { requireHyperliquidWalletContext } from '../../../hyperliquid/shared/context'
 import { runHyperliquidCommand } from '../../../hyperliquid/shared/errors'
-import { renderView } from '../../../hyperliquid/shared/view'
 
 export default defineCommand({
   meta: { name: 'leverage', description: 'Update perp leverage and margin mode for a coin' },
-  args: withDefaultArgs({
+  args: withOutputArgs({
     ...marketBaseArgs,
     coin: {
       type: 'positional',
@@ -29,7 +28,7 @@ export default defineCommand({
     },
   }),
   async run({ args }) {
-    const out = createOutput(resolveOutputOptions(args))
+    const out = createOutput()
     await runHyperliquidCommand(out, async () => {
       const ctx = requireHyperliquidWalletContext(args, out)
       const result = await updatePerpLeverage(ctx, {
@@ -37,7 +36,7 @@ export default defineCommand({
         value: args.value ? String(args.value) : undefined,
         isolated: args.isolated === true,
       })
-      renderView(out, presentUpdatedPerpLeverage(result))
+      out.data(presentUpdatedPerpLeverage(result))
     })
   },
 })

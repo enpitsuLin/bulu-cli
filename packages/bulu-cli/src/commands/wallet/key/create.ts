@@ -1,8 +1,8 @@
 import { createApiKey } from '@bulu-cli/tcx-core'
 import { defineCommand } from 'citty'
 import { getActiveWallet, getVaultPath } from '../../../core/config'
-import { createOutput, resolveOutputOptions } from '../../../core/output'
-import { withDefaultArgs } from '../../../core/args-def'
+import { createOutput } from '../../../core/output'
+import { withOutputArgs } from '../../../core/output'
 import { resolveTCXPassphrase } from '../../../core/tcx'
 import { formatTimestamp } from '../../../core/time'
 
@@ -19,7 +19,7 @@ export default defineCommand({
     name: 'create',
     description: 'Create an API key for agent-mode signing',
   },
-  args: withDefaultArgs({
+  args: withOutputArgs({
     name: {
       type: 'positional',
       description: 'API key name',
@@ -40,7 +40,7 @@ export default defineCommand({
   }),
   async run({ args }) {
     const vaultPath = getVaultPath()
-    const out = createOutput(resolveOutputOptions(args))
+    const out = createOutput()
 
     let walletIds = splitIds(args.wallet)
     if (walletIds.length === 0) {
