@@ -1,7 +1,7 @@
 import { createWallet } from '@bulu-cli/tcx-core'
 import { defineCommand } from 'citty'
 import { resolveTCXPassphrase } from '#/core/tcx'
-import { getVaultPath, setActiveWallet } from '#/core/config'
+import { getVaultPath, setActiveWallet, withConfigArgs } from '#/core/config'
 import { useOutput } from '#/core/output'
 import { withOutputArgs } from '#/core/output'
 import { styleText } from 'node:util'
@@ -12,13 +12,15 @@ export interface WalletCreateArgs {
 
 export default defineCommand({
   meta: { name: 'create', description: 'Create a new wallet' },
-  args: withOutputArgs({
-    name: {
-      type: 'positional',
-      description: 'Wallet name',
-      required: true,
-    },
-  }),
+  args: withOutputArgs(
+    withConfigArgs({
+      name: {
+        type: 'positional',
+        description: 'Wallet name',
+        required: true,
+      },
+    }),
+  ),
   async run({ args }) {
     const passphrase = await resolveTCXPassphrase()
     const vaultPath = getVaultPath()

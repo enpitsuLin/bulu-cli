@@ -1,6 +1,6 @@
 import { listWallet, type WalletInfo } from '@bulu-cli/tcx-core'
 import { defineCommand } from 'citty'
-import { getActiveWallet, getVaultPath } from '#/core/config'
+import { getActiveWallet, getVaultPath, withConfigArgs } from '#/core/config'
 import { useOutput } from '#/core/output'
 import { withOutputArgs } from '#/core/output'
 import { styleText } from 'node:util'
@@ -17,7 +17,7 @@ function formatWalletsForTable(wallets: WalletInfo[], activeWallet?: string) {
 
 export default defineCommand({
   meta: { name: 'list', description: 'List all wallets' },
-  args: withOutputArgs({}),
+  args: withOutputArgs(withConfigArgs({})),
   async run() {
     const vaultPath = getVaultPath()
     const wallets = listWallet(vaultPath)

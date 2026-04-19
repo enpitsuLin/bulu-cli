@@ -3,7 +3,7 @@ import { importWalletKeystore, importWalletMnemonic, importWalletPrivateKey } fr
 import { defineCommand } from 'citty'
 import { styleText } from 'node:util'
 import { readFileSync } from 'node:fs'
-import { getVaultPath, setActiveWallet } from '#/core/config'
+import { getVaultPath, setActiveWallet, withConfigArgs } from '#/core/config'
 import { resolveTCXPassphrase } from '#/core/tcx'
 import { useOutput } from '#/core/output'
 import { withOutputArgs } from '#/core/output'
@@ -46,36 +46,38 @@ export default defineCommand({
     name: 'import',
     description: 'Import a wallet from private key, mnemonic, or keystore JSON',
   },
-  args: withOutputArgs({
-    name: {
-      type: 'positional',
-      description: 'Wallet name',
-      required: true,
-    },
-    key: {
-      type: 'positional',
-      description: 'Private key (or use stdin/--file/--mnemonic)',
-      required: false,
-    },
-    mnemonic: {
-      type: 'boolean',
-      description: 'Import from mnemonic phrase (interactive prompt)',
-      default: false,
-    },
-    keystore: {
-      type: 'boolean',
-      description: 'Import from keystore JSON (interactive prompt)',
-      default: false,
-    },
-    file: {
-      type: 'string',
-      description: 'Read key or mnemonic from file',
-    },
-    index: {
-      type: 'string',
-      description: 'Default derivation account index for mnemonic imports',
-    },
-  }),
+  args: withOutputArgs(
+    withConfigArgs({
+      name: {
+        type: 'positional',
+        description: 'Wallet name',
+        required: true,
+      },
+      key: {
+        type: 'positional',
+        description: 'Private key (or use stdin/--file/--mnemonic)',
+        required: false,
+      },
+      mnemonic: {
+        type: 'boolean',
+        description: 'Import from mnemonic phrase (interactive prompt)',
+        default: false,
+      },
+      keystore: {
+        type: 'boolean',
+        description: 'Import from keystore JSON (interactive prompt)',
+        default: false,
+      },
+      file: {
+        type: 'string',
+        description: 'Read key or mnemonic from file',
+      },
+      index: {
+        type: 'string',
+        description: 'Default derivation account index for mnemonic imports',
+      },
+    }),
+  ),
   async run({ args }) {
     const name = args.name.trim()
     const out = useOutput()

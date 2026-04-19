@@ -1,10 +1,40 @@
+import { AsyncLocalStorage } from 'node:async_hooks'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
+import type { ArgsDef, Resolvable } from 'citty'
+import { createContext } from 'unctx'
 
 const BULU_CONFIG_DIR_ENV = 'BULU_CONFIG_DIR'
 const BULU_CONFIG_DEFAULT_DIR = 'bulu'
 const BULU_CONFIG_FILENAME = 'bulu.config.json'
+
+export interface ConfigOptions {
+  configDir: string
+}
+
+export const configCtx = createContext<ConfigOptions>({
+  asyncContext: true,
+  AsyncLocalStorage,
+})
+
+const configArgs = {
+  'config-dir': {
+    type: 'string',
+    description: `Config directory (default: $${BULU_CONFIG_DIR_ENV} or ~/.config/${BULU_CONFIG_DEFAULT_DIR})`,
+  },
+} satisfies ArgsDef
+
+export type ConfigArgs = typeof configArgs
+
+export async function withConfigArgs<T extends ArgsDef = ArgsDef>(args: Resolvable<T>): Promise<typeof configArgs & T> {
+  const resolveArgs = typeof args === 'function' ? args() : args
+
+  return {
+    ...(await resolveArgs),
+    ...configArgs,
+  }
+}
 
 export type UserConfig = Record<string, unknown>
 
@@ -42,8 +72,12 @@ export interface InitBuluConfigResult {
   path: string
 }
 
-export function getConfigDir(): string {
+export function getDefaultConfigDir(): string {
   return process.env[BULU_CONFIG_DIR_ENV] || join(homedir(), '.config', BULU_CONFIG_DEFAULT_DIR)
+}
+
+export function getConfigDir(): string {
+  return configCtx.tryUse()?.configDir ?? getDefaultConfigDir()
 }
 
 export function getConfigPath(cwd = getConfigDir()): string {

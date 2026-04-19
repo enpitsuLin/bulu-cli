@@ -1,14 +1,14 @@
 import { defineCommand, runMain } from 'citty'
-import OutputArgs from './plugins/0.output-args'
+import ConfigArgs from './plugins/config-args'
+import OutputArgs from './plugins/output-args'
 
 export const main = defineCommand({
   subCommands: {
     config: import('./commands/config/index').then((m) => m.default),
     wallet: import('./commands/wallet/index').then((m) => m.default),
     sign: import('./commands/sign/index').then((m) => m.default),
-    market: import('./commands/market/index').then((m) => m.default),
   },
-  plugins: [OutputArgs],
+  plugins: [ConfigArgs, OutputArgs],
 })
 
 if (import.meta.main) {

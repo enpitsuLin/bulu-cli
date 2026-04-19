@@ -1,11 +1,11 @@
 import { defineCommand } from 'citty'
-import { loadBuluConfigSync } from '#/core/config'
+import { loadBuluConfigSync, withConfigArgs } from '#/core/config'
 import { flattenConfigRows } from './shared'
 import { useOutput, withOutputArgs } from '#/core/output'
 
 export default defineCommand({
   meta: { name: 'list', description: 'List config values' },
-  args: withOutputArgs({}),
+  args: withOutputArgs(withConfigArgs({})),
   async run() {
     const config = loadBuluConfigSync() as Record<string, unknown>
     const output = useOutput()
