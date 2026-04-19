@@ -1,31 +1,29 @@
 import { defineCommand } from 'citty'
 import { signTypedData } from '@bulu-cli/tcx-core'
-import { getVaultPath, withConfigArgs } from '#/core/config'
+import { getVaultPath } from '#/core/config'
 import { useOutput } from '#/core/output'
 import { withOutputArgs } from '#/core/output'
 import { resolveTCXPassphrase } from '#/core/tcx'
 
 export default defineCommand({
   meta: { name: 'typed-data', description: 'Sign typed structured data (EIP-712 / TIP-712)' },
-  args: withOutputArgs(
-    withConfigArgs({
-      'typed-data-json': {
-        type: 'positional',
-        description: 'Typed data JSON string (EIP-712 format)',
-        required: true,
-      },
-      wallet: {
-        type: 'string',
-        description: 'Wallet name or id',
-        required: true,
-      },
-      'chain-id': {
-        type: 'string',
-        description: 'CAIP-2 chain id, for example eip155:1 or tron:0x2b6653dc',
-        required: true,
-      },
-    }),
-  ),
+  args: withOutputArgs({
+    'typed-data-json': {
+      type: 'positional',
+      description: 'Typed data JSON string (EIP-712 format)',
+      required: true,
+    },
+    wallet: {
+      type: 'string',
+      description: 'Wallet name or id',
+      required: true,
+    },
+    'chain-id': {
+      type: 'string',
+      description: 'CAIP-2 chain id, for example eip155:1 or tron:0x2b6653dc',
+      required: true,
+    },
+  }),
   async run({ args }) {
     const vaultPath = getVaultPath()
     const out = useOutput()

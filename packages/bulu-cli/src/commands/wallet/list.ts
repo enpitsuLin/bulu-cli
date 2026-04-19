@@ -1,6 +1,6 @@
 import { listWallet, type WalletInfo } from '@bulu-cli/tcx-core'
 import { defineCommand } from 'citty'
-import { getActiveWallet, getVaultPath, withConfigArgs } from '#/core/config'
+import { getVaultPath, useConfig } from '#/core/config'
 import { useOutput } from '#/core/output'
 import { withOutputArgs } from '#/core/output'
 import { styleText } from 'node:util'
@@ -17,10 +17,11 @@ function formatWalletsForTable(wallets: WalletInfo[], activeWallet?: string) {
 
 export default defineCommand({
   meta: { name: 'list', description: 'List all wallets' },
-  args: withOutputArgs(withConfigArgs({})),
+  args: withOutputArgs({}),
   async run() {
     const vaultPath = getVaultPath()
     const wallets = listWallet(vaultPath)
+    const config = useConfig()
     const output = useOutput()
 
     if (wallets.length === 0) {
@@ -28,7 +29,7 @@ export default defineCommand({
       return
     }
 
-    const activeWallet = getActiveWallet()
+    const activeWallet = config.default?.wallet
     const rows = formatWalletsForTable(wallets, activeWallet)
     output.table(rows, {
       columns: ['Name', 'Active', 'Source', 'Derivable', 'Accounts'],

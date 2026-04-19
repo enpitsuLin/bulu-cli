@@ -1,6 +1,6 @@
 import { listPolicy, type PolicyInfo } from '@bulu-cli/tcx-core'
 import { defineCommand } from 'citty'
-import { getVaultPath, withConfigArgs } from '#/core/config'
+import { getVaultPath } from '#/core/config'
 import { useOutput } from '#/core/output'
 import { withOutputArgs } from '#/core/output'
 import { formatTimestamp } from '#/core/time'
@@ -17,7 +17,7 @@ function formatPoliciesForTable(policies: PolicyInfo[]) {
 
 export default defineCommand({
   meta: { name: 'list', description: 'List all signing policies' },
-  args: withOutputArgs(withConfigArgs({})),
+  args: withOutputArgs({}),
   async run() {
     const vaultPath = getVaultPath()
     const policies = listPolicy(vaultPath)

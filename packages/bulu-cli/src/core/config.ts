@@ -2,39 +2,12 @@ import { AsyncLocalStorage } from 'node:async_hooks'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
-import type { ArgsDef, Resolvable } from 'citty'
 import { createContext } from 'unctx'
+import { defu } from 'defu'
 
 const BULU_CONFIG_DIR_ENV = 'BULU_CONFIG_DIR'
 const BULU_CONFIG_DEFAULT_DIR = 'bulu'
 const BULU_CONFIG_FILENAME = 'bulu.config.json'
-
-export interface ConfigOptions {
-  configDir: string
-}
-
-export const configCtx = createContext<ConfigOptions>({
-  asyncContext: true,
-  AsyncLocalStorage,
-})
-
-const configArgs = {
-  'config-dir': {
-    type: 'string',
-    description: `Config directory (default: $${BULU_CONFIG_DIR_ENV} or ~/.config/${BULU_CONFIG_DEFAULT_DIR})`,
-  },
-} satisfies ArgsDef
-
-export type ConfigArgs = typeof configArgs
-
-export async function withConfigArgs<T extends ArgsDef = ArgsDef>(args: Resolvable<T>): Promise<typeof configArgs & T> {
-  const resolveArgs = typeof args === 'function' ? args() : args
-
-  return {
-    ...(await resolveArgs),
-    ...configArgs,
-  }
-}
 
 export type UserConfig = Record<string, unknown>
 
@@ -45,9 +18,6 @@ export interface BuluConfig {
     format?: 'table' | 'csv' | 'json'
   }
   chains?: Record<string, { rpc?: string }>
-  hyperliquid?: {
-    apiBase?: string
-  }
 }
 
 export const CONFIG_DEFAULTS: BuluConfig = {
@@ -60,11 +30,20 @@ export const CONFIG_DEFAULTS: BuluConfig = {
     'eip155:1': { rpc: 'https://1rpc.io/eth' },
     'eip155:11155111': { rpc: 'https://1rpc.io/sepolia' },
   },
-  hyperliquid: {},
 }
 
-const HYPERLIQUID_MAINNET_BASE = 'https://api.hyperliquid.xyz'
-const HYPERLIQUID_TESTNET_BASE = 'https://api.hyperliquid-testnet.xyz'
+export interface ConfigOptions {
+  config: BuluConfig
+}
+
+export const configCtx = createContext<ConfigOptions>({
+  asyncContext: true,
+  AsyncLocalStorage,
+})
+
+export function useConfig() {
+  return configCtx.use().config
+}
 
 export interface InitBuluConfigResult {
   action: 'created' | 'overwritten' | 'unchanged'
@@ -72,12 +51,8 @@ export interface InitBuluConfigResult {
   path: string
 }
 
-export function getDefaultConfigDir(): string {
-  return process.env[BULU_CONFIG_DIR_ENV] || join(homedir(), '.config', BULU_CONFIG_DEFAULT_DIR)
-}
-
 export function getConfigDir(): string {
-  return configCtx.tryUse()?.configDir ?? getDefaultConfigDir()
+  return process.env[BULU_CONFIG_DIR_ENV] || join(homedir(), '.config', BULU_CONFIG_DEFAULT_DIR)
 }
 
 export function getConfigPath(cwd = getConfigDir()): string {
@@ -100,21 +75,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function cloneConfig<T>(value: T): T {
   return structuredClone(value)
-}
-
-function mergeConfig<T extends Record<string, unknown>>(defaults: T, overrides: Record<string, unknown>): T {
-  const result: Record<string, unknown> = { ...defaults }
-
-  for (const [key, value] of Object.entries(overrides)) {
-    const existing = result[key]
-    if (isRecord(existing) && isRecord(value)) {
-      result[key] = mergeConfig(existing, value)
-    } else {
-      result[key] = value
-    }
-  }
-
-  return result as T
 }
 
 function parseConfigKeyPath(keyPath: string): string[] {
@@ -175,7 +135,7 @@ export function initBuluConfigSync(options?: { cwd?: string; force?: boolean }):
 
 export function loadBuluConfigSync(cwd?: string): BuluConfig {
   const overrides = loadUserConfigSync(cwd || getConfigDir())
-  return mergeConfig(CONFIG_DEFAULTS as Record<string, unknown>, overrides)
+  return defu(CONFIG_DEFAULTS as Record<string, unknown>, overrides)
 }
 
 export function getConfigValueByPath(config: unknown, keyPath: string): unknown {
@@ -206,19 +166,190 @@ export function setConfigValueByPath(config: UserConfig, keyPath: string, value:
   current[segments[segments.length - 1]] = value
 }
 
-export function getActiveWallet(cwd?: string): string | undefined {
-  const config = loadBuluConfigSync(cwd)
-  return config.default?.wallet
+export function setConfigValue(keyPath: string, value: unknown): void {
+  const runtimeConfig = useConfig()
+  if (runtimeConfig) {
+    setConfigValueByPath(runtimeConfig as UserConfig, keyPath, value)
+    return
+  }
+
+  const userConfig = loadUserConfigSync()
+  setConfigValueByPath(userConfig, keyPath, value)
+  saveUserConfigSync(userConfig)
 }
 
-export function setActiveWallet(name: string, cwd?: string): void {
-  const configDir = cwd ?? getConfigDir()
-  const userConfig = loadUserConfigSync(configDir)
-  setConfigValueByPath(userConfig, 'default.wallet', name)
-  saveUserConfigSync(userConfig, configDir)
+function getValueAtPath(source: unknown, path: readonly string[]): unknown {
+  let current = source
+
+  for (const segment of path) {
+    if (!isRecord(current)) {
+      return undefined
+    }
+
+    current = current[segment]
+  }
+
+  return current
 }
 
-export function getHyperliquidBaseUrl(testnet?: boolean, cwd?: string): string {
-  const config = loadBuluConfigSync(cwd)
-  return config.hyperliquid?.apiBase ?? (testnet ? HYPERLIQUID_TESTNET_BASE : HYPERLIQUID_MAINNET_BASE)
+function unwrapValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item) => unwrapValue(item))
+  }
+
+  if (!isRecord(value)) {
+    return value
+  }
+
+  const result: Record<string, unknown> = {}
+
+  for (const [key, nestedValue] of Object.entries(value)) {
+    result[key] = unwrapValue(nestedValue)
+  }
+
+  return result
+}
+
+function setValueAtPath(target: UserConfig, path: readonly string[], value: unknown): void {
+  let current = target
+
+  for (const segment of path.slice(0, -1)) {
+    const next = current[segment]
+
+    if (!isRecord(next)) {
+      current[segment] = {}
+    }
+
+    current = current[segment] as UserConfig
+  }
+
+  current[path[path.length - 1]] = unwrapValue(value)
+}
+
+function deleteValueAtPath(target: UserConfig, path: readonly string[]): boolean {
+  const parents: Array<[Record<string, unknown>, string]> = []
+  let current: Record<string, unknown> = target
+
+  for (const segment of path.slice(0, -1)) {
+    const next = current[segment]
+    if (!isRecord(next)) {
+      return false
+    }
+
+    parents.push([current, segment])
+    current = next
+  }
+
+  const leafKey = path[path.length - 1]
+  if (!(leafKey in current)) {
+    return false
+  }
+
+  delete current[leafKey]
+
+  for (let index = parents.length - 1; index >= 0; index -= 1) {
+    const [parent, key] = parents[index]
+    const child = parent[key]
+
+    if (!isRecord(child) || Object.keys(child).length > 0) {
+      break
+    }
+
+    delete parent[key]
+  }
+
+  return true
+}
+
+export function createRuntimeConfig(): BuluConfig {
+  let config = loadBuluConfigSync() as Record<string, unknown>
+  let userConfig = loadUserConfigSync()
+  const proxyCache = new Map<string, Record<string, unknown>>()
+
+  const reload = () => {
+    config = loadBuluConfigSync() as Record<string, unknown>
+    userConfig = loadUserConfigSync()
+  }
+
+  const getRecordAtPath = (path: readonly string[]) => {
+    const value = getValueAtPath(config, path)
+    return isRecord(value) ? value : {}
+  }
+
+  const createProxy = (path: readonly string[]): Record<string, unknown> => {
+    const cacheKey = path.join('\0')
+    const cachedProxy = proxyCache.get(cacheKey)
+    if (cachedProxy) {
+      return cachedProxy
+    }
+
+    const proxy = new Proxy<Record<string, unknown>>(
+      {},
+      {
+        get(_, property) {
+          if (typeof property !== 'string') {
+            return undefined
+          }
+
+          if (property === 'toJSON') {
+            return () => getValueAtPath(config, path)
+          }
+
+          const value = getValueAtPath(config, [...path, property])
+          return isRecord(value) ? createProxy([...path, property]) : value
+        },
+        set(_, property, value) {
+          if (typeof property !== 'string') {
+            return false
+          }
+
+          setValueAtPath(userConfig, [...path, property], value)
+          saveUserConfigSync(userConfig)
+          reload()
+          return true
+        },
+        deleteProperty(_, property) {
+          if (typeof property !== 'string') {
+            return false
+          }
+
+          if (!deleteValueAtPath(userConfig, [...path, property])) {
+            return true
+          }
+
+          saveUserConfigSync(userConfig)
+          reload()
+          return true
+        },
+        has(_, property) {
+          return typeof property === 'string' && property in getRecordAtPath(path)
+        },
+        ownKeys() {
+          return Reflect.ownKeys(getRecordAtPath(path))
+        },
+        getOwnPropertyDescriptor(_, property) {
+          if (typeof property !== 'string') {
+            return undefined
+          }
+
+          const value = getValueAtPath(config, [...path, property])
+          if (value === undefined) {
+            return undefined
+          }
+
+          return {
+            configurable: true,
+            enumerable: true,
+            writable: true,
+            value: isRecord(value) ? createProxy([...path, property]) : value,
+          }
+        },
+      },
+    )
+
+    proxyCache.set(cacheKey, proxy)
+    return proxy
+  }
+
+  return createProxy([]) as BuluConfig
 }
