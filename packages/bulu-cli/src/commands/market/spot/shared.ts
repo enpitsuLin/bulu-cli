@@ -1,4 +1,4 @@
-import { createOutput, resolveOutputOptions } from '../../../core/output'
+import { createOutput } from '../../../core/output'
 import {
   buildSpotPairNameSet,
   fetchSpotMarketAsset,
@@ -33,6 +33,14 @@ export interface SpotUserContext {
 export interface SpotMarketState {
   meta: SpotMeta
   contexts: AssetCtx[]
+}
+
+export interface SpotOrderCommandResult {
+  walletName: string
+  pair: string
+  side: SpotOrderSide
+  order: ResolvedSpotOrder
+  statuses: Awaited<ReturnType<typeof submitOrder>>
 }
 
 export function resolveSpotUserContext(
@@ -72,7 +80,7 @@ export async function loadSpotMarketOrExit(
   return loadDataOrExit(out, fetchSpotMarketAsset(pair, isTestnet), 'Failed to load spot market')
 }
 
-export async function runSpotOrderCommand(
+export async function executeSpotOrderCommand(
   args: {
     pair?: string
     size?: string
@@ -83,9 +91,9 @@ export async function runSpotOrderCommand(
     format?: string
   },
   side: SpotOrderSide,
-): Promise<void> {
+  out: ReturnType<typeof createOutput>,
+): Promise<SpotOrderCommandResult> {
   const pair = normalizeSpotPair(String(args.pair))
-  const out = createOutput(resolveOutputOptions(args))
   const { walletName, user: _user } = resolveSpotUserContext(args, out)
   const market = await loadSpotMarketOrExit(pair, args.testnet, out)
 
@@ -104,8 +112,18 @@ export async function runSpotOrderCommand(
 
   const statuses = await submitOrder({ walletName, testnet: args.testnet }, order.action)
 
-  out.table(statuses, {
+  return {
+    walletName,
+    pair,
+    side,
+    order,
+    statuses,
+  }
+}
+
+export function renderSpotOrderResult(result: SpotOrderCommandResult, out: ReturnType<typeof createOutput>): void {
+  out.table(result.statuses, {
     columns: ['orderIndex', 'result'],
-    title: `Spot Order | ${walletName} | ${pair} ${side.toUpperCase()} ${order.size} @ ${order.price}`,
+    title: `Spot Order | ${result.walletName} | ${result.pair} ${result.side.toUpperCase()} ${result.order.size} @ ${result.order.price}`,
   })
 }

@@ -1,7 +1,8 @@
 import { defineCommand } from 'citty'
 import { withDefaultArgs } from '../../../core/args-def'
+import { createOutput, resolveOutputOptions } from '../../../core/output'
 import { marketBaseArgs } from '../shared'
-import { runSpotOrderCommand } from './shared'
+import { executeSpotOrderCommand, renderSpotOrderResult } from './shared'
 
 export default defineCommand({
   meta: { name: 'sell', description: 'Place a spot sell order on Hyperliquid' },
@@ -23,6 +24,8 @@ export default defineCommand({
     },
   }),
   async run({ args }) {
-    await runSpotOrderCommand(args, 'sell')
+    const out = createOutput(resolveOutputOptions(args))
+    const result = await executeSpotOrderCommand(args, 'sell', out)
+    renderSpotOrderResult(result, out)
   },
 })

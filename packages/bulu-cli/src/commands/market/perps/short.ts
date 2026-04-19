@@ -1,7 +1,8 @@
 import { defineCommand } from 'citty'
 import { withDefaultArgs } from '../../../core/args-def'
+import { createOutput, resolveOutputOptions } from '../../../core/output'
 import { marketBaseArgs } from '../shared'
-import { runPerpOrderCommand } from './shared'
+import { executePerpOrderCommand, renderPerpOrderResult } from './shared'
 
 export default defineCommand({
   meta: { name: 'short', description: 'Open or increase a short perp position on Hyperliquid' },
@@ -23,6 +24,8 @@ export default defineCommand({
     },
   }),
   async run({ args }) {
-    await runPerpOrderCommand(args, { side: 'short', close: false })
+    const out = createOutput(resolveOutputOptions(args))
+    const result = await executePerpOrderCommand(args, { side: 'short', close: false }, out)
+    renderPerpOrderResult(result, out)
   },
 })

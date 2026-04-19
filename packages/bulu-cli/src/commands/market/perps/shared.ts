@@ -1,4 +1,4 @@
-import { createOutput, resolveOutputOptions } from '../../../core/output'
+import { createOutput } from '../../../core/output'
 import { fetchClearinghouseState, fetchMarketAsset, resolvePerpOrder } from '../../../protocols/hyperliquid'
 import type {
   ClearinghouseState,
@@ -30,6 +30,13 @@ export interface PerpUserContext {
   user: string
 }
 
+export interface PerpOrderCommandResult {
+  walletName: string
+  coin: string
+  order: ResolvedPerpOrder
+  statuses: Awaited<ReturnType<typeof submitOrder>>
+}
+
 export function resolvePerpUserContext(
   args: Pick<PerpCommandArgs, 'wallet'>,
   out: ReturnType<typeof createOutput>,
@@ -53,7 +60,7 @@ export async function loadPerpStateOrExit(
   return loadDataOrExit(out, fetchClearinghouseState(user, isTestnet), 'Failed to fetch positions')
 }
 
-export async function runPerpOrderCommand(
+export async function executePerpOrderCommand(
   args: {
     coin?: string
     size?: string
@@ -64,9 +71,9 @@ export async function runPerpOrderCommand(
     format?: string
   },
   preset: PerpOrderPreset,
-): Promise<void> {
+  out: ReturnType<typeof createOutput>,
+): Promise<PerpOrderCommandResult> {
   const coin = String(args.coin).toUpperCase()
-  const out = createOutput(resolveOutputOptions(args))
   const { walletName, user } = resolvePerpUserContext(args, out)
   const market = await loadPerpMarketOrExit(coin, args.testnet, out)
 
@@ -87,14 +94,23 @@ export async function runPerpOrderCommand(
     'Failed to resolve order',
   )
 
-  const detail = order.isTrigger
-    ? `${coin} ${String(order.triggerKind).toUpperCase()} ${order.size} trigger ${order.triggerPx} -> ${order.price}`
-    : `${coin} ${order.side.toUpperCase()} ${order.size} @ ${order.price}`
-
   const statuses = await submitOrder({ walletName, testnet: args.testnet }, order.action)
 
-  out.table(statuses, {
+  return {
+    walletName,
+    coin,
+    order,
+    statuses,
+  }
+}
+
+export function renderPerpOrderResult(result: PerpOrderCommandResult, out: ReturnType<typeof createOutput>): void {
+  const detail = result.order.isTrigger
+    ? `${result.coin} ${String(result.order.triggerKind).toUpperCase()} ${result.order.size} trigger ${result.order.triggerPx} -> ${result.order.price}`
+    : `${result.coin} ${result.order.side.toUpperCase()} ${result.order.size} @ ${result.order.price}`
+
+  out.table(result.statuses, {
     columns: ['orderIndex', 'result'],
-    title: `Perp Order | ${walletName} | ${detail}`,
+    title: `Perp Order | ${result.walletName} | ${detail}`,
   })
 }
