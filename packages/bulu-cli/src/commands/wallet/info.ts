@@ -1,6 +1,6 @@
 import { defineCommand } from 'citty'
 import { getVaultPath } from '#/core/config'
-import { createOutput } from '#/core/output'
+import { useOutput } from '#/core/output'
 import { getWallet } from '@bulu-cli/tcx-core'
 import { withOutputArgs } from '#/core/output'
 import { styleText } from 'node:util'
@@ -19,7 +19,7 @@ export default defineCommand({
     const vaultPath = getVaultPath()
     const wallet = getWallet(args.wallet, vaultPath)
 
-    const out = createOutput()
+    const out = useOutput()
 
     const created = formatTimestamp(wallet.meta.timestamp)
 

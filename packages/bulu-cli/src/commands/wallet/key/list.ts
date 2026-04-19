@@ -1,7 +1,7 @@
 import { listApiKey, type ApiKeyInfo } from '@bulu-cli/tcx-core'
 import { defineCommand } from 'citty'
 import { getVaultPath } from '#/core/config'
-import { createOutput } from '#/core/output'
+import { useOutput } from '#/core/output'
 import { withOutputArgs } from '#/core/output'
 import { formatOptionalTimestamp } from '#/core/time'
 
@@ -21,7 +21,7 @@ export default defineCommand({
   async run() {
     const vaultPath = getVaultPath()
     const apiKeys = listApiKey(vaultPath)
-    const output = createOutput()
+    const output = useOutput()
 
     if (apiKeys.length === 0) {
       output.warn('No API keys found')

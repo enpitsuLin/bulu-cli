@@ -1,6 +1,6 @@
 import { defineCommand } from 'citty'
 import { getVaultPath } from '#/core/config'
-import { createOutput } from '#/core/output'
+import { useOutput } from '#/core/output'
 import { exportWallet } from '@bulu-cli/tcx-core'
 import { withOutputArgs } from '#/core/output'
 import { resolveTCXPassphrase } from '#/core/tcx'
@@ -20,7 +20,7 @@ export default defineCommand({
     },
   }),
   async run({ args }) {
-    const out = createOutput()
+    const out = useOutput()
     if (!args.confirm) {
       out.warn(
         [

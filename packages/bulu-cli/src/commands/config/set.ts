@@ -7,7 +7,7 @@ import {
   setConfigValueByPath,
 } from '#/core/config'
 import { formatConfigValue, parseConfigValue } from './shared'
-import { createOutput, withOutputArgs } from '#/core/output'
+import { useOutput, withOutputArgs } from '#/core/output'
 
 export default defineCommand({
   meta: { name: 'set', description: 'Write a config value by dot path' },
@@ -31,7 +31,7 @@ export default defineCommand({
     saveUserConfigSync(userConfig)
 
     const resolvedValue = getConfigValueByPath(loadBuluConfigSync() as Record<string, unknown>, args.key)
-    const output = createOutput()
+    const output = useOutput()
 
     output.success(`Set ${args.key} = ${formatConfigValue(resolvedValue)}`)
   },

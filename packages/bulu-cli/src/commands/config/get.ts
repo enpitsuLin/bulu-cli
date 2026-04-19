@@ -1,6 +1,6 @@
 import { defineCommand } from 'citty'
 import { getConfigValueByPath, loadBuluConfigSync } from '#/core/config'
-import { createOutput, withOutputArgs } from '#/core/output'
+import { useOutput, withOutputArgs } from '#/core/output'
 
 export default defineCommand({
   meta: { name: 'get', description: 'Read a config value by dot path' },
@@ -17,7 +17,7 @@ export default defineCommand({
       throw new Error(`Config key "${args.key}" not found`)
     }
 
-    const output = createOutput()
+    const output = useOutput()
     output.data(value)
   },
 })

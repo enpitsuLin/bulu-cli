@@ -1,6 +1,6 @@
 import { defineCommand } from 'citty'
 import { initBuluConfigSync } from '#/core/config'
-import { createOutput } from '#/core/output'
+import { useOutput } from '#/core/output'
 
 export default defineCommand({
   meta: { name: 'init', description: 'Create the default bulu config file' },
@@ -18,7 +18,7 @@ export default defineCommand({
   },
   async run({ args }) {
     const result = initBuluConfigSync({ force: args.force })
-    const output = createOutput()
+    const output = useOutput()
 
     if (result.action === 'created') {
       output.success(`Initialized config at ${result.path}`)

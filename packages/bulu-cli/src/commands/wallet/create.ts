@@ -2,7 +2,7 @@ import { createWallet } from '@bulu-cli/tcx-core'
 import { defineCommand } from 'citty'
 import { resolveTCXPassphrase } from '#/core/tcx'
 import { getVaultPath, setActiveWallet } from '#/core/config'
-import { createOutput } from '#/core/output'
+import { useOutput } from '#/core/output'
 import { withOutputArgs } from '#/core/output'
 import { styleText } from 'node:util'
 
@@ -23,7 +23,7 @@ export default defineCommand({
     const passphrase = await resolveTCXPassphrase()
     const vaultPath = getVaultPath()
 
-    const out = createOutput()
+    const out = useOutput()
 
     let wallet
     try {

@@ -5,7 +5,7 @@ import { styleText } from 'node:util'
 import { readFileSync } from 'node:fs'
 import { getVaultPath, setActiveWallet } from '#/core/config'
 import { resolveTCXPassphrase } from '#/core/tcx'
-import { createOutput } from '#/core/output'
+import { useOutput } from '#/core/output'
 import { withOutputArgs } from '#/core/output'
 
 function parseIndex(indexValue?: string): number | undefined {
@@ -78,7 +78,7 @@ export default defineCommand({
   }),
   async run({ args }) {
     const name = args.name.trim()
-    const out = createOutput()
+    const out = useOutput()
 
     if (!name) {
       out.warn('Wallet name is required')

@@ -1,7 +1,7 @@
 import { deleteWallet } from '@bulu-cli/tcx-core'
 import { defineCommand } from 'citty'
 import { join } from 'node:path'
-import { createOutput } from '#/core/output'
+import { useOutput } from '#/core/output'
 import { getConfigDir } from '#/core/config'
 import { withOutputArgs } from '#/core/output'
 
@@ -20,7 +20,7 @@ export default defineCommand({
     },
   }),
   async run({ args }) {
-    const out = createOutput()
+    const out = useOutput()
     if (!args.confirm) {
       out.warn('This will permanently delete the wallet. Pass --confirm to proceed.')
       process.exit(1)

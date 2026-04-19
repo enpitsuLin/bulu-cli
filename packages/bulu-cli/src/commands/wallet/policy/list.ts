@@ -1,7 +1,7 @@
 import { listPolicy, type PolicyInfo } from '@bulu-cli/tcx-core'
 import { defineCommand } from 'citty'
 import { getVaultPath } from '#/core/config'
-import { createOutput } from '#/core/output'
+import { useOutput } from '#/core/output'
 import { withOutputArgs } from '#/core/output'
 import { formatTimestamp } from '#/core/time'
 
@@ -21,7 +21,7 @@ export default defineCommand({
   async run() {
     const vaultPath = getVaultPath()
     const policies = listPolicy(vaultPath)
-    const output = createOutput()
+    const output = useOutput()
 
     if (policies.length === 0) {
       output.warn('No policies found')

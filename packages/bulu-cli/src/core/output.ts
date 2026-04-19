@@ -9,7 +9,7 @@ export const outputCtx = createContext<OutputOptions>({
   AsyncLocalStorage,
 })
 
-export function useOutput(): OutputOptions {
+export function useOutputOptions(): OutputOptions {
   const args = outputCtx.use()
   if (args.json) return { json: true, format: 'json' }
   const format = (args.format as OutputOptions['format']) || 'table'
@@ -61,8 +61,8 @@ function write(str: string) {
   process.stdout.write(`${str}\n`)
 }
 
-export function createOutput(): Output {
-  const opts = useOutput()
+export function useOutput(): Output {
+  const opts = useOutputOptions()
   const isJson = opts.json || opts.format === 'json'
 
   return {
@@ -115,10 +115,4 @@ export function createOutput(): Output {
       }
     },
   }
-}
-
-export function resolveOutputOptions(args: { json?: boolean; format?: string }): OutputOptions {
-  if (args.json) return { json: true, format: 'json' }
-  const format = (args.format as OutputOptions['format']) || 'table'
-  return { json: false, format }
 }

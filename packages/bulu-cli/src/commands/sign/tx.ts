@@ -1,7 +1,7 @@
 import { defineCommand } from 'citty'
 import { signTransaction } from '@bulu-cli/tcx-core'
 import { getVaultPath } from '#/core/config'
-import { createOutput } from '#/core/output'
+import { useOutput } from '#/core/output'
 import { withOutputArgs } from '#/core/output'
 import { resolveTCXPassphrase } from '#/core/tcx'
 
@@ -26,7 +26,7 @@ export default defineCommand({
   }),
   async run({ args }) {
     const vaultPath = getVaultPath()
-    const out = createOutput()
+    const out = useOutput()
 
     const passphrase = await resolveTCXPassphrase()
 
