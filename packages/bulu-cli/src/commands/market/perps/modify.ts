@@ -11,11 +11,11 @@ import {
   resolveTriggerKindFromOrder,
 } from '../../../protocols/hyperliquid'
 import type { FrontendOpenOrder, HyperliquidMarketAsset } from '../../../protocols/hyperliquid'
+import { withDefaultArgs } from '../../../core/args-def'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
-import { resolvePerpQueryArgs, resolvePerpUserContext } from './shared'
+import { marketBaseArgs } from '../shared'
+import { resolvePerpUserContext, submitExchangeAction } from './shared'
 import { loadDataOrExit } from '../../../utils/cli'
-
-import { submitExchangeAction } from './shared'
 import { findOrderByIdentifier } from './utils'
 
 function isMarketTrigger(order: FrontendOpenOrder): boolean {
@@ -24,7 +24,8 @@ function isMarketTrigger(order: FrontendOpenOrder): boolean {
 
 export default defineCommand({
   meta: { name: 'modify', description: 'Modify an open perp order by oid or cloid' },
-  args: resolvePerpQueryArgs({
+  args: withDefaultArgs({
+    ...marketBaseArgs,
     id: {
       type: 'positional',
       description: 'Order id or client order id',

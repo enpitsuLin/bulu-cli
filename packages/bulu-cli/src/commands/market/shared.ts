@@ -1,3 +1,4 @@
+import type { ArgsDef } from 'citty'
 import { getVaultPath } from '../../core/config'
 import { createOutput } from '../../core/output'
 import { resolveTCXPassphrase } from '../../core/tcx'
@@ -16,6 +17,18 @@ export interface MarketUserContext {
   walletName: string
   user: string
 }
+
+export const marketBaseArgs = {
+  testnet: {
+    type: 'boolean',
+    description: 'Use Hyperliquid testnet',
+    default: false,
+  },
+  wallet: {
+    type: 'string',
+    description: 'Wallet name or id (defaults to active wallet)',
+  },
+} satisfies ArgsDef
 
 export function resolveMarketUserContext(
   args: Pick<MarketCommandArgs, 'wallet'>,

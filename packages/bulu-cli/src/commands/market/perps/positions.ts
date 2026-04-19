@@ -1,8 +1,10 @@
 import { defineCommand } from 'citty'
 import { fetchClearinghouseState } from '../../../protocols/hyperliquid'
 import type { PerpPosition } from '../../../protocols/hyperliquid'
+import { withDefaultArgs } from '../../../core/args-def'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
-import { resolvePerpQueryArgs, resolvePerpUserContext } from './shared'
+import { marketBaseArgs } from '../shared'
+import { resolvePerpUserContext } from './shared'
 import { loadDataOrExit } from '../../../utils/cli'
 
 function formatLeverage(leverage: PerpPosition['leverage']): string {
@@ -15,7 +17,9 @@ function formatLeverage(leverage: PerpPosition['leverage']): string {
 
 export default defineCommand({
   meta: { name: 'positions', description: 'Show perp positions' },
-  args: resolvePerpQueryArgs(),
+  args: withDefaultArgs({
+    ...marketBaseArgs,
+  }),
   async run({ args }) {
     const out = createOutput(resolveOutputOptions(args))
     const { walletName, user } = resolvePerpUserContext(args, out)

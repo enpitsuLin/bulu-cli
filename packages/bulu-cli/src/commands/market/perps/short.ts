@@ -1,9 +1,27 @@
 import { defineCommand } from 'citty'
-import { resolvePerpOrderArgs, runPerpOrderCommand } from './shared'
+import { withDefaultArgs } from '../../../core/args-def'
+import { marketBaseArgs } from '../shared'
+import { runPerpOrderCommand } from './shared'
 
 export default defineCommand({
   meta: { name: 'short', description: 'Open or increase a short perp position on Hyperliquid' },
-  args: resolvePerpOrderArgs('open'),
+  args: withDefaultArgs({
+    ...marketBaseArgs,
+    coin: {
+      type: 'positional',
+      description: 'Trading pair symbol, e.g. BTC, ETH',
+      required: true,
+    },
+    size: {
+      type: 'string',
+      description: 'Order size in base asset units',
+      required: true,
+    },
+    price: {
+      type: 'string',
+      description: 'Limit price (omit for market order)',
+    },
+  }),
   async run({ args }) {
     await runPerpOrderCommand(args, { side: 'short', close: false })
   },

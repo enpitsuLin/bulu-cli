@@ -1,8 +1,10 @@
 import { defineCommand } from 'citty'
 import { fetchHistoricalOrders, normalizeSpotPair, partitionEntriesBySpot } from '../../../protocols/hyperliquid'
 import type { HistoricalOrder } from '../../../protocols/hyperliquid'
+import { withDefaultArgs } from '../../../core/args-def'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
-import { loadSpotPairNameSetOrExit, resolveSpotQueryArgs, resolveSpotUserContext } from './shared'
+import { marketBaseArgs } from '../shared'
+import { loadSpotPairNameSetOrExit, resolveSpotUserContext } from './shared'
 import { fetchListItems } from '../query-shared'
 import { parseLimitArg } from '../utils'
 import { formatTimestamp } from '../../../core/time'
@@ -25,7 +27,8 @@ function mapSpotHistoryRow(entry: HistoricalOrder) {
 
 export default defineCommand({
   meta: { name: 'history', description: 'Show historical spot orders' },
-  args: resolveSpotQueryArgs({
+  args: withDefaultArgs({
+    ...marketBaseArgs,
     pair: {
       type: 'string',
       description: 'Filter order history by exact Hyperliquid spot pair',

@@ -6,14 +6,17 @@ import {
   parseOrderIdentifier,
   resolveOrderSide,
 } from '../../../protocols/hyperliquid'
+import { withDefaultArgs } from '../../../core/args-def'
 import { formatTimestamp } from '../../../core/time'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
-import { resolvePerpQueryArgs, resolvePerpUserContext } from './shared'
+import { marketBaseArgs } from '../shared'
+import { resolvePerpUserContext } from './shared'
 import { loadDataOrExit } from '../../../utils/cli'
 
 export default defineCommand({
   meta: { name: 'status', description: 'Query perp order status by oid or cloid' },
-  args: resolvePerpQueryArgs({
+  args: withDefaultArgs({
+    ...marketBaseArgs,
     id: {
       type: 'positional',
       description: 'Order id or client order id',

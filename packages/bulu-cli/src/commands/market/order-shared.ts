@@ -21,34 +21,3 @@ export async function submitOrder(
     result: formatOrderStatus(status),
   }))
 }
-
-/**
- * Build common order args on top of market query args.
- */
-export function buildOrderPositionalArgs(
-  base: Record<string, unknown>,
-  config: {
-    symbolName: string
-    symbolDesc: string
-    sizeDesc: string
-    sizeRequired?: boolean
-  },
-): Record<string, unknown> {
-  return {
-    ...base,
-    [config.symbolName]: {
-      type: 'positional',
-      description: config.symbolDesc,
-      required: true,
-    },
-    size: {
-      type: 'string',
-      description: config.sizeDesc,
-      required: config.sizeRequired ?? true,
-    },
-    price: {
-      type: 'string',
-      description: 'Limit price (omit for market order)',
-    },
-  }
-}

@@ -5,8 +5,10 @@ import {
   normalizeSpotPair,
   partitionEntriesBySpot,
 } from '../../../protocols/hyperliquid'
+import { withDefaultArgs } from '../../../core/args-def'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
-import { loadSpotPairNameSetOrExit, resolveSpotQueryArgs, resolveSpotUserContext } from './shared'
+import { marketBaseArgs } from '../shared'
+import { loadSpotPairNameSetOrExit, resolveSpotUserContext } from './shared'
 import { fetchListItems } from '../query-shared'
 import { parseLimitArg, parseTimeArg } from '../utils'
 import { formatTimestamp } from '../../../core/time'
@@ -28,7 +30,8 @@ function mapSpotFillRow(fill: UserFill) {
 
 export default defineCommand({
   meta: { name: 'fills', description: 'Show recent spot fills' },
-  args: resolveSpotQueryArgs({
+  args: withDefaultArgs({
+    ...marketBaseArgs,
     pair: {
       type: 'string',
       description: 'Filter fills by exact Hyperliquid spot pair',

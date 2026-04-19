@@ -6,8 +6,10 @@ import {
   partitionEntriesBySpot,
   resolveOrderSide,
 } from '../../../protocols/hyperliquid'
+import { withDefaultArgs } from '../../../core/args-def'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
-import { resolvePerpQueryArgs, resolvePerpUserContext } from './shared'
+import { marketBaseArgs } from '../shared'
+import { resolvePerpUserContext } from './shared'
 import { fetchListItems } from '../query-shared'
 import { parseLimitArg, parseTimeArg } from './utils'
 import { formatTimestamp } from '../../../core/time'
@@ -29,7 +31,8 @@ function mapPerpFillRow(fill: UserFill) {
 
 export default defineCommand({
   meta: { name: 'fills', description: 'Show recent perp fills' },
-  args: resolvePerpQueryArgs({
+  args: withDefaultArgs({
+    ...marketBaseArgs,
     coin: {
       type: 'string',
       description: 'Filter fills by perp symbol',

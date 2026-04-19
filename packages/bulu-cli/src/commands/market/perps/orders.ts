@@ -6,9 +6,11 @@ import {
 } from '../../../protocols/hyperliquid'
 import type { FrontendOpenOrder } from '../../../protocols/hyperliquid'
 import { defineCommand } from 'citty'
+import { withDefaultArgs } from '../../../core/args-def'
 import { formatTimestamp } from '../../../core/time'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
-import { resolvePerpQueryArgs, resolvePerpUserContext } from './shared'
+import { marketBaseArgs } from '../shared'
+import { resolvePerpUserContext } from './shared'
 import { fetchListItems } from '../query-shared'
 
 function mapOpenOrder(order: FrontendOpenOrder) {
@@ -30,7 +32,13 @@ function mapOpenOrder(order: FrontendOpenOrder) {
 
 export default defineCommand({
   meta: { name: 'orders', description: 'Show open perp orders' },
-  args: resolvePerpQueryArgs(),
+  args: withDefaultArgs({
+    ...marketBaseArgs,
+    coin: {
+      type: 'string',
+      description: 'Filter orders by perp symbol',
+    },
+  }),
   async run({ args }) {
     const out = createOutput(resolveOutputOptions(args))
     const { walletName, user } = resolvePerpUserContext(args, out)

@@ -1,10 +1,14 @@
 import { defineCommand } from 'citty'
+import { withDefaultArgs } from '../../../core/args-def'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
-import { resolveSpotQueryArgs, loadSpotMarketStateOrExit } from './shared'
+import { marketBaseArgs } from '../shared'
+import { loadSpotMarketStateOrExit } from './shared'
 
 export default defineCommand({
   meta: { name: 'pairs', description: 'List tradable spot pairs' },
-  args: resolveSpotQueryArgs(),
+  args: withDefaultArgs({
+    ...marketBaseArgs,
+  }),
   async run({ args }) {
     const out = createOutput(resolveOutputOptions(args))
     const spotMarket = await loadSpotMarketStateOrExit(args.testnet, out)

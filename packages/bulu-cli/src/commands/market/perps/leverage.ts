@@ -1,13 +1,9 @@
 import { defineCommand } from 'citty'
 import { buildUpdateLeverageAction } from '../../../protocols/hyperliquid'
+import { withDefaultArgs } from '../../../core/args-def'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
-import {
-  handleCommandError,
-  loadPerpMarketOrExit,
-  resolvePerpQueryArgs,
-  resolvePerpUserContext,
-  submitExchangeAction,
-} from './shared'
+import { marketBaseArgs } from '../shared'
+import { handleCommandError, loadPerpMarketOrExit, resolvePerpUserContext, submitExchangeAction } from './shared'
 import { executeOrExit } from '../../../utils/cli'
 
 function parseLeverage(value: string): number {
@@ -20,7 +16,8 @@ function parseLeverage(value: string): number {
 
 export default defineCommand({
   meta: { name: 'leverage', description: 'Update perp leverage and margin mode for a coin' },
-  args: resolvePerpQueryArgs({
+  args: withDefaultArgs({
+    ...marketBaseArgs,
     coin: {
       type: 'positional',
       description: 'Trading pair symbol, e.g. BTC, ETH',

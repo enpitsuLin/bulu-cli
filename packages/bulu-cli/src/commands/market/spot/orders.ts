@@ -1,8 +1,10 @@
 import { defineCommand } from 'citty'
 import { fetchFrontendOpenOrders, normalizeSpotPair, partitionEntriesBySpot } from '../../../protocols/hyperliquid'
 import type { FrontendOpenOrder } from '../../../protocols/hyperliquid'
+import { withDefaultArgs } from '../../../core/args-def'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
-import { loadSpotPairNameSetOrExit, resolveSpotQueryArgs, resolveSpotUserContext } from './shared'
+import { marketBaseArgs } from '../shared'
+import { loadSpotPairNameSetOrExit, resolveSpotUserContext } from './shared'
 import { fetchListItems } from '../query-shared'
 import { formatTimestamp } from '../../../core/time'
 
@@ -24,7 +26,8 @@ function mapSpotOpenOrder(order: FrontendOpenOrder) {
 
 export default defineCommand({
   meta: { name: 'orders', description: 'Show open spot orders' },
-  args: resolveSpotQueryArgs({
+  args: withDefaultArgs({
+    ...marketBaseArgs,
     pair: {
       type: 'string',
       description: 'Filter orders by exact Hyperliquid spot pair',

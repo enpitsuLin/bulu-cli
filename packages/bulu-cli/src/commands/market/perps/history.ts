@@ -1,8 +1,10 @@
 import { defineCommand } from 'citty'
 import { fetchHistoricalOrders, fetchSpotMeta, partitionEntriesBySpot } from '../../../protocols/hyperliquid'
 import type { HistoricalOrder } from '../../../protocols/hyperliquid'
+import { withDefaultArgs } from '../../../core/args-def'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
-import { resolvePerpQueryArgs, resolvePerpUserContext } from './shared'
+import { marketBaseArgs } from '../shared'
+import { resolvePerpUserContext } from './shared'
 import { fetchListItems } from '../query-shared'
 import { parseLimitArg } from './utils'
 import { formatTimestamp } from '../../../core/time'
@@ -25,7 +27,8 @@ function mapPerpHistoryRow(entry: HistoricalOrder) {
 
 export default defineCommand({
   meta: { name: 'history', description: 'Show historical perp orders' },
-  args: resolvePerpQueryArgs({
+  args: withDefaultArgs({
+    ...marketBaseArgs,
     coin: {
       type: 'string',
       description: 'Filter order history by perp symbol',

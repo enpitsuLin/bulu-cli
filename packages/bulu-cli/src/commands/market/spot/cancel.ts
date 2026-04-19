@@ -7,15 +7,16 @@ import {
   partitionEntriesBySpot,
 } from '../../../protocols/hyperliquid'
 import { findOrderByIdentifier } from '../utils'
+import { withDefaultArgs } from '../../../core/args-def'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
-import { loadSpotMarketStateOrExit, resolveSpotQueryArgs, resolveSpotUserContext } from './shared'
+import { marketBaseArgs, submitExchangeAction } from '../shared'
+import { loadSpotMarketStateOrExit, resolveSpotUserContext } from './shared'
 import { loadDataOrExit } from '../../../utils/cli'
-
-import { submitExchangeAction } from '../shared'
 
 export default defineCommand({
   meta: { name: 'cancel', description: 'Cancel open spot orders' },
-  args: resolveSpotQueryArgs({
+  args: withDefaultArgs({
+    ...marketBaseArgs,
     id: {
       type: 'positional',
       description: 'Order id or client order id',

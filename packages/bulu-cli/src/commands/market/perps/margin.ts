@@ -1,13 +1,9 @@
 import { defineCommand } from 'citty'
 import { buildUpdateIsolatedMarginAction } from '../../../protocols/hyperliquid'
+import { withDefaultArgs } from '../../../core/args-def'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
-import {
-  handleCommandError,
-  loadPerpMarketOrExit,
-  resolvePerpQueryArgs,
-  resolvePerpUserContext,
-  submitExchangeAction,
-} from './shared'
+import { marketBaseArgs } from '../shared'
+import { handleCommandError, loadPerpMarketOrExit, resolvePerpUserContext, submitExchangeAction } from './shared'
 import { executeOrExit } from '../../../utils/cli'
 
 function parseScaledUsdDelta(value: string): number {
@@ -31,7 +27,8 @@ function parseScaledUsdDelta(value: string): number {
 
 export default defineCommand({
   meta: { name: 'margin', description: 'Add or remove isolated margin for a perp position' },
-  args: resolvePerpQueryArgs({
+  args: withDefaultArgs({
+    ...marketBaseArgs,
     coin: {
       type: 'positional',
       description: 'Trading pair symbol, e.g. BTC, ETH',

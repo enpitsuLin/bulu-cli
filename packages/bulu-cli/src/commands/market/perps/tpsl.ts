@@ -1,38 +1,11 @@
 import { defineCommand } from 'citty'
 import { resolvePerpTpslOrder } from '../../../protocols/hyperliquid'
 import type { ResolvedPerpOrder } from '../../../protocols/hyperliquid'
+import { withDefaultArgs } from '../../../core/args-def'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
-import {
-  handleCommandError,
-  loadPerpMarketOrExit,
-  loadPerpStateOrExit,
-  resolvePerpQueryArgs,
-  resolvePerpUserContext,
-} from './shared'
+import { marketBaseArgs } from '../shared'
+import { handleCommandError, loadPerpMarketOrExit, loadPerpStateOrExit, resolvePerpUserContext } from './shared'
 import { submitOrder } from '../order-shared'
-
-function buildTpslArgs() {
-  return resolvePerpQueryArgs({
-    coin: {
-      type: 'positional',
-      description: 'Trading pair symbol, e.g. BTC, ETH',
-      required: true,
-    },
-    trigger: {
-      type: 'string',
-      description: 'Trigger price used to arm the order',
-      required: true,
-    },
-    size: {
-      type: 'string',
-      description: 'Order size in base asset units (omit to cover the full position)',
-    },
-    price: {
-      type: 'string',
-      description: 'Optional limit price after trigger (omit for market TP/SL)',
-    },
-  })
-}
 
 async function runTpslCommand(args: Record<string, unknown>, tpsl: 'sl' | 'tp', titlePrefix: string): Promise<void> {
   const out = createOutput(resolveOutputOptions(args))
@@ -73,14 +46,54 @@ export default defineCommand({
   subCommands: {
     'stop-loss': defineCommand({
       meta: { name: 'stop-loss', description: 'Place a reduce-only stop loss for an open perp position' },
-      args: buildTpslArgs(),
+      args: withDefaultArgs({
+        ...marketBaseArgs,
+        coin: {
+          type: 'positional',
+          description: 'Trading pair symbol, e.g. BTC, ETH',
+          required: true,
+        },
+        trigger: {
+          type: 'string',
+          description: 'Trigger price used to arm the order',
+          required: true,
+        },
+        size: {
+          type: 'string',
+          description: 'Order size in base asset units (omit to cover the full position)',
+        },
+        price: {
+          type: 'string',
+          description: 'Optional limit price after trigger (omit for market TP/SL)',
+        },
+      }),
       async run({ args }) {
         await runTpslCommand(args, 'sl', 'Perp Stop Loss')
       },
     }),
     'take-profit': defineCommand({
       meta: { name: 'take-profit', description: 'Place a reduce-only take profit for an open perp position' },
-      args: buildTpslArgs(),
+      args: withDefaultArgs({
+        ...marketBaseArgs,
+        coin: {
+          type: 'positional',
+          description: 'Trading pair symbol, e.g. BTC, ETH',
+          required: true,
+        },
+        trigger: {
+          type: 'string',
+          description: 'Trigger price used to arm the order',
+          required: true,
+        },
+        size: {
+          type: 'string',
+          description: 'Order size in base asset units (omit to cover the full position)',
+        },
+        price: {
+          type: 'string',
+          description: 'Optional limit price after trigger (omit for market TP/SL)',
+        },
+      }),
       async run({ args }) {
         await runTpslCommand(args, 'tp', 'Perp Take Profit')
       },

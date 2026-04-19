@@ -1,12 +1,16 @@
 import { defineCommand } from 'citty'
 import { fetchSpotClearinghouseState } from '../../../protocols/hyperliquid'
+import { withDefaultArgs } from '../../../core/args-def'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
-import { resolveSpotQueryArgs, resolveSpotUserContext } from './shared'
+import { marketBaseArgs } from '../shared'
+import { resolveSpotUserContext } from './shared'
 import { loadDataOrExit } from '../../../utils/cli'
 
 export default defineCommand({
   meta: { name: 'positions', description: 'Show spot balances' },
-  args: resolveSpotQueryArgs(),
+  args: withDefaultArgs({
+    ...marketBaseArgs,
+  }),
   async run({ args }) {
     const out = createOutput(resolveOutputOptions(args))
     const { walletName, user } = resolveSpotUserContext(args, out)

@@ -7,9 +7,8 @@ import type {
   ResolvedPerpOrder,
 } from '../../../protocols/hyperliquid'
 import { resolveMarketUserContext } from '../shared'
-import { withDefaultArgs } from '../../../core/args-def'
 import { executeOrExit, loadDataOrExit } from '../../../utils/cli'
-import { buildOrderPositionalArgs, submitOrder } from '../order-shared'
+import { submitOrder } from '../order-shared'
 
 export { handleCommandError } from '../../../utils/cli'
 export { submitExchangeAction } from '../shared'
@@ -29,38 +28,6 @@ export interface PerpCommandArgs {
 export interface PerpUserContext {
   walletName: string
   user: string
-}
-
-export function resolvePerpQueryArgs(extraArgs: Record<string, unknown> = {}) {
-  return withDefaultArgs({
-    ...extraArgs,
-    testnet: {
-      type: 'boolean',
-      description: 'Use Hyperliquid testnet',
-      default: false,
-    },
-    wallet: {
-      type: 'string',
-      description: 'Wallet name or id (defaults to active wallet)',
-    },
-  })
-}
-
-export function resolvePerpOrderArgs(mode: 'open' | 'close') {
-  return resolvePerpQueryArgs(
-    buildOrderPositionalArgs(
-      {},
-      {
-        symbolName: 'coin',
-        symbolDesc: 'Trading pair symbol, e.g. BTC, ETH',
-        sizeDesc:
-          mode === 'close'
-            ? 'Order size in base asset units (omit to close the full position)'
-            : 'Order size in base asset units',
-        sizeRequired: mode !== 'close',
-      },
-    ),
-  )
 }
 
 export function resolvePerpUserContext(

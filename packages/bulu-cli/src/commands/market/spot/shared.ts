@@ -15,9 +15,8 @@ import type {
   SpotOrderSide,
 } from '../../../protocols/hyperliquid'
 import { resolveMarketUserContext } from '../shared'
-import { withDefaultArgs } from '../../../core/args-def'
 import { executeOrExit, loadDataOrExit } from '../../../utils/cli'
-import { buildOrderPositionalArgs, submitOrder } from '../order-shared'
+import { submitOrder } from '../order-shared'
 
 export interface SpotCommandArgs {
   wallet?: string
@@ -34,34 +33,6 @@ export interface SpotUserContext {
 export interface SpotMarketState {
   meta: SpotMeta
   contexts: AssetCtx[]
-}
-
-export function resolveSpotQueryArgs(extraArgs: Record<string, unknown> = {}) {
-  return withDefaultArgs({
-    ...extraArgs,
-    testnet: {
-      type: 'boolean',
-      description: 'Use Hyperliquid testnet',
-      default: false,
-    },
-    wallet: {
-      type: 'string',
-      description: 'Wallet name or id (defaults to active wallet)',
-    },
-  })
-}
-
-export function resolveSpotOrderArgs() {
-  return resolveSpotQueryArgs(
-    buildOrderPositionalArgs(
-      {},
-      {
-        symbolName: 'pair',
-        symbolDesc: 'Exact Hyperliquid spot pair, e.g. PURR/USDC, UBTC/USDC, @107',
-        sizeDesc: 'Order size in base asset units',
-      },
-    ),
-  )
 }
 
 export function resolveSpotUserContext(

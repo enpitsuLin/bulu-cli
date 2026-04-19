@@ -8,15 +8,16 @@ import {
 } from '../../../protocols/hyperliquid'
 import type { FrontendOpenOrder } from '../../../protocols/hyperliquid'
 import { findOrderByIdentifier } from './utils'
+import { withDefaultArgs } from '../../../core/args-def'
 import { createOutput, resolveOutputOptions } from '../../../core/output'
-import { resolvePerpQueryArgs, resolvePerpUserContext } from './shared'
+import { marketBaseArgs } from '../shared'
+import { resolvePerpUserContext, submitExchangeAction } from './shared'
 import { loadDataOrExit } from '../../../utils/cli'
-
-import { submitExchangeAction } from './shared'
 
 export default defineCommand({
   meta: { name: 'cancel', description: 'Cancel open perp orders' },
-  args: resolvePerpQueryArgs({
+  args: withDefaultArgs({
+    ...marketBaseArgs,
     id: {
       type: 'positional',
       description: 'Order id or client order id',
