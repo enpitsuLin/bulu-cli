@@ -6,7 +6,8 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 /// Declarative policy rule used during agent-mode signing.
 pub struct PolicyRule {
-  /// Rule type. Supported values are `allowed_chains` and `expires_at`.
+  /// Rule type. Supported values are `allowed_chains`, `expires_at`,
+  /// `allowed_primary_types`, and `allowed_verifying_contracts`.
   #[napi(js_name = "type")]
   #[serde(rename = "type")]
   pub rule_type: String,
@@ -17,6 +18,14 @@ pub struct PolicyRule {
   /// Unix seconds timestamp for `expires_at`.
   #[serde(skip_serializing_if = "Option::is_none")]
   pub timestamp: Option<i64>,
+  /// Allowed EIP-712 primary types for `allowed_primary_types`.
+  #[napi(js_name = "primaryTypes")]
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub primary_types: Option<Vec<String>>,
+  /// Allowed EIP-712 domain verifying contracts for `allowed_verifying_contracts`.
+  #[napi(js_name = "verifyingContracts")]
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub verifying_contracts: Option<Vec<String>>,
 }
 
 #[napi(object)]

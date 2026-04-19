@@ -1,32 +1,34 @@
 import { defineCommand } from 'citty'
 import { signTransaction } from '@bulu-cli/tcx-core'
-import { getVaultPath } from '../../core/config'
-import { createOutput, resolveOutputOptions } from '../../core/output'
-import { withDefaultArgs } from '../../core/args-def'
-import { resolveTCXPassphrase } from '../../core/tcx'
+import { getVaultPath, withConfigArgs } from '#/core/config'
+import { useOutput } from '#/core/output'
+import { withOutputArgs } from '#/core/output'
+import { resolveTCXPassphrase } from '#/core/tcx'
 
 export default defineCommand({
   meta: { name: 'tx', description: 'Sign a transaction' },
-  args: withDefaultArgs({
-    txHex: {
-      type: 'positional',
-      description: 'Unsigned transaction hex',
-      required: true,
-    },
-    wallet: {
-      type: 'string',
-      description: 'Wallet name or id',
-      required: true,
-    },
-    'chain-id': {
-      type: 'string',
-      description: 'CAIP-2 chain id, for example eip155:1 or tron:0x2b6653dc',
-      required: true,
-    },
-  }),
+  args: withOutputArgs(
+    withConfigArgs({
+      txHex: {
+        type: 'positional',
+        description: 'Unsigned transaction hex',
+        required: true,
+      },
+      wallet: {
+        type: 'string',
+        description: 'Wallet name or id',
+        required: true,
+      },
+      'chain-id': {
+        type: 'string',
+        description: 'CAIP-2 chain id, for example eip155:1 or tron:0x2b6653dc',
+        required: true,
+      },
+    }),
+  ),
   async run({ args }) {
     const vaultPath = getVaultPath()
-    const out = createOutput(resolveOutputOptions(args))
+    const out = useOutput()
 
     const passphrase = await resolveTCXPassphrase()
 

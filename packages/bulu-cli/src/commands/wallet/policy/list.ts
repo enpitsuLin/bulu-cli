@@ -1,8 +1,9 @@
 import { listPolicy, type PolicyInfo } from '@bulu-cli/tcx-core'
 import { defineCommand } from 'citty'
-import { getVaultPath } from '../../../core/config'
-import { createOutput, resolveOutputOptions } from '../../../core/output'
-import { withDefaultArgs } from '../../../core/args-def'
+import { getVaultPath, withConfigArgs } from '#/core/config'
+import { useOutput } from '#/core/output'
+import { withOutputArgs } from '#/core/output'
+import { formatTimestamp } from '#/core/time'
 
 function formatPoliciesForTable(policies: PolicyInfo[]) {
   return policies.map((p) => ({
@@ -10,17 +11,17 @@ function formatPoliciesForTable(policies: PolicyInfo[]) {
     ID: p.id,
     Rules: p.rules.length,
     Action: p.action,
-    Created: new Date(p.createdAt * 1000).toISOString(),
+    Created: formatTimestamp(p.createdAt),
   }))
 }
 
 export default defineCommand({
   meta: { name: 'list', description: 'List all signing policies' },
-  args: withDefaultArgs({}),
-  async run({ args }) {
+  args: withOutputArgs(withConfigArgs({})),
+  async run() {
     const vaultPath = getVaultPath()
     const policies = listPolicy(vaultPath)
-    const output = createOutput(resolveOutputOptions(args))
+    const output = useOutput()
 
     if (policies.length === 0) {
       output.warn('No policies found')

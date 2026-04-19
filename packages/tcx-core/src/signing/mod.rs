@@ -2,9 +2,10 @@ pub(crate) mod auth;
 
 use tcx_common::{utf8_or_hex_to_bytes, FromHex};
 
-use crate::error::{require_non_empty, require_trimmed, CoreResult, ResultExt};
+use crate::error::{require_non_empty, require_trimmed, CoreError, CoreResult, ResultExt};
 use crate::policy::engine::PolicyOperation;
 use crate::signing::auth::with_signing_request;
+use crate::typed_data::TypedData;
 use crate::types::{SignedMessage, SignedTransactionResult};
 
 pub(crate) fn sign_message(
@@ -24,6 +25,7 @@ pub(crate) fn sign_message(
     credential,
     vault_path,
     PolicyOperation::SignMessage,
+    None,
     move |unlocked_keystore, request| {
       request.resolved.signer.sign_message(
         unlocked_keystore,
@@ -51,6 +53,7 @@ pub(crate) fn sign_transaction(
     credential,
     vault_path,
     PolicyOperation::SignTransaction,
+    None,
     move |unlocked_keystore, request| {
       let signed = request.resolved.signer.sign_transaction(
         unlocked_keystore,
@@ -75,12 +78,16 @@ pub(crate) fn sign_typed_data(
   require_non_empty(&credential, "credential")?;
   require_non_empty(&typed_data_json, "typedDataJson")?;
 
+  let typed_data = serde_json::from_str::<TypedData>(&typed_data_json)
+    .map_err(|e| CoreError::new(format!("invalid typed data JSON: {e}")))?;
+
   with_signing_request(
     name,
     chain_id,
     credential,
     vault_path,
     PolicyOperation::SignTypedData,
+    Some(typed_data),
     move |unlocked_keystore, request| {
       request.resolved.signer.sign_typed_data(
         unlocked_keystore,
@@ -131,6 +138,8 @@ mod tests {
       rule_type: "allowed_chains".to_string(),
       chain_ids: Some(vec![chain_id.to_string()]),
       timestamp: None,
+      primary_types: None,
+      verifying_contracts: None,
     }
   }
 
@@ -139,6 +148,8 @@ mod tests {
       rule_type: "expires_at".to_string(),
       chain_ids: None,
       timestamp: Some(timestamp),
+      primary_types: None,
+      verifying_contracts: None,
     }
   }
 

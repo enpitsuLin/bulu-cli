@@ -1,8 +1,8 @@
 import { listWallet, type WalletInfo } from '@bulu-cli/tcx-core'
 import { defineCommand } from 'citty'
-import { getActiveWallet, getVaultPath } from '../../core/config'
-import { createOutput, resolveOutputOptions } from '../../core/output'
-import { withDefaultArgs } from '../../core/args-def'
+import { getActiveWallet, getVaultPath, withConfigArgs } from '#/core/config'
+import { useOutput } from '#/core/output'
+import { withOutputArgs } from '#/core/output'
 import { styleText } from 'node:util'
 
 function formatWalletsForTable(wallets: WalletInfo[], activeWallet?: string) {
@@ -17,11 +17,11 @@ function formatWalletsForTable(wallets: WalletInfo[], activeWallet?: string) {
 
 export default defineCommand({
   meta: { name: 'list', description: 'List all wallets' },
-  args: withDefaultArgs({}),
-  async run({ args }) {
+  args: withOutputArgs(withConfigArgs({})),
+  async run() {
     const vaultPath = getVaultPath()
     const wallets = listWallet(vaultPath)
-    const output = createOutput(resolveOutputOptions(args))
+    const output = useOutput()
 
     if (wallets.length === 0) {
       output.warn('No wallets found')

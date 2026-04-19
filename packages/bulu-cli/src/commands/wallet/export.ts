@@ -1,26 +1,28 @@
 import { defineCommand } from 'citty'
-import { getVaultPath } from '../../core/config'
-import { createOutput, resolveOutputOptions } from '../../core/output'
+import { getVaultPath, withConfigArgs } from '#/core/config'
+import { useOutput } from '#/core/output'
 import { exportWallet } from '@bulu-cli/tcx-core'
-import { withDefaultArgs } from '../../core/args-def'
-import { resolveTCXPassphrase } from '../../core/tcx'
+import { withOutputArgs } from '#/core/output'
+import { resolveTCXPassphrase } from '#/core/tcx'
 
 export default defineCommand({
   meta: { name: 'export', description: 'Export wallet mnemonic or private key' },
-  args: withDefaultArgs({
-    wallet: {
-      type: 'positional',
-      description: 'Wallet name or id',
-      required: true,
-    },
-    confirm: {
-      type: 'boolean',
-      description: 'Confirm that you understand the security risks of exporting sensitive key material',
-      required: false,
-    },
-  }),
+  args: withOutputArgs(
+    withConfigArgs({
+      wallet: {
+        type: 'positional',
+        description: 'Wallet name or id',
+        required: true,
+      },
+      confirm: {
+        type: 'boolean',
+        description: 'Confirm that you understand the security risks of exporting sensitive key material',
+        required: false,
+      },
+    }),
+  ),
   async run({ args }) {
-    const out = createOutput(resolveOutputOptions(args))
+    const out = useOutput()
     if (!args.confirm) {
       out.warn(
         [
