@@ -12,11 +12,12 @@
     "lint:oxlint": "oxlint .",
     "lint:rs": "cargo clippy -p bulu_cli_tcx_core --all-targets",
     "test": "pnpm --filter \"./packages/*\" run test",
-    "bump": "node scripts/bump-version.mjs",
+    "release": "bumpp -r --execute=\"pnpm i\" --commit --tag --push",
     "prepare": "simple-git-hooks"
   },
   "devDependencies": {
     "@taplo/cli": "^0.7.0",
+    "bumpp": "^11.0.1",
     "lint-staged": "^16.4.0",
     "oxlint": "^1.59.0",
     "prettier": "^3.8.1",

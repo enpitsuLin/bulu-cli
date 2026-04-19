@@ -10,6 +10,9 @@ importers:
       '@taplo/cli':
         specifier: ^0.7.0
         version: 0.7.0
+      bumpp:
+        specifier: ^11.0.1
+        version: 11.0.1
       lint-staged:
         specifier: ^16.4.0
         version: 16.4.0
