@@ -1,7 +1,5 @@
 import { defineCommand } from 'citty'
-import { withOutputArgs } from '../../../core/output'
-import { createOutput } from '../../../core/output'
-import { presentScheduledCancel } from '../../../hyperliquid/features/perps/presenters/perps'
+import { createOutput, withOutputArgs } from '../../../core/output'
 import { updatePerpScheduleCancel } from '../../../hyperliquid/features/perps/use-cases/perps'
 import { marketBaseArgs } from '../../../hyperliquid/shared/args'
 import { requireHyperliquidWalletContext } from '../../../hyperliquid/shared/context'
@@ -29,7 +27,18 @@ export default defineCommand({
         at: args.at ? String(args.at) : undefined,
         clear: args.clear === true,
       })
-      out.data(presentScheduledCancel(result))
+      out.table(
+        [
+          {
+            mode: result.cleared ? 'cleared' : 'scheduled',
+            time: result.scheduledTime ?? 'N/A',
+          },
+        ],
+        {
+          columns: ['mode', 'time'],
+          title: `Scheduled Cancel | ${result.walletName} (${result.user})`,
+        },
+      )
     })
   },
 })

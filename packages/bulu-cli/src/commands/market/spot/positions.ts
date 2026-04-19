@@ -1,7 +1,5 @@
 import { defineCommand } from 'citty'
-import { withOutputArgs } from '../../../core/output'
-import { createOutput } from '../../../core/output'
-import { presentSpotPositions } from '../../../hyperliquid/features/spot/presenters/spot'
+import { createOutput, withOutputArgs } from '../../../core/output'
 import { listSpotPositions } from '../../../hyperliquid/features/spot/use-cases/spot'
 import { marketBaseArgs } from '../../../hyperliquid/shared/args'
 import { requireHyperliquidWalletContext } from '../../../hyperliquid/shared/context'
@@ -17,7 +15,18 @@ export default defineCommand({
     await runHyperliquidCommand(out, async () => {
       const ctx = requireHyperliquidWalletContext(args, out)
       const result = await listSpotPositions(ctx)
-      out.data(presentSpotPositions(result))
+      out.table(
+        result.balances.map((balance) => ({
+          coin: balance.coin,
+          total: balance.total,
+          hold: balance.hold,
+          entryNtl: balance.entryNtl,
+        })),
+        {
+          columns: ['coin', 'total', 'hold', 'entryNtl'],
+          title: `Spot Balances | ${result.walletName} (${result.user})`,
+        },
+      )
     })
   },
 })

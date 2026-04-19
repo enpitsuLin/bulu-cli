@@ -1,7 +1,6 @@
 import { defineCommand } from 'citty'
-import { withOutputArgs } from '../../../core/output'
-import { createOutput } from '../../../core/output'
-import { presentPerpCancel } from '../../../hyperliquid/features/perps/presenters/perps'
+import { createOutput, withOutputArgs } from '../../../core/output'
+import { resolveOrderSide } from '../../../hyperliquid/domain/orders/resolve'
 import { cancelPerpOrders } from '../../../hyperliquid/features/perps/use-cases/perps'
 import { marketBaseArgs } from '../../../hyperliquid/shared/args'
 import { requireHyperliquidWalletContext } from '../../../hyperliquid/shared/context'
@@ -35,7 +34,20 @@ export default defineCommand({
         coin: args.coin ? String(args.coin) : undefined,
         all: args.all === true,
       })
-      out.data(presentPerpCancel(result))
+      out.table(
+        result.orders.map((order) => ({
+          coin: order.coin,
+          side: resolveOrderSide(order.side),
+          size: order.sz,
+          limitPx: order.limitPx,
+          oid: order.oid,
+          cloid: order.cloid ?? 'N/A',
+        })),
+        {
+          columns: ['coin', 'side', 'size', 'limitPx', 'oid', 'cloid'],
+          title: `Canceled Perp Orders | ${result.walletName} (${result.user})`,
+        },
+      )
     })
   },
 })

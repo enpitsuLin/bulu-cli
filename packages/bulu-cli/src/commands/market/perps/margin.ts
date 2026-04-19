@@ -1,7 +1,5 @@
 import { defineCommand } from 'citty'
-import { withOutputArgs } from '../../../core/output'
-import { createOutput } from '../../../core/output'
-import { presentUpdatedPerpMargin } from '../../../hyperliquid/features/perps/presenters/perps'
+import { createOutput, withOutputArgs } from '../../../core/output'
 import { updatePerpMargin } from '../../../hyperliquid/features/perps/use-cases/perps'
 import { marketBaseArgs } from '../../../hyperliquid/shared/args'
 import { requireHyperliquidWalletContext } from '../../../hyperliquid/shared/context'
@@ -30,7 +28,19 @@ export default defineCommand({
         coin: args.coin ? String(args.coin) : undefined,
         delta: args.delta ? String(args.delta) : undefined,
       })
-      out.data(presentUpdatedPerpMargin(result))
+      out.table(
+        [
+          {
+            coin: result.coin,
+            delta: result.delta,
+            ntli: result.ntli,
+          },
+        ],
+        {
+          columns: ['coin', 'delta', 'ntli'],
+          title: `Updated Isolated Margin | ${result.walletName} (${result.user})`,
+        },
+      )
     })
   },
 })

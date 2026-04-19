@@ -1,7 +1,5 @@
 import { defineCommand } from 'citty'
-import { withOutputArgs } from '../../../core/output'
-import { createOutput } from '../../../core/output'
-import { presentPerpOrderResult } from '../../../hyperliquid/features/perps/presenters/perps'
+import { createOutput, withOutputArgs } from '../../../core/output'
 import { placePerpOrder } from '../../../hyperliquid/features/perps/use-cases/perps'
 import { marketBaseArgs } from '../../../hyperliquid/shared/args'
 import { requireHyperliquidWalletContext } from '../../../hyperliquid/shared/context'
@@ -36,7 +34,14 @@ export default defineCommand({
         price: args.price ? String(args.price) : undefined,
         side: 'short',
       })
-      out.data(presentPerpOrderResult(result))
+      const detail = result.order.isTrigger
+        ? `${result.coin} ${String(result.order.triggerKind).toUpperCase()} ${result.order.size} trigger ${result.order.triggerPx} -> ${result.order.price}`
+        : `${result.coin} ${result.order.side.toUpperCase()} ${result.order.size} @ ${result.order.price}`
+
+      out.table(result.statuses, {
+        columns: ['orderIndex', 'result'],
+        title: `Perp Order | ${result.walletName} | ${detail}`,
+      })
     })
   },
 })

@@ -2,7 +2,15 @@ import { findSpotMarketAsset } from '../../../domain/market/assets'
 import { normalizeSpotPair } from '../../../domain/market/spot'
 import { buildCancelAction } from '../../../domain/orders/actions'
 import { resolveSpotOrder } from '../../../domain/orders/resolve'
-import type { FrontendOpenOrder, OrderResponse } from '../../../domain/types'
+import type {
+  FrontendOpenOrder,
+  HistoricalOrder,
+  OrderResponse,
+  ResolvedSpotOrder,
+  SpotBalance,
+  SpotMeta,
+  UserFill,
+} from '../../../domain/types'
 import {
   fetchFrontendOpenOrders,
   fetchHistoricalOrders,
@@ -15,16 +23,7 @@ import {
 import { type HyperliquidWalletContext, submitExchangeAction } from '../../../shared/context'
 import { parseLimitArg, parseTimeArg } from '../../../shared/args'
 import { fail, wrapAsync, wrapSync } from '../../../shared/errors'
-import { mapSubmittedStatuses } from '../../perps/presenters/perps'
-import type {
-  SpotCancelResult,
-  SpotFillsResult,
-  SpotHistoryResult,
-  SpotOrderResult,
-  SpotOrdersResult,
-  SpotPairsResult,
-  SpotPositionsResult,
-} from '../presenters/spot'
+import { mapSubmittedStatuses, type SubmittedOrderStatusRow } from '../../perps/use-cases/perps'
 import { partitionSpotEntries, selectSpotOrders } from '../selectors/spot'
 
 interface SpotDeps {
@@ -47,6 +46,49 @@ const defaultDeps: SpotDeps = {
   fetchUserFills,
   fetchUserFillsByTime,
   submitExchangeAction,
+}
+
+export interface SpotOrderResult {
+  walletName: string
+  pair: string
+  side: 'buy' | 'sell'
+  order: ResolvedSpotOrder
+  statuses: SubmittedOrderStatusRow[]
+}
+
+export interface SpotOrdersResult {
+  walletName: string
+  user: string
+  orders: FrontendOpenOrder[]
+}
+
+export interface SpotHistoryResult {
+  walletName: string
+  user: string
+  entries: HistoricalOrder[]
+}
+
+export interface SpotFillsResult {
+  walletName: string
+  user: string
+  fills: UserFill[]
+}
+
+export interface SpotPositionsResult {
+  walletName: string
+  user: string
+  balances: SpotBalance[]
+}
+
+export interface SpotCancelResult {
+  walletName: string
+  user: string
+  orders: FrontendOpenOrder[]
+}
+
+export interface SpotPairsResult {
+  meta: SpotMeta
+  contexts: Array<Record<string, unknown>>
 }
 
 async function fetchSpotMarketAsset(pair: string, isTestnet: boolean, deps: SpotDeps) {

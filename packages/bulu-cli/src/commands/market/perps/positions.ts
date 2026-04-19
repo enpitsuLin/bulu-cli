@@ -1,7 +1,5 @@
 import { defineCommand } from 'citty'
-import { withOutputArgs } from '../../../core/output'
-import { createOutput } from '../../../core/output'
-import { presentPerpPositions } from '../../../hyperliquid/features/perps/presenters/perps'
+import { createOutput, withOutputArgs } from '../../../core/output'
 import { listPerpPositions } from '../../../hyperliquid/features/perps/use-cases/perps'
 import { marketBaseArgs } from '../../../hyperliquid/shared/args'
 import { requireHyperliquidWalletContext } from '../../../hyperliquid/shared/context'
@@ -17,7 +15,24 @@ export default defineCommand({
     await runHyperliquidCommand(out, async () => {
       const ctx = requireHyperliquidWalletContext(args, out)
       const result = await listPerpPositions(ctx)
-      out.data(presentPerpPositions(result))
+      out.table(
+        result.positions.map((position) => ({
+          coin: position.coin,
+          size: position.szi,
+          entryPx: position.entryPx ?? 'N/A',
+          positionValue: position.positionValue,
+          unrealizedPnl: position.unrealizedPnl,
+          leverage:
+            typeof position.leverage === 'object' && position.leverage !== null
+              ? `${position.leverage.value}x (${position.leverage.type === 'cross' ? 'cross' : 'iso'})`
+              : String(position.leverage),
+          liquidationPx: position.liquidationPx ?? 'N/A',
+        })),
+        {
+          columns: ['coin', 'size', 'entryPx', 'positionValue', 'unrealizedPnl', 'leverage', 'liquidationPx'],
+          title: `Perp Positions | ${result.walletName} (${result.user})`,
+        },
+      )
     })
   },
 })

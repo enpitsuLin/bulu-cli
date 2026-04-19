@@ -1,5 +1,6 @@
 import { findMarketAsset } from '../../../domain/market/assets'
 import { isSpotPairName } from '../../../domain/market/spot'
+import { formatOrderStatus } from '../../../domain/format'
 import {
   buildCancelAction,
   buildModifyAction,
@@ -18,9 +19,15 @@ import {
 } from '../../../domain/orders/resolve'
 import type {
   ClearinghouseState,
+  FrontendOpenOrder,
+  HistoricalOrder,
   HyperliquidMarketAsset,
+  HyperliquidOrderWire,
+  OrderStatusInfo,
   OrderResponse,
+  PerpPosition,
   ResolvedPerpOrder,
+  UserFill,
 } from '../../../domain/types'
 import {
   fetchClearinghouseState,
@@ -35,21 +42,6 @@ import {
 import { type HyperliquidWalletContext, submitExchangeAction } from '../../../shared/context'
 import { parseLimitArg, parseTimeArg } from '../../../shared/args'
 import { fail, wrapAsync, wrapSync } from '../../../shared/errors'
-import {
-  type PerpCancelResult,
-  type PerpFillsResult,
-  type PerpHistoryResult,
-  type PerpModifyResult,
-  type PerpOrderResult,
-  type PerpOrdersResult,
-  type PerpPositionsResult,
-  type PerpStatusResult,
-  type ScheduledCancelResult,
-  type SubmittedOrderStatusRow,
-  type UpdatedPerpLeverageResult,
-  type UpdatedPerpMarginResult,
-  mapSubmittedStatuses,
-} from '../presenters/perps'
 import { isMarketTrigger, partitionPerpEntries, selectPerpOrders, splitPerpAndSpotOrders } from '../selectors/perps'
 
 interface PerpsDeps {
@@ -74,6 +66,91 @@ const defaultDeps: PerpsDeps = {
   fetchUserFills,
   fetchUserFillsByTime,
   submitExchangeAction,
+}
+
+export interface SubmittedOrderStatusRow extends Record<string, unknown> {
+  orderIndex: number
+  result: string
+}
+
+export interface PerpOrderResult {
+  walletName: string
+  coin: string
+  order: ResolvedPerpOrder
+  statuses: SubmittedOrderStatusRow[]
+}
+
+export interface PerpOrdersResult {
+  walletName: string
+  user: string
+  orders: FrontendOpenOrder[]
+}
+
+export interface PerpHistoryResult {
+  walletName: string
+  user: string
+  entries: HistoricalOrder[]
+}
+
+export interface PerpFillsResult {
+  walletName: string
+  user: string
+  fills: UserFill[]
+}
+
+export interface PerpPositionsResult {
+  walletName: string
+  user: string
+  positions: PerpPosition[]
+}
+
+export interface PerpStatusResult {
+  walletName: string
+  user: string
+  response: OrderStatusInfo
+}
+
+export interface PerpCancelResult {
+  walletName: string
+  user: string
+  orders: FrontendOpenOrder[]
+}
+
+export interface PerpModifyResult {
+  walletName: string
+  user: string
+  currentOrder: FrontendOpenOrder
+  wire: HyperliquidOrderWire
+}
+
+export interface UpdatedPerpLeverageResult {
+  walletName: string
+  user: string
+  coin: string
+  leverage: number
+  isolated: boolean
+}
+
+export interface UpdatedPerpMarginResult {
+  walletName: string
+  user: string
+  coin: string
+  delta: string
+  ntli: number
+}
+
+export interface ScheduledCancelResult {
+  walletName: string
+  user: string
+  cleared: boolean
+  scheduledTime?: number
+}
+
+export function mapSubmittedStatuses(response: OrderResponse): SubmittedOrderStatusRow[] {
+  return response.response.data.statuses.map((status, idx) => ({
+    orderIndex: idx + 1,
+    result: formatOrderStatus(status),
+  }))
 }
 
 async function fetchPerpMarketAsset(

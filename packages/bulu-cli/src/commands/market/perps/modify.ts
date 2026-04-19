@@ -1,7 +1,6 @@
 import { defineCommand } from 'citty'
-import { withOutputArgs } from '../../../core/output'
-import { createOutput } from '../../../core/output'
-import { presentPerpModify } from '../../../hyperliquid/features/perps/presenters/perps'
+import { createOutput, withOutputArgs } from '../../../core/output'
+import { resolveOrderSide } from '../../../hyperliquid/domain/orders/resolve'
 import { modifyPerpOrder } from '../../../hyperliquid/features/perps/use-cases/perps'
 import { marketBaseArgs } from '../../../hyperliquid/shared/args'
 import { requireHyperliquidWalletContext } from '../../../hyperliquid/shared/context'
@@ -51,7 +50,24 @@ export default defineCommand({
         tp: args.tp === true,
         sl: args.sl === true,
       })
-      out.data(presentPerpModify(result))
+      out.table(
+        [
+          {
+            coin: result.currentOrder.coin,
+            side: resolveOrderSide(result.currentOrder.side),
+            size: result.wire.s,
+            limitPx: result.wire.p,
+            triggerPx: 'trigger' in result.wire.t ? result.wire.t.trigger.triggerPx : 'N/A',
+            reduceOnly: result.wire.r,
+            oid: result.currentOrder.oid,
+            cloid: result.currentOrder.cloid ?? 'N/A',
+          },
+        ],
+        {
+          columns: ['coin', 'side', 'size', 'limitPx', 'triggerPx', 'reduceOnly', 'oid', 'cloid'],
+          title: `Modified Perp Order | ${result.walletName} (${result.user})`,
+        },
+      )
     })
   },
 })

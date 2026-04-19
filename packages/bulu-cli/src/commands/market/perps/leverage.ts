@@ -1,7 +1,5 @@
 import { defineCommand } from 'citty'
-import { withOutputArgs } from '../../../core/output'
-import { createOutput } from '../../../core/output'
-import { presentUpdatedPerpLeverage } from '../../../hyperliquid/features/perps/presenters/perps'
+import { createOutput, withOutputArgs } from '../../../core/output'
 import { updatePerpLeverage } from '../../../hyperliquid/features/perps/use-cases/perps'
 import { marketBaseArgs } from '../../../hyperliquid/shared/args'
 import { requireHyperliquidWalletContext } from '../../../hyperliquid/shared/context'
@@ -36,7 +34,19 @@ export default defineCommand({
         value: args.value ? String(args.value) : undefined,
         isolated: args.isolated === true,
       })
-      out.data(presentUpdatedPerpLeverage(result))
+      out.table(
+        [
+          {
+            coin: result.coin,
+            leverage: result.leverage,
+            mode: result.isolated ? 'isolated' : 'cross',
+          },
+        ],
+        {
+          columns: ['coin', 'leverage', 'mode'],
+          title: `Updated Perp Leverage | ${result.walletName} (${result.user})`,
+        },
+      )
     })
   },
 })

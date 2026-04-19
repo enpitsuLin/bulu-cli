@@ -1,7 +1,7 @@
 import { defineCommand } from 'citty'
-import { withOutputArgs } from '../../../core/output'
-import { createOutput } from '../../../core/output'
-import { presentPerpHistory } from '../../../hyperliquid/features/perps/presenters/perps'
+import { formatTimestamp } from '../../../core/time'
+import { createOutput, withOutputArgs } from '../../../core/output'
+import { resolveOrderSide } from '../../../hyperliquid/domain/orders/resolve'
 import { listPerpHistory } from '../../../hyperliquid/features/perps/use-cases/perps'
 import { marketBaseArgs } from '../../../hyperliquid/shared/args'
 import { requireHyperliquidWalletContext } from '../../../hyperliquid/shared/context'
@@ -34,7 +34,37 @@ export default defineCommand({
         status: args.status ? String(args.status) : undefined,
         limit: args.limit ? String(args.limit) : undefined,
       })
-      out.data(presentPerpHistory(result))
+      out.table(
+        result.entries.map((entry) => ({
+          coin: entry.order.coin,
+          status: entry.status,
+          side: resolveOrderSide(entry.order.side),
+          size: entry.order.sz,
+          origSize: entry.order.origSz,
+          limitPx: entry.order.limitPx,
+          tif: entry.order.tif,
+          reduceOnly: entry.order.reduceOnly,
+          oid: entry.order.oid,
+          cloid: entry.order.cloid ?? 'N/A',
+          statusTimestamp: formatTimestamp(entry.statusTimestamp),
+        })),
+        {
+          columns: [
+            'coin',
+            'status',
+            'side',
+            'size',
+            'origSize',
+            'limitPx',
+            'tif',
+            'reduceOnly',
+            'oid',
+            'cloid',
+            'statusTimestamp',
+          ],
+          title: `Perp Order History | ${result.walletName} (${result.user})`,
+        },
+      )
     })
   },
 })

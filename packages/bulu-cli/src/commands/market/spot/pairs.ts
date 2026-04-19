@@ -1,7 +1,5 @@
 import { defineCommand } from 'citty'
-import { withOutputArgs } from '../../../core/output'
-import { createOutput } from '../../../core/output'
-import { presentSpotPairs } from '../../../hyperliquid/features/spot/presenters/spot'
+import { createOutput, withOutputArgs } from '../../../core/output'
 import { listSpotPairs } from '../../../hyperliquid/features/spot/use-cases/spot'
 import { marketBaseArgs } from '../../../hyperliquid/shared/args'
 import { createHyperliquidCommandContext } from '../../../hyperliquid/shared/context'
@@ -17,7 +15,28 @@ export default defineCommand({
     await runHyperliquidCommand(out, async () => {
       const ctx = createHyperliquidCommandContext(args, out)
       const result = await listSpotPairs(ctx.testnet)
-      out.data(presentSpotPairs(result))
+      const tokenByIndex = new Map(result.meta.tokens.map((token) => [token.index, token]))
+
+      out.table(
+        result.meta.universe.map((pairMeta, idx) => {
+          const [baseIndex, quoteIndex] = pairMeta.tokens
+          const context = result.contexts[idx] ?? {}
+          return {
+            pair: pairMeta.name,
+            base: tokenByIndex.get(baseIndex)?.name ?? String(baseIndex),
+            quote: tokenByIndex.get(quoteIndex)?.name ?? String(quoteIndex),
+            assetId: 10_000 + pairMeta.index,
+            markPx: String(context.markPx ?? 'N/A'),
+            midPx: String(context.midPx ?? 'N/A'),
+            dayNtlVlm: String(context.dayNtlVlm ?? 'N/A'),
+            canonical: pairMeta.isCanonical,
+          }
+        }),
+        {
+          columns: ['pair', 'base', 'quote', 'assetId', 'markPx', 'midPx', 'dayNtlVlm', 'canonical'],
+          title: 'Hyperliquid Spot Pairs',
+        },
+      )
     })
   },
 })

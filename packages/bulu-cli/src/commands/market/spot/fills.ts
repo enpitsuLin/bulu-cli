@@ -1,7 +1,6 @@
 import { defineCommand } from 'citty'
-import { withOutputArgs } from '../../../core/output'
-import { createOutput } from '../../../core/output'
-import { presentSpotFills } from '../../../hyperliquid/features/spot/presenters/spot'
+import { formatTimestamp } from '../../../core/time'
+import { createOutput, withOutputArgs } from '../../../core/output'
 import { listSpotFills } from '../../../hyperliquid/features/spot/use-cases/spot'
 import { marketBaseArgs } from '../../../hyperliquid/shared/args'
 import { requireHyperliquidWalletContext } from '../../../hyperliquid/shared/context'
@@ -45,7 +44,23 @@ export default defineCommand({
         limit: args.limit ? String(args.limit) : undefined,
         aggregateByTime: args.aggregateByTime === true,
       })
-      out.data(presentSpotFills(result))
+      out.table(
+        result.fills.map((fill) => ({
+          time: formatTimestamp(fill.time),
+          pair: fill.coin,
+          dir: fill.dir ?? 'N/A',
+          side: fill.side === 'B' ? 'buy' : 'sell',
+          size: fill.sz,
+          price: fill.px,
+          fee: fill.fee ?? 'N/A',
+          closedPnl: fill.closedPnl ?? 'N/A',
+          oid: fill.oid,
+        })),
+        {
+          columns: ['time', 'pair', 'dir', 'side', 'size', 'price', 'fee', 'closedPnl', 'oid'],
+          title: `Spot Fills | ${result.walletName} (${result.user})`,
+        },
+      )
     })
   },
 })

@@ -1,7 +1,5 @@
 import { defineCommand } from 'citty'
-import { withOutputArgs } from '../../../core/output'
-import { createOutput } from '../../../core/output'
-import { presentSpotOrderResult } from '../../../hyperliquid/features/spot/presenters/spot'
+import { createOutput, withOutputArgs } from '../../../core/output'
 import { placeSpotOrder } from '../../../hyperliquid/features/spot/use-cases/spot'
 import { marketBaseArgs } from '../../../hyperliquid/shared/args'
 import { requireHyperliquidWalletContext } from '../../../hyperliquid/shared/context'
@@ -36,7 +34,10 @@ export default defineCommand({
         price: args.price ? String(args.price) : undefined,
         side: 'buy',
       })
-      out.data(presentSpotOrderResult(result))
+      out.table(result.statuses, {
+        columns: ['orderIndex', 'result'],
+        title: `Spot Order | ${result.walletName} | ${result.pair} ${result.side.toUpperCase()} ${result.order.size} @ ${result.order.price}`,
+      })
     })
   },
 })

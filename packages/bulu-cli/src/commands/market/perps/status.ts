@@ -1,7 +1,7 @@
 import { defineCommand } from 'citty'
-import { withOutputArgs } from '../../../core/output'
-import { createOutput } from '../../../core/output'
-import { presentPerpStatus } from '../../../hyperliquid/features/perps/presenters/perps'
+import { formatTimestamp } from '../../../core/time'
+import { createOutput, withOutputArgs } from '../../../core/output'
+import { resolveOrderSide } from '../../../hyperliquid/domain/orders/resolve'
 import { getPerpOrderStatus } from '../../../hyperliquid/features/perps/use-cases/perps'
 import { marketBaseArgs } from '../../../hyperliquid/shared/args'
 import { requireHyperliquidWalletContext } from '../../../hyperliquid/shared/context'
@@ -24,7 +24,44 @@ export default defineCommand({
       const result = await getPerpOrderStatus(ctx, {
         id: args.id ? String(args.id) : undefined,
       })
-      out.data(presentPerpStatus(result))
+      const response = result.response
+      if (response && typeof response === 'object' && 'order' in response && response.order && 'status' in response) {
+        out.table(
+          [
+            {
+              coin: response.order.coin,
+              status: String(response.status),
+              side: resolveOrderSide(response.order.side),
+              size: response.order.sz,
+              limitPx: response.order.limitPx,
+              isTrigger: response.order.isTrigger,
+              reduceOnly: response.order.reduceOnly,
+              oid: response.order.oid,
+              cloid: response.order.cloid ?? 'N/A',
+              statusTimestamp:
+                'statusTimestamp' in response ? formatTimestamp(Number(response.statusTimestamp)) : 'N/A',
+            },
+          ],
+          {
+            columns: [
+              'coin',
+              'status',
+              'side',
+              'size',
+              'limitPx',
+              'isTrigger',
+              'reduceOnly',
+              'oid',
+              'cloid',
+              'statusTimestamp',
+            ],
+            title: `Perp Order Status | ${result.walletName} (${result.user})`,
+          },
+        )
+        return
+      }
+
+      out.data(response)
     })
   },
 })

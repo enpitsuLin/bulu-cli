@@ -1,7 +1,6 @@
 import { defineCommand } from 'citty'
-import { withOutputArgs } from '../../../core/output'
-import { createOutput } from '../../../core/output'
-import { presentSpotOrders } from '../../../hyperliquid/features/spot/presenters/spot'
+import { formatTimestamp } from '../../../core/time'
+import { createOutput, withOutputArgs } from '../../../core/output'
 import { listSpotOrders } from '../../../hyperliquid/features/spot/use-cases/spot'
 import { marketBaseArgs } from '../../../hyperliquid/shared/args'
 import { requireHyperliquidWalletContext } from '../../../hyperliquid/shared/context'
@@ -23,7 +22,37 @@ export default defineCommand({
       const result = await listSpotOrders(ctx, {
         pair: args.pair ? String(args.pair) : undefined,
       })
-      out.data(presentSpotOrders(result))
+      out.table(
+        result.orders.map((order) => ({
+          pair: order.coin,
+          side: order.side === 'B' ? 'buy' : 'sell',
+          size: order.sz,
+          origSize: order.origSz,
+          limitPx: order.limitPx,
+          tif: order.isTrigger ? `trigger (${order.tif})` : order.tif,
+          triggerPx: order.triggerPx ?? 'N/A',
+          reduceOnly: order.reduceOnly,
+          oid: order.oid,
+          cloid: order.cloid ?? 'N/A',
+          timestamp: formatTimestamp(order.timestamp),
+        })),
+        {
+          columns: [
+            'pair',
+            'side',
+            'size',
+            'origSize',
+            'limitPx',
+            'tif',
+            'triggerPx',
+            'reduceOnly',
+            'oid',
+            'cloid',
+            'timestamp',
+          ],
+          title: `Open Spot Orders | ${result.walletName} (${result.user})`,
+        },
+      )
     })
   },
 })
