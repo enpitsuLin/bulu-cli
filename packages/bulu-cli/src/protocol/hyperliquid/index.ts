@@ -2,7 +2,7 @@ import { getWallet, signTypedData } from '@bulu-cli/tcx-core'
 import { encode } from '@msgpack/msgpack'
 import { keccak_256 } from '@noble/hashes/sha3.js'
 import { ofetch } from 'ofetch'
-import { useConfig } from '../../core/config'
+import { useConfig } from '#/core/config'
 
 export const HYPERLIQUID_MAINNET_API_URL = 'https://api.hyperliquid.xyz'
 export const HYPERLIQUID_TESTNET_API_URL = 'https://api.hyperliquid-testnet.xyz'
