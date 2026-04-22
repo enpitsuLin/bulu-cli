@@ -35,8 +35,8 @@ export const CONFIG_DEFAULTS: BuluConfig = {
 
 export interface ConfigContext {
   config: BuluConfig
-  set: (key: ConfigPath | (string & {}), value: unknown) => void
-  get: (key: ConfigPath | (string & {})) => unknown
+  set: (key: ConfigPath | (string & {}), value: any) => void
+  get: (key: ConfigPath | (string & {})) => any
 }
 
 export const configCtx = createContext<ConfigContext>({
@@ -83,7 +83,7 @@ export function createConfigContext(cwd = getConfigDir()): ConfigContext {
 
       for (const segment of segments.slice(0, -1)) {
         const next = current[segment]
-        if (!next || typeof next !== 'object' || Array.isArray(next)) {
+        if (next == null || typeof next !== 'object' || Array.isArray(next)) {
           current[segment] = {}
         }
         current = current[segment] as Record<string, unknown>
@@ -96,13 +96,13 @@ export function createConfigContext(cwd = getConfigDir()): ConfigContext {
       let current: unknown = config
 
       for (const segment of key.split('.')) {
-        if (!current || typeof current !== 'object' || Array.isArray(current)) {
-          return ''
+        if (current == null || typeof current !== 'object' || Array.isArray(current)) {
+          return undefined
         }
         current = (current as Record<string, unknown>)[segment]
       }
 
-      return current == null ? '' : String(current)
+      return current
     },
   }
 }
