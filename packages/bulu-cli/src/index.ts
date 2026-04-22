@@ -7,6 +7,7 @@ export const main = defineCommand({
     config: import('./commands/config/index').then((m) => m.default),
     wallet: import('./commands/wallet/index').then((m) => m.default),
     sign: import('./commands/sign/index').then((m) => m.default),
+    spot: import('./commands/spot/index').then((m) => m.default),
   },
   plugins: [Config, OutputArgs],
 })

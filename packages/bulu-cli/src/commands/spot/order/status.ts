@@ -1,0 +1,115 @@
+import { defineCommand } from 'citty'
+import { getVaultPath, useConfig } from '#/core/config'
+import { useOutput, withOutputArgs } from '#/core/output'
+import {
+  fetchOrderStatus,
+  fetchSpotMeta,
+  formatSpotCoin,
+  isSpotCoin,
+  resolveHyperliquidConnection,
+  resolveWalletAddress,
+} from '#/protocol/hyperliquid'
+
+function parseOrderIdentifier(value: string): number | string {
+  if (value.startsWith('0x') || value.startsWith('0X')) {
+    return value
+  }
+
+  const oid = Number(value)
+  if (!Number.isSafeInteger(oid) || oid < 0) {
+    throw new Error(`Invalid order id "${value}"`)
+  }
+
+  return oid
+}
+
+export default defineCommand({
+  meta: { name: 'status', description: 'Query Hyperliquid spot order status by oid or cloid' },
+  args: withOutputArgs({
+    id: {
+      type: 'positional',
+      description: 'Order id or client order id',
+      required: true,
+    },
+    wallet: {
+      type: 'string',
+      description: 'Wallet name or id; defaults to config.default.wallet',
+    },
+    testnet: {
+      type: 'boolean',
+      description: 'Use Hyperliquid testnet when config.hyperliquid.apiBase is not set',
+      default: false,
+    },
+  }),
+  async run({ args }) {
+    const config = useConfig()
+    const output = useOutput()
+
+    try {
+      const walletName = args.wallet || config.config.default?.wallet
+      if (!walletName) {
+        throw new Error('Wallet is required; pass --wallet or set config.default.wallet')
+      }
+
+      const connection = resolveHyperliquidConnection(config.get('hyperliquid.apiBase'), {
+        testnet: args.testnet,
+        envValue: process.env.BULU_HYPERLIQUID,
+      })
+      const spotMeta = await fetchSpotMeta(connection.apiBase)
+      const vaultPath = getVaultPath()
+      const address = resolveWalletAddress(walletName, vaultPath)
+      const response = await fetchOrderStatus(connection.apiBase, address, parseOrderIdentifier(args.id))
+
+      if (response.status === 'unknownOid') {
+        output.warn(`Order ${args.id} not found`)
+        process.exit(1)
+      }
+
+      const orderContainer = response.order as Record<string, any> | undefined
+      const order = orderContainer?.order
+      if (!order) {
+        throw new Error('Unexpected Hyperliquid order status response')
+      }
+      if (!isSpotCoin(spotMeta, order.coin)) {
+        throw new Error(`Order ${args.id} is not a spot order`)
+      }
+
+      const rows = [
+        {
+          Market: formatSpotCoin(spotMeta, order.coin),
+          Oid: order.oid,
+          Cloid: order.cloid ?? '',
+          Status: orderContainer?.status,
+          'Status Time': orderContainer?.statusTimestamp,
+          Side: order.side === 'B' ? 'Buy' : 'Sell',
+          Type: order.orderType,
+          Tif: order.tif,
+          'Limit Px': order.limitPx,
+          Remaining: order.sz,
+          Original: order.origSz,
+        },
+      ]
+
+      output.table(rows, {
+        columns: [
+          'Market',
+          'Oid',
+          'Cloid',
+          'Status',
+          'Status Time',
+          'Side',
+          'Type',
+          'Tif',
+          'Limit Px',
+          'Remaining',
+          'Original',
+        ],
+        title: `Hyperliquid spot order status${connection.isTestnet ? ' [testnet]' : ' [mainnet]'}`,
+      })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      output.warn(`Error: ${message}`)
+      process.exit(1)
+    }
+  },
+})
