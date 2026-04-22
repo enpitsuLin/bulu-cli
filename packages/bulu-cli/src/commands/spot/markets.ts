@@ -8,6 +8,7 @@ export default defineCommand({
     market: {
       type: 'positional',
       description: 'Optional market alias, for example PURR/USDC or @1',
+      required: false,
     },
     testnet: {
       type: 'boolean',
