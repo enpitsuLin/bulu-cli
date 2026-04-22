@@ -1,7 +1,7 @@
 import { defineCommand } from 'citty'
 import { getVaultPath, useConfig } from '#/core/config'
 import { useOutput, withOutputArgs } from '#/core/output'
-import { formatSpotCoin, isSpotCoin, resolveWalletAddress, useSpotClient } from '#/protocol/hyperliquid'
+import { formatSpotCoin, isSpotCoin, resolveWalletAddress, useHyperliquidClient } from '#/protocol/hyperliquid'
 
 function parseOrderIdentifier(value: string): number | string {
   if (value.startsWith('0x') || value.startsWith('0X')) {
@@ -36,7 +36,7 @@ export default defineCommand({
   }),
   async run({ args }) {
     const config = useConfig()
-    const client = useSpotClient()
+    const client = useHyperliquidClient()
     const output = useOutput()
 
     try {

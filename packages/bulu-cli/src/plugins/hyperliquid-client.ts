@@ -1,5 +1,5 @@
 import { defineCittyPlugin } from 'citty'
-import { createHyperliquidSpotClient, hyperliquidSpotClientCtx } from '#/protocol/hyperliquid'
+import { createHyperliquidClient, hyperliquidClientCtx } from '#/protocol/hyperliquid/client'
 
 function parseBooleanFlagValue(value: string): boolean {
   return !['0', 'false', 'no', 'off'].includes(value.trim().toLowerCase())
@@ -26,16 +26,16 @@ function parseSpotTestnetFlag(rawArgs: string[]): boolean | undefined {
 }
 
 export default defineCittyPlugin({
-  name: 'spot-client',
+  name: 'hyperliquid-client',
   setup({ rawArgs }) {
-    hyperliquidSpotClientCtx.set(
-      createHyperliquidSpotClient({
+    hyperliquidClientCtx.set(
+      createHyperliquidClient({
         testnet: parseSpotTestnetFlag(rawArgs),
         envValue: process.env.BULU_HYPERLIQUID,
       }),
     )
   },
   cleanup() {
-    hyperliquidSpotClientCtx.unset()
+    hyperliquidClientCtx.unset()
   },
 })

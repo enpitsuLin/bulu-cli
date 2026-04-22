@@ -2,7 +2,7 @@ import { defineCommand } from 'citty'
 import { getVaultPath, useConfig } from '#/core/config'
 import { useOutput, withOutputArgs } from '#/core/output'
 import { resolveTCXPassphrase } from '#/core/tcx'
-import { resolveSpotMarket, useSpotClient } from '#/protocol/hyperliquid'
+import { resolveSpotMarket, useHyperliquidClient } from '#/protocol/hyperliquid'
 
 function parseOid(value: string): number {
   const oid = Number(value)
@@ -43,7 +43,7 @@ export default defineCommand({
   }),
   async run({ args }) {
     const config = useConfig()
-    const client = useSpotClient()
+    const client = useHyperliquidClient()
     const output = useOutput()
 
     try {

@@ -6,7 +6,7 @@ import {
   buildMarketPriceFromMid,
   resolveSpotMarket,
   toHyperliquidWireValue,
-  useSpotClient,
+  useHyperliquidClient,
 } from '#/protocol/hyperliquid'
 
 function normalizeSide(side: string): boolean {
@@ -89,7 +89,7 @@ export default defineCommand({
   }),
   async run({ args }) {
     const config = useConfig()
-    const client = useSpotClient()
+    const client = useHyperliquidClient()
     const output = useOutput()
 
     try {

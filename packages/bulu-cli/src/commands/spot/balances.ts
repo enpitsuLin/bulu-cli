@@ -1,7 +1,7 @@
 import { defineCommand } from 'citty'
 import { getVaultPath, useConfig } from '#/core/config'
 import { useOutput, withOutputArgs } from '#/core/output'
-import { resolveWalletAddress, useSpotClient } from '#/protocol/hyperliquid'
+import { resolveWalletAddress, useHyperliquidClient } from '#/protocol/hyperliquid'
 
 export default defineCommand({
   meta: { name: 'balances', description: 'Show Hyperliquid spot balances for a wallet' },
@@ -18,7 +18,7 @@ export default defineCommand({
   }),
   async run({ args }) {
     const config = useConfig()
-    const client = useSpotClient()
+    const client = useHyperliquidClient()
     const output = useOutput()
 
     try {

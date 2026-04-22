@@ -1,6 +1,6 @@
 import { defineCommand } from 'citty'
 import { useOutput, withOutputArgs } from '#/core/output'
-import { buildSpotMarketLookup, resolveSpotMarket, useSpotClient } from '#/protocol/hyperliquid'
+import { buildSpotMarketLookup, resolveSpotMarket, useHyperliquidClient } from '#/protocol/hyperliquid'
 
 export default defineCommand({
   meta: { name: 'markets', description: 'List Hyperliquid spot markets' },
@@ -16,7 +16,7 @@ export default defineCommand({
     },
   }),
   async run({ args }) {
-    const client = useSpotClient()
+    const client = useHyperliquidClient()
     const output = useOutput()
 
     try {

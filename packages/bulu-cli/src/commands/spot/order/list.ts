@@ -6,7 +6,7 @@ import {
   isSpotCoin,
   resolveSpotMarket,
   resolveWalletAddress,
-  useSpotClient,
+  useHyperliquidClient,
 } from '#/protocol/hyperliquid'
 
 export default defineCommand({
@@ -28,7 +28,7 @@ export default defineCommand({
   }),
   async run({ args }) {
     const config = useConfig()
-    const client = useSpotClient()
+    const client = useHyperliquidClient()
     const output = useOutput()
 
     try {
