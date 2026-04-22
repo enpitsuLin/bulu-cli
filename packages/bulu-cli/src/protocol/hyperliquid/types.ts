@@ -27,9 +27,9 @@ export interface HyperliquidClient {
   isTestnet: boolean
   getSpotMeta(): Promise<HyperliquidSpotMeta>
   getSpotMetaAndAssetCtxs(): Promise<HyperliquidSpotMetaAndAssetCtxs>
-  getSpotBalances(user: string): Promise<{ balances: any[] }>
-  getOpenOrders(user: string): Promise<any[]>
-  getOrderStatus(user: string, oid: number | string): Promise<Record<string, unknown>>
+  getSpotBalances(user: string): Promise<HyperliquidSpotBalancesResponse>
+  getOpenOrders(user: string): Promise<HyperliquidOpenOrder[]>
+  getOrderStatus(user: string, oid: number | string): Promise<HyperliquidOrderStatusResponse>
   getAllMids(): Promise<Record<string, string>>
   submitL1Action<T>(input: HyperliquidSubmitL1ActionInput): Promise<HyperliquidSubmitL1ActionResult<T>>
 }
@@ -73,6 +73,43 @@ export interface HyperliquidSpotAssetContext {
 }
 
 export type HyperliquidSpotMetaAndAssetCtxs = [HyperliquidSpotMeta, HyperliquidSpotAssetContext[]]
+
+export interface HyperliquidSpotBalance {
+  coin: string
+  token: number | string
+  total: string
+  hold: string
+  entryNtl: string
+}
+
+export interface HyperliquidSpotBalancesResponse {
+  balances: HyperliquidSpotBalance[]
+}
+
+export interface HyperliquidOpenOrder {
+  coin: string
+  oid: number
+  cloid?: string | null
+  side: 'B' | 'A'
+  orderType: string
+  tif: string
+  limitPx: string
+  sz: string
+  origSz: string
+  reduceOnly: boolean
+  timestamp: number
+}
+
+export interface HyperliquidOrderStatusEntry {
+  status: string
+  statusTimestamp: number
+  order: HyperliquidOpenOrder
+}
+
+export interface HyperliquidOrderStatusResponse {
+  status: string
+  order?: HyperliquidOrderStatusEntry
+}
 
 export interface HyperliquidResolvedSpotMarket {
   asset: number

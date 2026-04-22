@@ -9,8 +9,11 @@ import type {
   HyperliquidClient,
   HyperliquidConnection,
   HyperliquidExchangeSignature,
+  HyperliquidOpenOrder,
+  HyperliquidOrderStatusResponse,
   HyperliquidSignL1ActionInput,
   HyperliquidSpotMeta,
+  HyperliquidSpotBalancesResponse,
   HyperliquidSpotMetaAndAssetCtxs,
   HyperliquidSubmitL1ActionInput,
 } from './types'
@@ -115,6 +118,24 @@ export function createHyperliquidClient(
   const connection = resolveHyperliquidConnection(config.get('hyperliquid.apiBase'), opts)
   let spotMetaPromise: Promise<HyperliquidSpotMeta> | undefined
   let spotMetaAndAssetCtxsPromise: Promise<HyperliquidSpotMetaAndAssetCtxs> | undefined
+  const request = ofetch.create({
+    baseURL: connection.apiBase,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    onRequestError({ error }) {
+      throw createHyperliquidRequestError({
+        error,
+      })
+    },
+    onResponseError({ response }) {
+      throw createHyperliquidRequestError({
+        data: response._data,
+        fallback: `${response.status} ${response.statusText}`.trim(),
+      })
+    },
+  })
 
   return {
     apiBase: connection.apiBase,
@@ -124,7 +145,7 @@ export function createHyperliquidClient(
         if (spotMetaAndAssetCtxsPromise) {
           spotMetaPromise = spotMetaAndAssetCtxsPromise.then(([spotMeta]) => spotMeta)
         } else {
-          spotMetaPromise = fetchSpotMeta(connection.apiBase)
+          spotMetaPromise = request<HyperliquidSpotMeta>('/info', { body: { type: 'spotMeta' } })
         }
       }
 
@@ -132,7 +153,9 @@ export function createHyperliquidClient(
     },
     async getSpotMetaAndAssetCtxs() {
       if (!spotMetaAndAssetCtxsPromise) {
-        spotMetaAndAssetCtxsPromise = fetchSpotMetaAndAssetCtxs(connection.apiBase)
+        spotMetaAndAssetCtxsPromise = request<HyperliquidSpotMetaAndAssetCtxs>('/info', {
+          body: { type: 'spotMetaAndAssetCtxs' },
+        })
       }
       if (!spotMetaPromise) {
         spotMetaPromise = spotMetaAndAssetCtxsPromise.then(([spotMeta]) => spotMeta)
@@ -141,16 +164,38 @@ export function createHyperliquidClient(
       return spotMetaAndAssetCtxsPromise
     },
     async getSpotBalances(user: string) {
-      return fetchSpotBalances(connection.apiBase, user)
+      return request<HyperliquidSpotBalancesResponse>('/info', {
+        body: {
+          type: 'spotClearinghouseState',
+          user: user.toLowerCase(),
+        },
+      })
     },
     async getOpenOrders(user: string) {
-      return fetchOpenOrders(connection.apiBase, user)
+      return request<HyperliquidOpenOrder[]>('/info', {
+        body: {
+          type: 'frontendOpenOrders',
+          user: user.toLowerCase(),
+          dex: '',
+        },
+      })
     },
     async getOrderStatus(user: string, oid: number | string) {
-      return fetchOrderStatus(connection.apiBase, user, oid)
+      return request<HyperliquidOrderStatusResponse>('/info', {
+        body: {
+          type: 'orderStatus',
+          user: user.toLowerCase(),
+          oid,
+        },
+      })
     },
     async getAllMids() {
-      return fetchAllMids(connection.apiBase)
+      return request<Record<string, string>>('/info', {
+        body: {
+          type: 'allMids',
+          dex: '',
+        },
+      })
     },
     async submitL1Action<T>(input: HyperliquidSubmitL1ActionInput) {
       const nonce = input.nonce ?? Date.now()
@@ -163,10 +208,12 @@ export function createHyperliquidClient(
         vaultAddress: input.vaultAddress,
         isTestnet: connection.isTestnet,
       })
-      const response = await postHyperliquidExchange<T>(connection.apiBase, {
-        action: input.action,
-        nonce,
-        signature,
+      const response = await request<T>('/exchange', {
+        body: {
+          action: input.action,
+          nonce,
+          signature,
+        },
       })
 
       return { nonce, response }
@@ -174,74 +221,24 @@ export function createHyperliquidClient(
   }
 }
 
-async function postHyperliquidInfo<T>(apiBase: string, body: Record<string, unknown>): Promise<T> {
-  return postHyperliquid<T>(apiBase, '/info', body)
-}
+function createHyperliquidRequestError(input: { error?: unknown; data?: unknown; fallback?: string }): Error {
+  let message = input.fallback ?? 'Unknown error'
 
-async function postHyperliquidExchange<T>(apiBase: string, body: Record<string, unknown>): Promise<T> {
-  return postHyperliquid<T>(apiBase, '/exchange', body)
-}
-
-async function postHyperliquid<T>(apiBase: string, path: string, body: Record<string, unknown>): Promise<T> {
-  try {
-    return await ofetch<T>(`${normalizeApiBase(apiBase)}${path}`, {
-      method: 'POST',
-      body,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    })
-  } catch (error) {
-    let message = 'Unknown error'
-
-    if (error instanceof Error) {
-      message = error.message
-      if ('data' in error && error.data != null) {
-        const data = error.data
-        message = typeof data === 'string' ? data : JSON.stringify(data)
-      }
-    }
-
-    throw new Error(`Hyperliquid request failed: ${message}`)
+  if (input.error instanceof Error && input.error.message) {
+    message = input.error.message
   }
-}
 
-async function fetchSpotMeta(apiBase: string): Promise<HyperliquidSpotMeta> {
-  return postHyperliquidInfo<HyperliquidSpotMeta>(apiBase, { type: 'spotMeta' })
-}
+  const data =
+    input.data ??
+    (input.error != null && typeof input.error === 'object' && 'data' in input.error ? input.error.data : undefined)
+  if (data != null) {
+    message = typeof data === 'string' ? data : JSON.stringify(data)
+  }
 
-async function fetchSpotMetaAndAssetCtxs(apiBase: string): Promise<HyperliquidSpotMetaAndAssetCtxs> {
-  return postHyperliquidInfo<HyperliquidSpotMetaAndAssetCtxs>(apiBase, { type: 'spotMetaAndAssetCtxs' })
-}
-
-async function fetchSpotBalances(apiBase: string, user: string): Promise<{ balances: any[] }> {
-  return postHyperliquidInfo<{ balances: any[] }>(apiBase, {
-    type: 'spotClearinghouseState',
-    user: user.toLowerCase(),
-  })
-}
-
-async function fetchOpenOrders(apiBase: string, user: string): Promise<any[]> {
-  return postHyperliquidInfo<any[]>(apiBase, {
-    type: 'frontendOpenOrders',
-    user: user.toLowerCase(),
-    dex: '',
-  })
-}
-
-async function fetchOrderStatus(apiBase: string, user: string, oid: number | string): Promise<Record<string, unknown>> {
-  return postHyperliquidInfo<Record<string, unknown>>(apiBase, {
-    type: 'orderStatus',
-    user: user.toLowerCase(),
-    oid,
-  })
-}
-
-async function fetchAllMids(apiBase: string): Promise<Record<string, string>> {
-  return postHyperliquidInfo<Record<string, string>>(apiBase, {
-    type: 'allMids',
-    dex: '',
-  })
+  return new Error(
+    `Hyperliquid request failed: ${message}`,
+    input.error instanceof Error ? { cause: input.error } : undefined,
+  )
 }
 
 export function signHyperliquidL1Action(input: HyperliquidSignL1ActionInput): HyperliquidExchangeSignature {

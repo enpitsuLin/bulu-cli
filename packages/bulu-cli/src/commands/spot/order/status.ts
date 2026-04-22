@@ -55,7 +55,7 @@ export default defineCommand({
         process.exit(1)
       }
 
-      const orderContainer = response.order as Record<string, any> | undefined
+      const orderContainer = response.order
       const order = orderContainer?.order
       if (!order) {
         throw new Error('Unexpected Hyperliquid order status response')
