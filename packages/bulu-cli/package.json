@@ -41,6 +41,7 @@
     "@noble/hashes": "^2.2.0",
     "citty": "^0.2.2",
     "console-table-printer": "^2.15.0",
+    "defu": "^6.1.7",
     "ofetch": "^1.5.1",
     "unctx": "^2.5.0",
     "uqr": "^0.1.0"

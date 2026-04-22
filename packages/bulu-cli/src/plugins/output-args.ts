@@ -7,5 +7,7 @@ export default defineCittyPlugin({
     const { json, format } = args as ParsedArgs<OutputArgs>
     outputCtx.set({ json, format: format as OutputOptions['format'] })
   },
-  cleanup() {},
+  cleanup() {
+    outputCtx.unset()
+  },
 })

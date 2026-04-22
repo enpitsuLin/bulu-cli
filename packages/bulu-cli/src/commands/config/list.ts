@@ -1,24 +1,14 @@
-import { defineCommand } from 'citty'
-import { loadBuluConfigSync, withConfigArgs } from '#/core/config'
-import { flattenConfigRows } from './shared'
+import { useConfig } from '#/core/config'
 import { useOutput, withOutputArgs } from '#/core/output'
+import { defineCommand } from 'citty'
 
 export default defineCommand({
   meta: { name: 'list', description: 'List config values' },
-  args: withOutputArgs(withConfigArgs({})),
+  args: withOutputArgs({}),
   async run() {
-    const config = loadBuluConfigSync() as Record<string, unknown>
+    const config = useConfig()
     const output = useOutput()
 
-    const rows = flattenConfigRows(config)
-    if (rows.length === 0) {
-      output.warn('No config values found')
-      return
-    }
-
-    output.table(rows, {
-      columns: ['Key', 'Value'],
-      title: `Config (${rows.length})`,
-    })
+    output.data(config.config)
   },
 })

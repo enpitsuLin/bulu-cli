@@ -1,6 +1,6 @@
 import { createApiKey } from '@bulu-cli/tcx-core'
 import { defineCommand } from 'citty'
-import { getActiveWallet, getVaultPath, withConfigArgs } from '#/core/config'
+import { getVaultPath, useConfig } from '#/core/config'
 import { useOutput } from '#/core/output'
 import { withOutputArgs } from '#/core/output'
 import { resolveTCXPassphrase } from '#/core/tcx'
@@ -19,34 +19,33 @@ export default defineCommand({
     name: 'create',
     description: 'Create an API key for agent-mode signing',
   },
-  args: withOutputArgs(
-    withConfigArgs({
-      name: {
-        type: 'positional',
-        description: 'API key name',
-        required: true,
-      },
-      wallet: {
-        type: 'string',
-        description: 'Comma-separated wallet names or ids to bind (defaults to active wallet)',
-      },
-      policy: {
-        type: 'string',
-        description: 'Comma-separated policy names or ids to attach',
-      },
-      'expires-at': {
-        type: 'string',
-        description: 'Optional expiry timestamp (Unix seconds)',
-      },
-    }),
-  ),
+  args: withOutputArgs({
+    name: {
+      type: 'positional',
+      description: 'API key name',
+      required: true,
+    },
+    wallet: {
+      type: 'string',
+      description: 'Comma-separated wallet names or ids to bind (defaults to active wallet)',
+    },
+    policy: {
+      type: 'string',
+      description: 'Comma-separated policy names or ids to attach',
+    },
+    'expires-at': {
+      type: 'string',
+      description: 'Optional expiry timestamp (Unix seconds)',
+    },
+  }),
   async run({ args }) {
     const vaultPath = getVaultPath()
+    const config = useConfig()
     const out = useOutput()
 
     let walletIds = splitIds(args.wallet)
     if (walletIds.length === 0) {
-      const active = getActiveWallet()
+      const active = config.default?.wallet
       if (!active) {
         out.warn('No active wallet configured. Pass --wallet to bind the API key.')
         process.exit(1)
