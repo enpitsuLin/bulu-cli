@@ -45,7 +45,7 @@ export default defineCommand({
 
     let walletIds = splitIds(args.wallet)
     if (walletIds.length === 0) {
-      const active = config.default?.wallet
+      const active = config.config.default?.wallet
       if (!active) {
         out.warn('No active wallet configured. Pass --wallet to bind the API key.')
         process.exit(1)
