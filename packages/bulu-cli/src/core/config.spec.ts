@@ -76,4 +76,22 @@ describe('createConfigContext', () => {
     expect(config.config.chains?.['eip155:1']?.rpc).toBe('https://example.invalid/rpc')
     expect(config.config.chains?.['eip155:11155111']?.rpc).toBe(CONFIG_DEFAULTS.chains?.['eip155:11155111']?.rpc)
   })
+
+  it('persists hyperliquid api base without introducing defaults', () => {
+    const cwd = createTempConfigDir()
+    const config = createConfigContext(cwd)
+
+    config.set('hyperliquid.apiBase', 'https://api.hyperliquid-testnet.xyz')
+
+    const savedConfig = JSON.parse(readFileSync(getConfigPath(cwd), 'utf8'))
+    expect(savedConfig).toEqual({
+      hyperliquid: {
+        apiBase: 'https://api.hyperliquid-testnet.xyz',
+      },
+    })
+
+    const reloadedConfig = createConfigContext(cwd)
+    expect(reloadedConfig.get('hyperliquid.apiBase')).toBe('https://api.hyperliquid-testnet.xyz')
+    expect(reloadedConfig.get('default.wallet')).toBe(CONFIG_DEFAULTS.default?.wallet)
+  })
 })

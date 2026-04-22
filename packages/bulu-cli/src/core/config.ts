@@ -17,6 +17,9 @@ export interface BuluConfig {
     format?: 'table' | 'csv' | 'json'
   }
   chains?: Record<string, { rpc?: string }>
+  hyperliquid?: {
+    apiBase?: string
+  }
 }
 
 export type ConfigPath = ObjectKeyPaths<BuluConfig>
