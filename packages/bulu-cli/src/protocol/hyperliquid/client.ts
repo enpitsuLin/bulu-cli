@@ -31,6 +31,18 @@ export function useHyperliquidClient(): HyperliquidClient {
   return hyperliquidClientCtx.use()
 }
 
+export class HyperliquidRequestError extends Error {
+  readonly status?: number
+  readonly data?: unknown
+
+  constructor(input: { message: string; status?: number; data?: unknown; cause?: Error }) {
+    super(`Hyperliquid request failed: ${input.message}`, input.cause ? { cause: input.cause } : undefined)
+    this.name = 'HyperliquidRequestError'
+    this.status = input.status
+    this.data = input.data
+  }
+}
+
 function normalizeApiBase(apiBase: string): string {
   return apiBase.trim().replace(/\/+$/, '')
 }
@@ -125,13 +137,14 @@ export function createHyperliquidClient(
       'Content-Type': 'application/json',
     },
     onRequestError({ error }) {
-      throw createHyperliquidRequestError({
+      throw toHyperliquidRequestError({
         error,
       })
     },
     onResponseError({ response }) {
-      throw createHyperliquidRequestError({
+      throw toHyperliquidRequestError({
         data: response._data,
+        status: response.status,
         fallback: `${response.status} ${response.statusText}`.trim(),
       })
     },
@@ -221,7 +234,12 @@ export function createHyperliquidClient(
   }
 }
 
-function createHyperliquidRequestError(input: { error?: unknown; data?: unknown; fallback?: string }): Error {
+function toHyperliquidRequestError(input: {
+  error?: unknown
+  data?: unknown
+  status?: number
+  fallback?: string
+}): HyperliquidRequestError {
   let message = input.fallback ?? 'Unknown error'
 
   if (input.error instanceof Error && input.error.message) {
@@ -235,10 +253,12 @@ function createHyperliquidRequestError(input: { error?: unknown; data?: unknown;
     message = typeof data === 'string' ? data : JSON.stringify(data)
   }
 
-  return new Error(
-    `Hyperliquid request failed: ${message}`,
-    input.error instanceof Error ? { cause: input.error } : undefined,
-  )
+  return new HyperliquidRequestError({
+    message,
+    status: input.status,
+    data,
+    cause: input.error instanceof Error ? input.error : undefined,
+  })
 }
 
 export function signHyperliquidL1Action(input: HyperliquidSignL1ActionInput): HyperliquidExchangeSignature {

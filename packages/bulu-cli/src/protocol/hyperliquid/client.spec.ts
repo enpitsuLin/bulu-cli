@@ -6,6 +6,7 @@ import { importWalletPrivateKey } from '@bulu-cli/tcx-core'
 import {
   HYPERLIQUID_MAINNET_API_URL,
   HYPERLIQUID_TESTNET_API_URL,
+  HyperliquidRequestError,
   isHyperliquidTestnetValue,
   resolveHyperliquidConnection,
   signHyperliquidL1Action,
@@ -51,6 +52,23 @@ describe('Hyperliquid client helpers', () => {
       apiBase: HYPERLIQUID_MAINNET_API_URL,
       isTestnet: false,
     })
+  })
+
+  it('captures hyperliquid request metadata on custom errors', () => {
+    const cause = new Error('socket hang up')
+    const error = new HyperliquidRequestError({
+      message: 'backend exploded',
+      status: 500,
+      data: { ok: false },
+      cause,
+    })
+
+    expect(error).toBeInstanceOf(Error)
+    expect(error.name).toBe('HyperliquidRequestError')
+    expect(error.message).toBe('Hyperliquid request failed: backend exploded')
+    expect(error.status).toBe(500)
+    expect(error.data).toEqual({ ok: false })
+    expect(error.cause).toBe(cause)
   })
 
   it('signs l1 actions with Hyperliquid typed data envelope', () => {
