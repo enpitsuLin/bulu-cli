@@ -1,4 +1,5 @@
 export { useHyperliquidClient } from './client'
+export type { HyperliquidPlaceOrderResponse } from './types'
 export {
   buildMarketPriceFromMid,
   buildSpotMarketLookup,

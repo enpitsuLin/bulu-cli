@@ -111,6 +111,36 @@ export interface HyperliquidOrderStatusResponse {
   order?: HyperliquidOrderStatusEntry
 }
 
+export interface HyperliquidPlaceOrderRestingStatus {
+  resting: {
+    oid: number
+  }
+}
+
+export interface HyperliquidPlaceOrderFilledStatus {
+  filled: {
+    totalSz: string
+    avgPx: string
+    oid: number
+  }
+}
+
+export interface HyperliquidPlaceOrderErrorStatus {
+  error: string
+}
+
+export type HyperliquidPlaceOrderStatus =
+  | HyperliquidPlaceOrderRestingStatus
+  | HyperliquidPlaceOrderFilledStatus
+  | HyperliquidPlaceOrderErrorStatus
+
+export interface HyperliquidPlaceOrderResponse {
+  type: 'order'
+  data: {
+    statuses: HyperliquidPlaceOrderStatus[]
+  }
+}
+
 export interface HyperliquidResolvedSpotMarket {
   asset: number
   canonicalName: string

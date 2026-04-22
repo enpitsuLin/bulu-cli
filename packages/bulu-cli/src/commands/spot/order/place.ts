@@ -4,6 +4,7 @@ import { useOutput, withOutputArgs } from '#/core/output'
 import { resolveTCXPassphrase } from '#/core/tcx'
 import {
   buildMarketPriceFromMid,
+  type HyperliquidPlaceOrderResponse,
   resolveSpotMarket,
   toHyperliquidWireValue,
   useHyperliquidClient,
@@ -148,7 +149,7 @@ export default defineCommand({
       }
       const vaultPath = getVaultPath()
       const credential = await resolveTCXPassphrase()
-      const { response } = await client.submitL1Action<Record<string, unknown>>({
+      const { response } = await client.submitL1Action<HyperliquidPlaceOrderResponse>({
         walletName,
         credential,
         vaultPath,
