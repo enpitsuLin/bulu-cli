@@ -5,7 +5,7 @@ import { resolveTCXPassphrase } from '#/core/tcx'
 import {
   fetchSpotMeta,
   postHyperliquidExchange,
-  resolveHyperliquidConnection,
+  resolveHyperliquidConnectionFromConfig,
   resolveSpotMarket,
   signHyperliquidL1Action,
 } from '#/protocol/hyperliquid'
@@ -57,7 +57,7 @@ export default defineCommand({
         throw new Error('Wallet is required; pass --wallet or set config.default.wallet')
       }
 
-      const connection = resolveHyperliquidConnection(config.get('hyperliquid.apiBase'), {
+      const connection = resolveHyperliquidConnectionFromConfig({
         testnet: args.testnet,
         envValue: process.env.BULU_HYPERLIQUID,
       })

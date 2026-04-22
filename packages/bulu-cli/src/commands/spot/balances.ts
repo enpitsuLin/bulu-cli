@@ -1,7 +1,7 @@
 import { defineCommand } from 'citty'
 import { getVaultPath, useConfig } from '#/core/config'
 import { useOutput, withOutputArgs } from '#/core/output'
-import { fetchSpotBalances, resolveHyperliquidConnection, resolveWalletAddress } from '#/protocol/hyperliquid'
+import { fetchSpotBalances, resolveHyperliquidConnectionFromConfig, resolveWalletAddress } from '#/protocol/hyperliquid'
 
 export default defineCommand({
   meta: { name: 'balances', description: 'Show Hyperliquid spot balances for a wallet' },
@@ -26,7 +26,7 @@ export default defineCommand({
         throw new Error('Wallet is required; pass --wallet or set config.default.wallet')
       }
 
-      const connection = resolveHyperliquidConnection(config.get('hyperliquid.apiBase'), {
+      const connection = resolveHyperliquidConnectionFromConfig({
         testnet: args.testnet,
         envValue: process.env.BULU_HYPERLIQUID,
       })

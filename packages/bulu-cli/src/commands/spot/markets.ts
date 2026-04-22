@@ -1,10 +1,9 @@
 import { defineCommand } from 'citty'
-import { useConfig } from '#/core/config'
 import { useOutput, withOutputArgs } from '#/core/output'
 import {
   buildSpotMarketLookup,
   fetchSpotMetaAndAssetCtxs,
-  resolveHyperliquidConnection,
+  resolveHyperliquidConnectionFromConfig,
   resolveSpotMarket,
 } from '#/protocol/hyperliquid'
 
@@ -22,11 +21,10 @@ export default defineCommand({
     },
   }),
   async run({ args }) {
-    const config = useConfig()
     const output = useOutput()
 
     try {
-      const connection = resolveHyperliquidConnection(config.get('hyperliquid.apiBase'), {
+      const connection = resolveHyperliquidConnectionFromConfig({
         testnet: args.testnet,
         envValue: process.env.BULU_HYPERLIQUID,
       })
