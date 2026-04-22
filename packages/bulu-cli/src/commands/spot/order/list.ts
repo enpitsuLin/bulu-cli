@@ -2,13 +2,11 @@ import { defineCommand } from 'citty'
 import { getVaultPath, useConfig } from '#/core/config'
 import { useOutput, withOutputArgs } from '#/core/output'
 import {
-  fetchOpenOrders,
-  fetchSpotMeta,
   formatSpotCoin,
   isSpotCoin,
-  resolveHyperliquidConnectionFromConfig,
   resolveSpotMarket,
   resolveWalletAddress,
+  useSpotClient,
 } from '#/protocol/hyperliquid'
 
 export default defineCommand({
@@ -30,6 +28,7 @@ export default defineCommand({
   }),
   async run({ args }) {
     const config = useConfig()
+    const client = useSpotClient()
     const output = useOutput()
 
     try {
@@ -38,15 +37,11 @@ export default defineCommand({
         throw new Error('Wallet is required; pass --wallet or set config.default.wallet')
       }
 
-      const connection = resolveHyperliquidConnectionFromConfig({
-        testnet: args.testnet,
-        envValue: process.env.BULU_HYPERLIQUID,
-      })
-      const spotMeta = await fetchSpotMeta(connection.apiBase)
+      const spotMeta = await client.getSpotMeta()
       const targetMarket = args.market ? resolveSpotMarket(spotMeta, args.market) : null
       const vaultPath = getVaultPath()
       const address = resolveWalletAddress(walletName, vaultPath)
-      const orders = await fetchOpenOrders(connection.apiBase, address)
+      const orders = await client.getOpenOrders(address)
       const rows = orders
         .filter((order) => isSpotCoin(spotMeta, order.coin))
         .filter((order) => !targetMarket || order.coin === targetMarket.canonicalName)
@@ -81,7 +76,7 @@ export default defineCommand({
           'Reduce Only',
           'Timestamp',
         ],
-        title: `Open Hyperliquid spot orders (${rows.length})${connection.isTestnet ? ' [testnet]' : ' [mainnet]'}`,
+        title: `Open Hyperliquid spot orders (${rows.length})${client.isTestnet ? ' [testnet]' : ' [mainnet]'}`,
       })
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)

@@ -2,13 +2,7 @@ import { defineCommand } from 'citty'
 import { getVaultPath, useConfig } from '#/core/config'
 import { useOutput, withOutputArgs } from '#/core/output'
 import { resolveTCXPassphrase } from '#/core/tcx'
-import {
-  fetchSpotMeta,
-  postHyperliquidExchange,
-  resolveHyperliquidConnectionFromConfig,
-  resolveSpotMarket,
-  signHyperliquidL1Action,
-} from '#/protocol/hyperliquid'
+import { resolveSpotMarket, useSpotClient } from '#/protocol/hyperliquid'
 
 function parseOid(value: string): number {
   const oid = Number(value)
@@ -49,6 +43,7 @@ export default defineCommand({
   }),
   async run({ args }) {
     const config = useConfig()
+    const client = useSpotClient()
     const output = useOutput()
 
     try {
@@ -57,11 +52,7 @@ export default defineCommand({
         throw new Error('Wallet is required; pass --wallet or set config.default.wallet')
       }
 
-      const connection = resolveHyperliquidConnectionFromConfig({
-        testnet: args.testnet,
-        envValue: process.env.BULU_HYPERLIQUID,
-      })
-      const spotMeta = await fetchSpotMeta(connection.apiBase)
+      const spotMeta = await client.getSpotMeta()
       const market = resolveSpotMarket(spotMeta, args.market)
       const action = args.cloid
         ? {
@@ -84,19 +75,11 @@ export default defineCommand({
           }
       const vaultPath = getVaultPath()
       const credential = await resolveTCXPassphrase()
-      const nonce = Date.now()
-      const signature = signHyperliquidL1Action({
+      const { response } = await client.submitL1Action<Record<string, unknown>>({
         walletName,
         credential,
         vaultPath,
         action,
-        nonce,
-        isTestnet: connection.isTestnet,
-      })
-      const response = await postHyperliquidExchange<Record<string, unknown>>(connection.apiBase, {
-        action,
-        nonce,
-        signature,
       })
 
       output.success(`Submitted cancel for ${market.displayName}`)

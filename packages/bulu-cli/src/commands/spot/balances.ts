@@ -1,7 +1,7 @@
 import { defineCommand } from 'citty'
 import { getVaultPath, useConfig } from '#/core/config'
 import { useOutput, withOutputArgs } from '#/core/output'
-import { fetchSpotBalances, resolveHyperliquidConnectionFromConfig, resolveWalletAddress } from '#/protocol/hyperliquid'
+import { resolveWalletAddress, useSpotClient } from '#/protocol/hyperliquid'
 
 export default defineCommand({
   meta: { name: 'balances', description: 'Show Hyperliquid spot balances for a wallet' },
@@ -18,6 +18,7 @@ export default defineCommand({
   }),
   async run({ args }) {
     const config = useConfig()
+    const client = useSpotClient()
     const output = useOutput()
 
     try {
@@ -26,13 +27,9 @@ export default defineCommand({
         throw new Error('Wallet is required; pass --wallet or set config.default.wallet')
       }
 
-      const connection = resolveHyperliquidConnectionFromConfig({
-        testnet: args.testnet,
-        envValue: process.env.BULU_HYPERLIQUID,
-      })
       const vaultPath = getVaultPath()
       const address = resolveWalletAddress(walletName, vaultPath)
-      const state = await fetchSpotBalances(connection.apiBase, address)
+      const state = await client.getSpotBalances(address)
       const rows = (state.balances || []).map((balance) => ({
         Coin: balance.coin,
         Token: balance.token,
@@ -48,7 +45,7 @@ export default defineCommand({
 
       output.table(rows, {
         columns: ['Coin', 'Token', 'Total', 'Hold', 'Entry Ntl'],
-        title: `Hyperliquid spot balances - ${walletName}${connection.isTestnet ? ' [testnet]' : ' [mainnet]'}`,
+        title: `Hyperliquid spot balances - ${walletName}${client.isTestnet ? ' [testnet]' : ' [mainnet]'}`,
       })
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)

@@ -1,14 +1,7 @@
 import { defineCommand } from 'citty'
 import { getVaultPath, useConfig } from '#/core/config'
 import { useOutput, withOutputArgs } from '#/core/output'
-import {
-  fetchOrderStatus,
-  fetchSpotMeta,
-  formatSpotCoin,
-  isSpotCoin,
-  resolveHyperliquidConnectionFromConfig,
-  resolveWalletAddress,
-} from '#/protocol/hyperliquid'
+import { formatSpotCoin, isSpotCoin, resolveWalletAddress, useSpotClient } from '#/protocol/hyperliquid'
 
 function parseOrderIdentifier(value: string): number | string {
   if (value.startsWith('0x') || value.startsWith('0X')) {
@@ -43,6 +36,7 @@ export default defineCommand({
   }),
   async run({ args }) {
     const config = useConfig()
+    const client = useSpotClient()
     const output = useOutput()
 
     try {
@@ -51,14 +45,10 @@ export default defineCommand({
         throw new Error('Wallet is required; pass --wallet or set config.default.wallet')
       }
 
-      const connection = resolveHyperliquidConnectionFromConfig({
-        testnet: args.testnet,
-        envValue: process.env.BULU_HYPERLIQUID,
-      })
-      const spotMeta = await fetchSpotMeta(connection.apiBase)
+      const spotMeta = await client.getSpotMeta()
       const vaultPath = getVaultPath()
       const address = resolveWalletAddress(walletName, vaultPath)
-      const response = await fetchOrderStatus(connection.apiBase, address, parseOrderIdentifier(args.id))
+      const response = await client.getOrderStatus(address, parseOrderIdentifier(args.id))
 
       if (response.status === 'unknownOid') {
         output.warn(`Order ${args.id} not found`)
@@ -104,7 +94,7 @@ export default defineCommand({
           'Remaining',
           'Original',
         ],
-        title: `Hyperliquid spot order status${connection.isTestnet ? ' [testnet]' : ' [mainnet]'}`,
+        title: `Hyperliquid spot order status${client.isTestnet ? ' [testnet]' : ' [mainnet]'}`,
       })
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)

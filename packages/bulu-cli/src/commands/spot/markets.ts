@@ -1,11 +1,6 @@
 import { defineCommand } from 'citty'
 import { useOutput, withOutputArgs } from '#/core/output'
-import {
-  buildSpotMarketLookup,
-  fetchSpotMetaAndAssetCtxs,
-  resolveHyperliquidConnectionFromConfig,
-  resolveSpotMarket,
-} from '#/protocol/hyperliquid'
+import { buildSpotMarketLookup, resolveSpotMarket, useSpotClient } from '#/protocol/hyperliquid'
 
 export default defineCommand({
   meta: { name: 'markets', description: 'List Hyperliquid spot markets' },
@@ -21,14 +16,11 @@ export default defineCommand({
     },
   }),
   async run({ args }) {
+    const client = useSpotClient()
     const output = useOutput()
 
     try {
-      const connection = resolveHyperliquidConnectionFromConfig({
-        testnet: args.testnet,
-        envValue: process.env.BULU_HYPERLIQUID,
-      })
-      const [spotMeta, contexts] = await fetchSpotMetaAndAssetCtxs(connection.apiBase)
+      const [spotMeta, contexts] = await client.getSpotMetaAndAssetCtxs()
       const lookup = buildSpotMarketLookup(spotMeta)
       const targetMarket = args.market ? resolveSpotMarket(spotMeta, args.market) : null
       const rows = lookup.markets
@@ -57,7 +49,7 @@ export default defineCommand({
 
       output.table(rows, {
         columns: ['Market', 'Canonical', 'Asset', 'Base', 'Quote', 'Mid', 'Mark', '24h Ntl', 'Prev Day', 'Sz Decimals'],
-        title: `Hyperliquid spot markets (${rows.length})${connection.isTestnet ? ' [testnet]' : ' [mainnet]'}`,
+        title: `Hyperliquid spot markets (${rows.length})${client.isTestnet ? ' [testnet]' : ' [mainnet]'}`,
       })
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)

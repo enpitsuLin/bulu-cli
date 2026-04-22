@@ -1,7 +1,9 @@
+import { AsyncLocalStorage } from 'node:async_hooks'
 import { getWallet, signTypedData } from '@bulu-cli/tcx-core'
 import { encode } from '@msgpack/msgpack'
 import { keccak_256 } from '@noble/hashes/sha3.js'
 import { ofetch } from 'ofetch'
+import { createContext } from 'unctx'
 import { useConfig } from '#/core/config'
 
 export const HYPERLIQUID_MAINNET_API_URL = 'https://api.hyperliquid.xyz'
@@ -11,6 +13,25 @@ export const HYPERLIQUID_L1_CHAIN_ID = 'eip155:1337'
 export interface HyperliquidConnection {
   apiBase: string
   isTestnet: boolean
+}
+
+export interface HyperliquidSpotClient {
+  apiBase: string
+  isTestnet: boolean
+  getSpotMeta(): Promise<HyperliquidSpotMeta>
+  getSpotMetaAndAssetCtxs(): Promise<HyperliquidSpotMetaAndAssetCtxs>
+  getSpotBalances(user: string): Promise<{ balances: any[] }>
+  getOpenOrders(user: string): Promise<any[]>
+  getOrderStatus(user: string, oid: number | string): Promise<Record<string, unknown>>
+  getAllMids(): Promise<Record<string, string>>
+  submitL1Action<T>(input: {
+    walletName: string
+    credential: string
+    vaultPath: string
+    action: Record<string, unknown>
+    nonce?: number
+    vaultAddress?: string
+  }): Promise<{ nonce: number; response: T }>
 }
 
 export interface HyperliquidExchangeSignature {
@@ -68,6 +89,15 @@ export interface HyperliquidSpotMarketLookup {
   markets: HyperliquidResolvedSpotMarket[]
   byCanonical: Map<string, HyperliquidResolvedSpotMarket>
   aliases: Map<string, HyperliquidResolvedSpotMarket>
+}
+
+export const hyperliquidSpotClientCtx = createContext<HyperliquidSpotClient>({
+  asyncContext: true,
+  AsyncLocalStorage,
+})
+
+export function useSpotClient(): HyperliquidSpotClient {
+  return hyperliquidSpotClientCtx.use()
 }
 
 function normalizeApiBase(apiBase: string): string {
@@ -147,14 +177,80 @@ export function resolveHyperliquidConnection(
   }
 }
 
-export function resolveHyperliquidConnectionFromConfig(
+export function createHyperliquidSpotClient(
   opts: {
     testnet?: boolean
     envValue?: string | undefined
   } = {},
-): HyperliquidConnection {
+): HyperliquidSpotClient {
   const config = useConfig()
-  return resolveHyperliquidConnection(config.get('hyperliquid.apiBase'), opts)
+  const connection = resolveHyperliquidConnection(config.get('hyperliquid.apiBase'), opts)
+  let spotMetaPromise: Promise<HyperliquidSpotMeta> | undefined
+  let spotMetaAndAssetCtxsPromise: Promise<HyperliquidSpotMetaAndAssetCtxs> | undefined
+
+  return {
+    apiBase: connection.apiBase,
+    isTestnet: connection.isTestnet,
+    async getSpotMeta() {
+      if (!spotMetaPromise) {
+        if (spotMetaAndAssetCtxsPromise) {
+          spotMetaPromise = spotMetaAndAssetCtxsPromise.then(([spotMeta]) => spotMeta)
+        } else {
+          spotMetaPromise = fetchSpotMeta(connection.apiBase)
+        }
+      }
+
+      return spotMetaPromise
+    },
+    async getSpotMetaAndAssetCtxs() {
+      if (!spotMetaAndAssetCtxsPromise) {
+        spotMetaAndAssetCtxsPromise = fetchSpotMetaAndAssetCtxs(connection.apiBase)
+      }
+      if (!spotMetaPromise) {
+        spotMetaPromise = spotMetaAndAssetCtxsPromise.then(([spotMeta]) => spotMeta)
+      }
+
+      return spotMetaAndAssetCtxsPromise
+    },
+    async getSpotBalances(user: string) {
+      return fetchSpotBalances(connection.apiBase, user)
+    },
+    async getOpenOrders(user: string) {
+      return fetchOpenOrders(connection.apiBase, user)
+    },
+    async getOrderStatus(user: string, oid: number | string) {
+      return fetchOrderStatus(connection.apiBase, user, oid)
+    },
+    async getAllMids() {
+      return fetchAllMids(connection.apiBase)
+    },
+    async submitL1Action<T>(input: {
+      walletName: string
+      credential: string
+      vaultPath: string
+      action: Record<string, unknown>
+      nonce?: number
+      vaultAddress?: string
+    }) {
+      const nonce = input.nonce ?? Date.now()
+      const signature = signHyperliquidL1Action({
+        walletName: input.walletName,
+        credential: input.credential,
+        vaultPath: input.vaultPath,
+        action: input.action,
+        nonce,
+        vaultAddress: input.vaultAddress,
+        isTestnet: connection.isTestnet,
+      })
+      const response = await postHyperliquidExchange<T>(connection.apiBase, {
+        action: input.action,
+        nonce,
+        signature,
+      })
+
+      return { nonce, response }
+    },
+  }
 }
 
 export async function postHyperliquidInfo<T>(apiBase: string, body: Record<string, unknown>): Promise<T> {
