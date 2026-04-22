@@ -149,7 +149,7 @@ dependencies = [
 
 [[package]]
 name = "bulu_cli_tcx_core"
-version = "0.0.4"
+version = "0.0.5"
 dependencies = [
  "ethereum-types",
  "napi",
