@@ -1,12 +1,12 @@
-import { configCtx, createRuntimeConfig } from '#/core/config'
+import { configCtx, createConfigContext } from '#/core/config'
 import { defineCittyPlugin } from 'citty'
 
 export default defineCittyPlugin({
   name: 'config',
   setup() {
-    configCtx.set({
-      config: createRuntimeConfig(),
-    })
+    configCtx.set(createConfigContext())
   },
-  cleanup() {},
+  cleanup() {
+    configCtx.unset()
+  },
 })

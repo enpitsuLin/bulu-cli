@@ -1,7 +1,6 @@
-import { defineCommand } from 'citty'
 import { useConfig } from '#/core/config'
-import { flattenConfigRows } from './shared'
 import { useOutput, withOutputArgs } from '#/core/output'
+import { defineCommand } from 'citty'
 
 export default defineCommand({
   meta: { name: 'list', description: 'List config values' },
@@ -10,15 +9,6 @@ export default defineCommand({
     const config = useConfig()
     const output = useOutput()
 
-    const rows = flattenConfigRows(config as Record<string, unknown>)
-    if (rows.length === 0) {
-      output.warn('No config values found')
-      return
-    }
-
-    output.table(rows, {
-      columns: ['Key', 'Value'],
-      title: `Config (${rows.length})`,
-    })
+    output.data(config.config)
   },
 })

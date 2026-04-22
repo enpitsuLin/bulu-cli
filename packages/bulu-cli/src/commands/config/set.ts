@@ -1,6 +1,5 @@
 import { defineCommand } from 'citty'
-import { getConfigValueByPath, setConfigValue, useConfig } from '#/core/config'
-import { formatConfigValue, parseConfigValue } from './shared'
+import { useConfig } from '#/core/config'
 import { useOutput, withOutputArgs } from '#/core/output'
 
 export default defineCommand({
@@ -18,14 +17,10 @@ export default defineCommand({
     },
   }),
   async run({ args }) {
-    const nextValue = parseConfigValue(args.value)
-
-    setConfigValue(args.key, nextValue)
-
     const config = useConfig()
-    const resolvedValue = getConfigValueByPath(config, args.key)
     const output = useOutput()
 
-    output.success(`Set ${args.key} = ${formatConfigValue(resolvedValue)}`)
+    config.set(args.key, args.value)
+    output.success(`Set ${args.key} = ${args.value}`)
   },
 })

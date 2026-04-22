@@ -3,7 +3,7 @@ import { importWalletKeystore, importWalletMnemonic, importWalletPrivateKey } fr
 import { defineCommand } from 'citty'
 import { styleText } from 'node:util'
 import { readFileSync } from 'node:fs'
-import { getVaultPath, setConfigValue } from '#/core/config'
+import { getVaultPath, useConfig } from '#/core/config'
 import { resolveTCXPassphrase } from '#/core/tcx'
 import { useOutput } from '#/core/output'
 import { withOutputArgs } from '#/core/output'
@@ -79,6 +79,7 @@ export default defineCommand({
   async run({ args }) {
     const name = args.name.trim()
     const out = useOutput()
+    const config = useConfig()
 
     if (!name) {
       out.warn('Wallet name is required')
@@ -166,7 +167,7 @@ export default defineCommand({
         }
       }
 
-      setConfigValue('default.wallet', wallet.meta.name)
+      config.set('default.wallet', wallet.meta.name)
       out.data(formatWalletOutput(wallet))
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
