@@ -29,7 +29,7 @@ export default defineCommand({
       return
     }
 
-    const activeWallet = config.default?.wallet
+    const activeWallet = config.config.default?.wallet
     const rows = formatWalletsForTable(wallets, activeWallet)
     output.table(rows, {
       columns: ['Name', 'Active', 'Source', 'Derivable', 'Accounts'],

@@ -4,7 +4,7 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { defu } from 'defu'
 import { createContext } from 'unctx'
-import type { ObjectKeyPaths } from '#/utils/types'
+import type { ObjectKeyPaths, ObjectPathValue } from '#/utils/types'
 
 const BULU_CONFIG_DIR_ENV = 'BULU_CONFIG_DIR'
 const BULU_CONFIG_DEFAULT_DIR = 'bulu'
@@ -35,8 +35,10 @@ export const CONFIG_DEFAULTS: BuluConfig = {
 
 export interface ConfigContext {
   config: BuluConfig
-  set: (key: ConfigPath | (string & {}), value: unknown) => void
-  get: (key: ConfigPath | (string & {})) => unknown
+  set<K extends ConfigPath>(key: K, value: ObjectPathValue<BuluConfig, K>): void
+  set<K extends string>(key: K extends ConfigPath ? never : K, value: any): void
+  get<K extends ConfigPath>(key: K): ObjectPathValue<BuluConfig, K>
+  get<K extends string>(key: K extends ConfigPath ? never : K): any
 }
 
 export const configCtx = createContext<ConfigContext>({
@@ -66,43 +68,64 @@ export function ensureConfigDir(cwd = getConfigDir()): void {
   }
 }
 
+function setPathValue(target: Record<string, unknown>, key: string, value: unknown): void {
+  const segments = key.split('.')
+  let current = target
+
+  for (const segment of segments.slice(0, -1)) {
+    const next = current[segment]
+    if (next == null || typeof next !== 'object' || Array.isArray(next)) {
+      current[segment] = {}
+    }
+    current = current[segment] as Record<string, unknown>
+  }
+
+  current[segments.at(-1)!] = value
+}
+
 export function createConfigContext(cwd = getConfigDir()): ConfigContext {
   const configPath = getConfigPath(cwd)
   const userConfig = existsSync(configPath) ? (JSON.parse(readFileSync(configPath, 'utf8')) as BuluConfig) : {}
-  const config = defu(userConfig, CONFIG_DEFAULTS) as BuluConfig
+  const config = {} as BuluConfig
+  const refreshConfig = (): void => {
+    Object.keys(config).forEach((key) => {
+      delete config[key as keyof BuluConfig]
+    })
+    Object.assign(config, defu(structuredClone(userConfig), CONFIG_DEFAULTS) as BuluConfig)
+  }
   const persistConfig = (): void => {
     ensureConfigDir(cwd)
-    writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
+    writeFileSync(configPath, `${JSON.stringify(userConfig, null, 2)}\n`)
+  }
+
+  refreshConfig()
+
+  function set<K extends ConfigPath>(key: K, value: ObjectPathValue<BuluConfig, K>): void
+  function set<K extends string>(key: K extends ConfigPath ? never : K, value: any): void
+  function set(key: string, value: any): void {
+    setPathValue(userConfig as Record<string, unknown>, key, value)
+    refreshConfig()
+    persistConfig()
+  }
+
+  function get<K extends ConfigPath>(key: K): ObjectPathValue<BuluConfig, K>
+  function get<K extends string>(key: K extends ConfigPath ? never : K): any
+  function get(key: string): any {
+    let current: unknown = config
+
+    for (const segment of key.split('.')) {
+      if (current == null || typeof current !== 'object' || Array.isArray(current)) {
+        return undefined
+      }
+      current = (current as Record<string, unknown>)[segment]
+    }
+
+    return current
   }
 
   return {
     config,
-    set(key, value) {
-      const segments = key.split('.')
-      let current = config as Record<string, unknown>
-
-      for (const segment of segments.slice(0, -1)) {
-        const next = current[segment]
-        if (!next || typeof next !== 'object' || Array.isArray(next)) {
-          current[segment] = {}
-        }
-        current = current[segment] as Record<string, unknown>
-      }
-
-      current[segments.at(-1)!] = value
-      persistConfig()
-    },
-    get(key) {
-      let current: unknown = config
-
-      for (const segment of key.split('.')) {
-        if (!current || typeof current !== 'object' || Array.isArray(current)) {
-          return ''
-        }
-        current = (current as Record<string, unknown>)[segment]
-      }
-
-      return current == null ? '' : String(current)
-    },
+    set,
+    get,
   }
 }
