@@ -1,0 +1,17 @@
+diff --git a/dist/config-C4d1xESV.mjs b/dist/config-C4d1xESV.mjs
+index c315ecdc66826f192d86d1814c0f5dbfbbb0c567..9ff1161e0eb1cc7e6da808380790baea584e8a11 100644
+--- a/dist/config-C4d1xESV.mjs
++++ b/dist/config-C4d1xESV.mjs
+@@ -5930,7 +5930,11 @@ async function loadBumpConfig(overrides, cwd = process$1.cwd()) {
+ 		defaults: bumpConfigDefaults,
+ 		cwd
+ 	});
+-	const definedOverrides = overrides ? Object.fromEntries(Object.entries(overrides).filter(([, v]) => v !== void 0)) : {};
++	const definedOverrides = overrides ? Object.fromEntries(
++		Object.entries(overrides).filter(
++			([, v]) => v !== void 0 && !(Array.isArray(v) && v.length === 0)
++		)
++	) : {};
+ 	return {
+ 		...bumpConfigDefaults,
+ 		...config,

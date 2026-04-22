@@ -4,6 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  bumpp@11.0.1:
+    hash: 454b66f97aa6c28ce1aceb3782f4e4bcab9189660d0b838d6c7d32736255d485
+    path: patches/bumpp@11.0.1.patch
+
 importers:
   .:
     devDependencies:
@@ -12,7 +17,7 @@ importers:
         version: 0.7.0
       bumpp:
         specifier: ^11.0.1
-        version: 11.0.1
+        version: 11.0.1(patch_hash=454b66f97aa6c28ce1aceb3782f4e4bcab9189660d0b838d6c7d32736255d485)
       lint-staged:
         specifier: ^16.4.0
         version: 16.4.0
@@ -70,7 +75,7 @@ importers:
         version: 7.0.0-dev.20260328.1
       bumpp:
         specifier: ^11.0.1
-        version: 11.0.1
+        version: 11.0.1(patch_hash=454b66f97aa6c28ce1aceb3782f4e4bcab9189660d0b838d6c7d32736255d485)
       tsdown:
         specifier: ^0.21.7
         version: 0.21.7(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2)(@typescript/native-preview@7.0.0-dev.20260328.1)(typescript@6.0.2)
@@ -2974,7 +2979,7 @@ snapshots:
 
   birpc@4.0.0: {}
 
-  bumpp@11.0.1:
+  bumpp@11.0.1(patch_hash=454b66f97aa6c28ce1aceb3782f4e4bcab9189660d0b838d6c7d32736255d485):
     dependencies:
       args-tokenizer: 0.3.0
       cac: 7.0.0

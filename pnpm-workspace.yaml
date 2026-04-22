@@ -5,3 +5,5 @@ packages:
 
 allowBuilds:
   simple-git-hooks: true
+patchedDependencies:
+  bumpp@11.0.1: patches/bumpp@11.0.1.patch
