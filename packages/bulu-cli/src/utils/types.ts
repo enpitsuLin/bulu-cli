@@ -18,6 +18,14 @@ type GetValue<T, K extends string | number> = T extends unknown[]
     ? T[K]
     : never
 
+type Nullish = null | undefined
+
+type PathSegmentValue<T, TKey extends string> = TKey extends keyof NonNullable<T>
+  ? NonNullable<T>[TKey]
+  : NonNullable<T> extends Record<string, infer TValue>
+    ? TValue
+    : never
+
 type NestedFieldPaths<TData = any, TValue = any, TDepth = 0> = {
   [TKey in StringOrNumKeys<TData>]:
     | (GetValue<TData, TKey> extends TValue ? `${TKey}` : never)
@@ -25,3 +33,7 @@ type NestedFieldPaths<TData = any, TValue = any, TDepth = 0> = {
 }[StringOrNumKeys<TData>]
 
 export type ObjectKeyPaths<TData = any> = TData extends any ? NestedFieldPaths<TData, any, 1> : never
+
+export type ObjectPathValue<TData, TPath extends string> = TPath extends `${infer THead}.${infer TTail}`
+  ? ObjectPathValue<PathSegmentValue<TData, THead>, TTail> | Extract<TData, Nullish>
+  : PathSegmentValue<TData, TPath> | Extract<TData, Nullish>
