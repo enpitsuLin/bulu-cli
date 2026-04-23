@@ -152,6 +152,14 @@ export default defineCommand({
         orders: [orderWire],
         grouping: 'na' as const,
       }
+      output.success('Order summary')
+      output.data(`  Market: ${market.displayName}`)
+      output.data(`  Side:   ${isBuy ? 'Buy' : 'Sell'}`)
+      output.data(`  Size:   ${size}`)
+      output.data(`  Price:  ${limitPx}`)
+      output.data(`  Type:   ${orderType}`)
+      output.data(`  TIF:    ${tif}`)
+
       const vaultPath = getVaultPath()
       const credential = await resolveTCXPassphrase()
       const { response } = await client.submitL1Action<HyperliquidPlaceOrderResponse>({
