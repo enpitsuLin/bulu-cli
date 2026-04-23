@@ -1,13 +1,8 @@
 import { defineCommand } from 'citty'
 import { getVaultPath, useConfig } from '#/core/config'
 import { useOutput, withOutputArgs } from '#/core/output'
-import {
-  formatSpotCoin,
-  isSpotCoin,
-  resolveSpotMarket,
-  resolveWalletAddress,
-  useHyperliquidClient,
-} from '#/protocol/hyperliquid'
+import { resolveWalletAddress } from '#/core/wallet'
+import { formatSpotCoin, isSpotCoin, resolveSpotMarket, useHyperliquidClient } from '#/protocol/hyperliquid'
 
 export default defineCommand({
   meta: { name: 'list', description: 'List open Hyperliquid spot orders' },

@@ -6,6 +6,7 @@ import {
   buildMarketPriceFromMid,
   type HyperliquidPlaceOrderResponse,
   resolveSpotMarket,
+  type SpotOrderWire,
   toHyperliquidWireValue,
   useHyperliquidClient,
 } from '#/protocol/hyperliquid'
@@ -125,7 +126,11 @@ export default defineCommand({
         throw new Error(`Unsupported order type "${args.type}", expected limit or market`)
       }
 
-      const orderWire: Record<string, unknown> = {
+      if (args.cloid && !/^0x[0-9a-f]{32}$/i.test(args.cloid)) {
+        throw new Error('cloid must be 16 bytes in hex, e.g. 0x1234...abcd')
+      }
+
+      const orderWire: SpotOrderWire = {
         a: market.asset,
         b: isBuy,
         p: limitPx,
@@ -143,9 +148,9 @@ export default defineCommand({
       }
 
       const action = {
-        type: 'order',
+        type: 'order' as const,
         orders: [orderWire],
-        grouping: 'na',
+        grouping: 'na' as const,
       }
       const vaultPath = getVaultPath()
       const credential = await resolveTCXPassphrase()
@@ -156,8 +161,15 @@ export default defineCommand({
         action,
       })
 
-      output.success(`Submitted ${orderType} ${isBuy ? 'buy' : 'sell'} order for ${market.displayName}`)
-      output.data(response)
+      for (const status of response.data.statuses) {
+        if ('error' in status) {
+          output.warn(`Order rejected: ${status.error}`)
+        } else if ('filled' in status) {
+          output.success(`Filled ${status.filled.totalSz} @ ${status.filled.avgPx} (oid=${status.filled.oid})`)
+        } else if ('resting' in status) {
+          output.success(`Order resting (oid=${status.resting.oid})`)
+        }
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       output.warn(`Error: ${message}`)

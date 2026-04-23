@@ -3,11 +3,26 @@ export interface HyperliquidConnection {
   isTestnet: boolean
 }
 
+export interface SpotOrderWire {
+  a: number
+  b: boolean
+  p: string
+  s: string
+  r: boolean
+  t: { limit: { tif: 'Alo' | 'Ioc' | 'Gtc' } }
+  c?: string
+}
+
+export type HyperliquidAction =
+  | { type: 'order'; orders: SpotOrderWire[]; grouping: 'na' }
+  | { type: 'cancel'; cancels: Array<{ a: number; o: number }> }
+  | { type: 'cancelByCloid'; cancels: Array<{ asset: number; cloid: string }> }
+
 export interface HyperliquidSubmitL1ActionInput {
   walletName: string
   credential: string
   vaultPath: string
-  action: Record<string, unknown>
+  action: HyperliquidAction
   nonce?: number
   vaultAddress?: string
 }

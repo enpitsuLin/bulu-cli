@@ -1,4 +1,3 @@
-import { getWallet } from '@bulu-cli/tcx-core'
 import type { HyperliquidResolvedSpotMarket, HyperliquidSpotMarketLookup, HyperliquidSpotMeta } from './types'
 
 export function buildSpotMarketLookup(meta: HyperliquidSpotMeta): HyperliquidSpotMarketLookup {
@@ -27,7 +26,6 @@ export function buildSpotMarketLookup(meta: HyperliquidSpotMeta): HyperliquidSpo
     } satisfies HyperliquidResolvedSpotMarket
 
     byCanonical.set(entry.name.toUpperCase(), market)
-    aliases.set(entry.name.toUpperCase(), market)
     aliases.set(displayName.toUpperCase(), market)
 
     return market
@@ -47,7 +45,7 @@ export function resolveSpotMarket(meta: HyperliquidSpotMeta, input: string): Hyp
   }
 
   const lookup = buildSpotMarketLookup(meta)
-  const market = lookup.aliases.get(key)
+  const market = lookup.aliases.get(key) ?? lookup.byCanonical.get(key)
   if (!market) {
     throw new Error(`Unknown Hyperliquid spot market "${input}"`)
   }
@@ -61,17 +59,6 @@ export function isSpotCoin(meta: HyperliquidSpotMeta, coin: string): boolean {
 
 export function formatSpotCoin(meta: HyperliquidSpotMeta, coin: string): string {
   return buildSpotMarketLookup(meta).byCanonical.get(coin.toUpperCase())?.displayName ?? coin
-}
-
-export function resolveWalletAddress(walletName: string, vaultPath: string): string {
-  const wallet = getWallet(walletName, vaultPath)
-  const account = wallet.accounts.find((item) => item.chainId.startsWith('eip155:'))
-
-  if (!account) {
-    throw new Error(`Wallet "${walletName}" does not have an Ethereum account`)
-  }
-
-  return account.address.toLowerCase()
 }
 
 export function toHyperliquidWireValue(value: string | number): string {

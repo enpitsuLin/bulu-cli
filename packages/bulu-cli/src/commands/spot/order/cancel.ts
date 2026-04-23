@@ -56,7 +56,7 @@ export default defineCommand({
       const market = resolveSpotMarket(spotMeta, args.market)
       const action = args.cloid
         ? {
-            type: 'cancelByCloid',
+            type: 'cancelByCloid' as const,
             cancels: [
               {
                 asset: market.asset,
@@ -65,7 +65,7 @@ export default defineCommand({
             ],
           }
         : {
-            type: 'cancel',
+            type: 'cancel' as const,
             cancels: [
               {
                 a: market.asset,

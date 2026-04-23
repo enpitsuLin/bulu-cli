@@ -1,7 +1,8 @@
 import { defineCommand } from 'citty'
 import { getVaultPath, useConfig } from '#/core/config'
 import { useOutput, withOutputArgs } from '#/core/output'
-import { resolveWalletAddress, useHyperliquidClient } from '#/protocol/hyperliquid'
+import { resolveWalletAddress } from '#/core/wallet'
+import { useHyperliquidClient } from '#/protocol/hyperliquid'
 
 export default defineCommand({
   meta: { name: 'balances', description: 'Show Hyperliquid spot balances for a wallet' },
