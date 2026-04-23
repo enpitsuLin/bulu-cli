@@ -47,7 +47,11 @@ export function resolveSpotMarket(meta: HyperliquidSpotMeta, input: string): Hyp
   const lookup = buildSpotMarketLookup(meta)
   const market = lookup.aliases.get(key) ?? lookup.byCanonical.get(key)
   if (!market) {
-    throw new Error(`Unknown Hyperliquid spot market "${input}"`)
+    const suggestions = lookup.markets
+      .slice(0, 8)
+      .map((m) => m.displayName)
+      .join(', ')
+    throw new Error(`Unknown Hyperliquid spot market "${input}". Available markets include: ${suggestions}...`)
   }
 
   return market
