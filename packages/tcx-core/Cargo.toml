@@ -3,7 +3,7 @@
 edition = "2021"
 name    = "bulu_cli_tcx_core"
 publish = false
-version = "0.0.5"
+version = "0.0.6"
 
 [lib]
 crate-type = ["cdylib"]
