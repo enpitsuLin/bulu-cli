@@ -221,7 +221,7 @@ export function createHyperliquidClient(
         vaultAddress: input.vaultAddress,
         isTestnet: connection.isTestnet,
       })
-      const response = await request<T>('/exchange', {
+      const { response } = await request<{ status: 'ok'; response: T }>('/exchange', {
         body: {
           action: input.action,
           nonce,
