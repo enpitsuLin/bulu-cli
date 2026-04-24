@@ -110,6 +110,10 @@ export default defineCommand({
       let tif = normalizeTif(args.tif)
 
       if (orderType === 'market') {
+        if (args.price) {
+          throw new Error('Market orders do not accept --price')
+        }
+
         const mids = await client.getAllMids()
         const mid = mids[market.canonicalName]
         if (!mid) {

@@ -2,7 +2,7 @@ import { defineCommand } from 'citty'
 import { getVaultPath, useConfig } from '#/core/config'
 import { useOutput, withOutputArgs } from '#/core/output'
 import { resolveTCXPassphrase } from '#/core/tcx'
-import { resolveSpotMarket, useHyperliquidClient } from '#/protocol/hyperliquid'
+import { type HyperliquidCancelResponse, resolveSpotMarket, useHyperliquidClient } from '#/protocol/hyperliquid'
 
 function parseOid(value: string): number {
   const oid = Number(value)
@@ -75,7 +75,7 @@ export default defineCommand({
           }
       const vaultPath = getVaultPath()
       const credential = await resolveTCXPassphrase()
-      const { response } = await client.submitL1Action<Record<string, unknown>>({
+      const { response } = await client.submitL1Action<HyperliquidCancelResponse>({
         walletName,
         credential,
         vaultPath,

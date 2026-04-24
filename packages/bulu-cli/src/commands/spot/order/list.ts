@@ -39,8 +39,9 @@ export default defineCommand({
       const address = resolveWalletAddress(walletName, vaultPath)
       const orders = await client.getOpenOrders(address)
       const rows = orders
-        .filter((order) => isSpotCoin(spotMeta, order.coin))
-        .filter((order) => !targetMarket || order.coin === targetMarket.canonicalName)
+        .filter(
+          (order) => isSpotCoin(spotMeta, order.coin) && (!targetMarket || order.coin === targetMarket.canonicalName),
+        )
         .map((order) => ({
           Market: formatSpotCoin(spotMeta, order.coin),
           Oid: order.oid,

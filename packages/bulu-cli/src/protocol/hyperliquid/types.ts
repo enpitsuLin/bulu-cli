@@ -156,6 +156,19 @@ export interface HyperliquidPlaceOrderResponse {
   }
 }
 
+export interface HyperliquidCancelErrorStatus {
+  error: string
+}
+
+export type HyperliquidCancelStatus = 'success' | HyperliquidCancelErrorStatus
+
+export interface HyperliquidCancelResponse {
+  type: 'cancel' | 'cancelByCloid'
+  data: {
+    statuses: HyperliquidCancelStatus[]
+  }
+}
+
 export interface HyperliquidResolvedSpotMarket {
   asset: number
   canonicalName: string
