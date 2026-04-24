@@ -1,7 +1,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { signTypedData } from '@bulu-cli/tcx-core'
 import { encode } from '@msgpack/msgpack'
-import { keccak_256 } from '@noble/hashes/sha3.js'
+import { concat, hexToBytes, hexToNumber, keccak256, numberToHex, sliceHex } from 'viem'
 import { ofetch } from 'ofetch'
 import { createContext } from 'unctx'
 import { useConfig } from '#/core/config'
@@ -45,28 +45,6 @@ export class HyperliquidRequestError extends Error {
 
 function normalizeApiBase(apiBase: string): string {
   return apiBase.trim().replace(/\/+$/, '')
-}
-
-function concatBytes(chunks: Uint8Array[]): Uint8Array {
-  const size = chunks.reduce((total, chunk) => total + chunk.length, 0)
-  const merged = new Uint8Array(size)
-  let offset = 0
-
-  for (const chunk of chunks) {
-    merged.set(chunk, offset)
-    offset += chunk.length
-  }
-
-  return merged
-}
-
-function stripHexPrefix(value: string): string {
-  return value.startsWith('0x') || value.startsWith('0X') ? value.slice(2) : value
-}
-
-function hexToBytes(hex: string): Uint8Array {
-  const normalized = hex.length % 2 === 0 ? hex : `0${hex}`
-  return Uint8Array.from(Buffer.from(normalized, 'hex'))
 }
 
 function isExplicitTrue(value: string): boolean {
@@ -302,30 +280,28 @@ export function signHyperliquidL1Action(input: HyperliquidSignL1ActionInput): Hy
 
 function getL1ActionHash(action: Record<string, unknown>, nonce: number, vaultAddress?: string): string {
   const msgpackBytes = Uint8Array.from(encode(action))
-  const nonceBytes = Buffer.alloc(8)
-  nonceBytes.writeBigUInt64BE(BigInt(nonce))
+  const nonceBytes = hexToBytes(numberToHex(BigInt(nonce), { size: 8 }))
 
-  const chunks: Uint8Array[] = [msgpackBytes, Uint8Array.from(nonceBytes)]
+  const chunks: Uint8Array[] = [msgpackBytes, nonceBytes]
   if (vaultAddress?.trim()) {
-    chunks.push(Uint8Array.of(0x01), hexToBytes(stripHexPrefix(vaultAddress.toLowerCase())))
+    chunks.push(new Uint8Array([0x01]), hexToBytes(vaultAddress.toLowerCase() as `0x${string}`))
   } else {
-    chunks.push(Uint8Array.of(0x00))
+    chunks.push(new Uint8Array([0x00]))
   }
 
-  const hashBytes = Uint8Array.from(keccak_256(concatBytes(chunks)))
-  return `0x${Buffer.from(hashBytes).toString('hex')}`
+  return keccak256(concat(chunks))
 }
 
 function splitSignature(signature: string): HyperliquidExchangeSignature {
-  const normalized = stripHexPrefix(signature)
-  if (normalized.length !== 130) {
+  const sig = signature as `0x${string}`
+  if (sig.length !== 132) {
     throw new Error('Unexpected signature length from tcx-core')
   }
 
-  const rawV = Number.parseInt(normalized.slice(128, 130), 16)
+  const rawV = hexToNumber(sliceHex(sig, 64))
   return {
-    r: `0x${normalized.slice(0, 64)}`,
-    s: `0x${normalized.slice(64, 128)}`,
+    r: sliceHex(sig, 0, 32),
+    s: sliceHex(sig, 32, 64),
     v: rawV < 27 ? rawV + 27 : rawV,
   }
 }
