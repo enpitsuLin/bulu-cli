@@ -5,8 +5,12 @@ import { resolveWalletAddress } from '#/core/wallet'
 import { formatSpotCoin, isSpotCoin, useHyperliquidClient } from '#/protocol/hyperliquid'
 
 function parseOrderIdentifier(value: string): number | string {
-  if (value.startsWith('0x') || value.startsWith('0X')) {
+  if (/^0x[0-9a-f]{32}$/i.test(value)) {
     return value
+  }
+
+  if (value.startsWith('0x') || value.startsWith('0X')) {
+    throw new Error(`Invalid cloid "${value}", expected 16 bytes in hex, e.g. 0x1234...abcd`)
   }
 
   const oid = Number(value)
