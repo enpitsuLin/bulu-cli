@@ -19,7 +19,7 @@ export function toBuluAccount(opts: ToBuluAccountOptions): LocalAccount {
     throw new Error(`Wallet "${opts.walletName}" does not have an Ethereum account`)
   }
 
-  const address = account.address.toLowerCase() as `0x${string}`
+  const address = account.address as `0x${string}`
 
   return toAccount({
     address,
