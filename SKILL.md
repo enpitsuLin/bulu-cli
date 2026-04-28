@@ -112,7 +112,10 @@ All spot commands accept `--testnet` to target the Hyperliquid testnet.
 | `order list [market]`                | List open orders                       | `--wallet <name>`                                              |
 | `order cancel <market> <id>`         | Cancel an order by oid or cloid        | `--wallet <name>`, `--cloid`                                   |
 | `order modify <market> <id>`         | Modify price, size, or TIF of an order | `--wallet <name>`, `--price <px>`, `--size <n>`, `--tif <val>` |
+| `order cancel-all [market]`          | Cancel all open spot orders            | `--wallet <name>`                                              |
 | `order status <id>`                  | Query order status by oid or cloid     | `--wallet <name>`                                              |
+| `fills [market]`                     | Show spot trade history                | `--wallet <name>`                                              |
+| `transfer <amount>`                  | Transfer USDC between spot and perp    | `--wallet <name>`, `--to-perp` or `--to-spot`                  |
 
 **Order side normalization**: `buy`, `bid`, `b` → buy; `sell`, `ask`, `a` → sell.
 
