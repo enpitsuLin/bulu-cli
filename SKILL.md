@@ -37,12 +37,11 @@ Commands that access the vault need a credential. The resolution order is:
 
 Chain IDs follow the CAIP-2 format. Common values:
 
-| Chain            | CAIP-2 ID                                 |
-| ---------------- | ----------------------------------------- |
-| Ethereum mainnet | `eip155:1`                                |
-| Ethereum Sepolia | `eip155:11155111`                         |
-| Tron mainnet     | `tron:0x2b6653dc`                         |
-| Bitcoin mainnet  | `bip122:000000000019d6689c085ae165831e93` |
+| Chain            | CAIP-2 ID         |
+| ---------------- | ----------------- |
+| Ethereum mainnet | `eip155:1`        |
+| Ethereum Sepolia | `eip155:11155111` |
+| Tron mainnet     | `tron:0x2b6653dc` |
 
 ### Default wallet and chain
 
