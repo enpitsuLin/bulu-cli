@@ -17,11 +17,15 @@ import type {
   HyperliquidSpotBalancesResponse,
   HyperliquidSpotMetaAndAssetCtxs,
   HyperliquidSubmitL1ActionInput,
+  HyperliquidSubmitUserActionInput,
+  HyperliquidUserAction,
 } from './types'
 
 export const HYPERLIQUID_MAINNET_API_URL = 'https://api.hyperliquid.xyz'
 export const HYPERLIQUID_TESTNET_API_URL = 'https://api.hyperliquid-testnet.xyz'
 export const HYPERLIQUID_L1_CHAIN_ID = 'eip155:1337'
+const ARBITRUM_MAINNET_CHAIN_ID = 42161
+const ARBITRUM_TESTNET_CHAIN_ID = 421614
 
 export const hyperliquidClientCtx = createContext<HyperliquidClient>({
   asyncContext: true,
@@ -182,6 +186,26 @@ export function createHyperliquidClient(options: CreateHyperliquidClientOptions)
 
       return { nonce, response }
     },
+    async submitUserAction<T>(input: HyperliquidSubmitUserActionInput) {
+      const nonce = input.nonce ?? Date.now()
+      const signature = signHyperliquidUserAction({
+        walletName: input.walletName,
+        credential: input.credential,
+        vaultPath: input.vaultPath,
+        action: { ...input.action, nonce },
+        nonce,
+        isTestnet: testnet,
+      })
+      const { response } = await request<{ status: 'ok'; response: T }>('/exchange', {
+        body: {
+          action: { ...input.action, nonce },
+          nonce,
+          signature,
+        },
+      })
+
+      return { nonce, response }
+    },
   }
 }
 
@@ -261,6 +285,59 @@ export function signHyperliquidL1Action(input: HyperliquidSignL1ActionInput): Hy
   const signature = signTypedData(
     input.walletName,
     HYPERLIQUID_L1_CHAIN_ID,
+    JSON.stringify(typedData),
+    input.credential,
+    input.vaultPath,
+  ).signature
+
+  return splitSignature(signature)
+}
+
+interface HyperliquidSignUserActionInput {
+  walletName: string
+  credential: string
+  vaultPath: string
+  action: HyperliquidUserAction
+  nonce: number
+  isTestnet: boolean
+}
+
+export function signHyperliquidUserAction(input: HyperliquidSignUserActionInput): HyperliquidExchangeSignature {
+  const typedData = {
+    types: {
+      EIP712Domain: [
+        { name: 'name', type: 'string' },
+        { name: 'version', type: 'string' },
+        { name: 'chainId', type: 'uint256' },
+        { name: 'verifyingContract', type: 'address' },
+      ],
+      'HyperliquidTransaction:UsdClassTransfer': [
+        { name: 'hyperliquidChain', type: 'string' },
+        { name: 'signatureChainId', type: 'uint256' },
+        { name: 'amount', type: 'string' },
+        { name: 'toPerp', type: 'bool' },
+        { name: 'nonce', type: 'uint64' },
+      ],
+    },
+    primaryType: 'HyperliquidTransaction:UsdClassTransfer',
+    domain: {
+      name: 'HyperliquidSignTransaction',
+      version: '1',
+      chainId: input.isTestnet ? ARBITRUM_TESTNET_CHAIN_ID : ARBITRUM_MAINNET_CHAIN_ID,
+      verifyingContract: '0x0000000000000000000000000000000000000000',
+    },
+    message: {
+      hyperliquidChain: input.action.hyperliquidChain,
+      signatureChainId: input.action.signatureChainId,
+      amount: input.action.amount,
+      toPerp: input.action.toPerp,
+      nonce: input.nonce,
+    },
+  }
+
+  const signature = signTypedData(
+    input.walletName,
+    input.isTestnet ? 'eip155:421614' : 'eip155:42161',
     JSON.stringify(typedData),
     input.credential,
     input.vaultPath,

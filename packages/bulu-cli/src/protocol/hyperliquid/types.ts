@@ -23,6 +23,25 @@ export interface HyperliquidSubmitL1ActionInput {
   vaultAddress?: string
 }
 
+export interface HyperliquidUsdClassTransferAction {
+  type: 'usdClassTransfer'
+  hyperliquidChain: 'Mainnet' | 'Testnet'
+  signatureChainId: string
+  amount: string
+  toPerp: boolean
+  nonce: number
+}
+
+export type HyperliquidUserAction = HyperliquidUsdClassTransferAction
+
+export interface HyperliquidSubmitUserActionInput {
+  walletName: string
+  credential: string
+  vaultPath: string
+  action: HyperliquidUserAction
+  nonce?: number
+}
+
 export interface HyperliquidSubmitL1ActionResult<T> {
   nonce: number
   response: T
@@ -44,6 +63,7 @@ export interface HyperliquidClient {
   getOrderStatus(user: string, oid: number | string): Promise<HyperliquidOrderStatusResponse>
   getAllMids(): Promise<Record<string, string>>
   submitL1Action<T>(input: HyperliquidSubmitL1ActionInput): Promise<HyperliquidSubmitL1ActionResult<T>>
+  submitUserAction<T>(input: HyperliquidSubmitUserActionInput): Promise<HyperliquidSubmitL1ActionResult<T>>
 }
 
 export interface HyperliquidExchangeSignature {
