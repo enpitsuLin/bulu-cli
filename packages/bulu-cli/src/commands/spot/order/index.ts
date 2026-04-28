@@ -7,6 +7,7 @@ export default defineCommand({
     cancel: () => import('./cancel').then((m) => m.default),
     modify: () => import('./modify').then((m) => m.default),
     list: () => import('./list').then((m) => m.default),
+    'cancel-all': () => import('./cancel-all').then((m) => m.default),
     status: () => import('./status').then((m) => m.default),
   },
 })

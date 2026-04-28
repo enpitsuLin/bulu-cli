@@ -23,6 +23,25 @@ export interface HyperliquidSubmitL1ActionInput {
   vaultAddress?: string
 }
 
+export interface HyperliquidUsdClassTransferAction {
+  type: 'usdClassTransfer'
+  hyperliquidChain: 'Mainnet' | 'Testnet'
+  signatureChainId: string
+  amount: string
+  toPerp: boolean
+  nonce?: number
+}
+
+export type HyperliquidUserAction = HyperliquidUsdClassTransferAction
+
+export interface HyperliquidSubmitUserActionInput {
+  walletName: string
+  credential: string
+  vaultPath: string
+  action: HyperliquidUserAction
+  nonce?: number
+}
+
 export interface HyperliquidSubmitL1ActionResult<T> {
   nonce: number
   response: T
@@ -40,9 +59,11 @@ export interface HyperliquidClient {
   getSpotMetaAndAssetCtxs(): Promise<HyperliquidSpotMetaAndAssetCtxs>
   getSpotBalances(user: string): Promise<HyperliquidSpotBalancesResponse>
   getOpenOrders(user: string): Promise<HyperliquidOpenOrder[]>
+  getUserFills(user: string): Promise<HyperliquidFill[]>
   getOrderStatus(user: string, oid: number | string): Promise<HyperliquidOrderStatusResponse>
   getAllMids(): Promise<Record<string, string>>
   submitL1Action<T>(input: HyperliquidSubmitL1ActionInput): Promise<HyperliquidSubmitL1ActionResult<T>>
+  submitUserAction<T>(input: HyperliquidSubmitUserActionInput): Promise<HyperliquidSubmitL1ActionResult<T>>
 }
 
 export interface HyperliquidExchangeSignature {
@@ -187,4 +208,26 @@ export interface HyperliquidSpotMarketLookup {
   markets: HyperliquidResolvedSpotMarket[]
   byCanonical: Map<string, HyperliquidResolvedSpotMarket>
   aliases: Map<string, HyperliquidResolvedSpotMarket>
+}
+
+export interface HyperliquidFill {
+  coin: string
+  px: string
+  sz: string
+  side: 'A' | 'B'
+  /** Unix timestamp in milliseconds */
+  time: number
+  startPosition: string
+  dir: string
+  closedPnl: string
+  hash: string
+  oid: number
+  crossed: boolean
+  fee: string
+  feeToken: string
+  tid: number
+  builderFee?: string
+  cloid?: string | null
+  liquidation?: { liquidatedUser: string; markPx: string; method: string } | null
+  twapId?: string | null
 }
