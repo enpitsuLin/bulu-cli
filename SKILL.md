@@ -1,7 +1,7 @@
 ---
 name: bulu-cli
 description: |
-  Guide for using the `bulu` blockchain wallet management CLI tool. Use this skill whenever the user is working with local wallet operations, signing transactions or messages, managing Ethereum/Tron/Bitcoin wallets, trading on Hyperliquid spot markets, configuring CLI settings, or setting up agent-mode policies and API keys. This includes any mention of wallet creation, import, export, deletion, address lookup, transaction signing, message signing, typed-data signing (EIP-712), keystore handling, vault management, API key generation, signing policies, or Hyperliquid trading — even if the user does not explicitly mention `bulu` or `bulu-cli`. Also use this skill when the user asks about CLI config, default wallet/chain settings, output formatting, or passphrase/API key resolution.
+  Guide for using the `bulu` blockchain wallet management CLI tool. Use this skill whenever the user is working with local wallet operations, signing transactions or messages, managing Ethereum/Tron wallets, trading on Hyperliquid spot markets, configuring CLI settings, or setting up agent-mode policies and API keys. This includes any mention of wallet creation, import, export, deletion, address lookup, transaction signing, message signing, typed-data signing (EIP-712), keystore handling, vault management, API key generation, signing policies, or Hyperliquid trading — even if the user does not explicitly mention `bulu` or `bulu-cli`. Also use this skill when the user asks about CLI config, default wallet/chain settings, output formatting, or passphrase/API key resolution.
 ---
 
 # bulu-cli
