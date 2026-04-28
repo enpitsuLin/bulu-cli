@@ -12,6 +12,7 @@ export type HyperliquidAction =
   | { type: 'order'; orders: SpotOrderWire[]; grouping: 'na' }
   | { type: 'cancel'; cancels: Array<{ a: number; o: number }> }
   | { type: 'cancelByCloid'; cancels: Array<{ asset: number; cloid: string }> }
+  | { type: 'modify'; oid: number | string; order: SpotOrderWire }
 
 export interface HyperliquidSubmitL1ActionInput {
   walletName: string
@@ -161,6 +162,13 @@ export interface HyperliquidCancelResponse {
   type: 'cancel' | 'cancelByCloid'
   data: {
     statuses: HyperliquidCancelStatus[]
+  }
+}
+
+export interface HyperliquidModifyResponse {
+  type: 'modify'
+  data: {
+    status: string
   }
 }
 

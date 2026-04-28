@@ -1,5 +1,10 @@
 export { useHyperliquidClient } from './client'
-export type { HyperliquidCancelResponse, HyperliquidPlaceOrderResponse, SpotOrderWire } from './types'
+export type {
+  HyperliquidCancelResponse,
+  HyperliquidModifyResponse,
+  HyperliquidPlaceOrderResponse,
+  SpotOrderWire,
+} from './types'
 export {
   buildMarketPriceFromMid,
   buildSpotMarketLookup,
