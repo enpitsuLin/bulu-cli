@@ -3,10 +3,16 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { HyperliquidRequestError, signHyperliquidL1Action } from './client'
+import { configCtx, createConfigContext } from '#/core/config'
+import { HyperliquidRequestError, createHyperliquidClient, signHyperliquidL1Action } from './client'
 
 const PRIVATE_KEY = 'a392604efc2fad9c0b3da43b5f698a2e3f270f170d859912be0d54742275c5f6'
 const PASSWORD = 'imToken'
+
+function withConfig<T>(fn: () => T): T {
+  const config = createConfigContext()
+  return configCtx.call(config, fn)
+}
 
 describe('Hyperliquid client helpers', () => {
   it('captures hyperliquid request metadata on custom errors', () => {
@@ -24,6 +30,20 @@ describe('Hyperliquid client helpers', () => {
     expect(error.status).toBe(500)
     expect(error.data).toEqual({ ok: false })
     expect(error.cause).toBe(cause)
+  })
+
+  it('creates client with testnet option', () => {
+    const client = withConfig(() => createHyperliquidClient({ testnet: true }))
+    expect(client.isTestnet).toBe(true)
+    expect(client.apiBase).toBe('https://api.hyperliquid-testnet.xyz')
+  })
+
+  it('creates client with custom retry, retryDelay, and timeout options', () => {
+    const client = withConfig(() =>
+      createHyperliquidClient({ testnet: false, retry: 5, retryDelay: 500, timeout: 30000 }),
+    )
+    expect(client.isTestnet).toBe(false)
+    expect(client.apiBase).toBe('https://api.hyperliquid.xyz')
   })
 
   it('signs l1 actions with Hyperliquid typed data envelope', () => {

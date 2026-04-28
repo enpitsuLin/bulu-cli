@@ -94,4 +94,28 @@ describe('createConfigContext', () => {
     expect(reloadedConfig.get('hyperliquid.apiBase')).toBe('https://api.hyperliquid-testnet.xyz')
     expect(reloadedConfig.get('default.wallet')).toBe(CONFIG_DEFAULTS.default?.wallet)
   })
+
+  it('persists hyperliquid retry, retryDelay, and timeout without introducing defaults', () => {
+    const cwd = createTempConfigDir()
+    const config = createConfigContext(cwd)
+
+    config.set('hyperliquid.retry', 5)
+    config.set('hyperliquid.retryDelay', 500)
+    config.set('hyperliquid.timeout', 30000)
+
+    const savedConfig = JSON.parse(readFileSync(getConfigPath(cwd), 'utf8'))
+    expect(savedConfig).toEqual({
+      hyperliquid: {
+        retry: 5,
+        retryDelay: 500,
+        timeout: 30000,
+      },
+    })
+
+    const reloadedConfig = createConfigContext(cwd)
+    expect(reloadedConfig.get('hyperliquid.retry')).toBe(5)
+    expect(reloadedConfig.get('hyperliquid.retryDelay')).toBe(500)
+    expect(reloadedConfig.get('hyperliquid.timeout')).toBe(30000)
+    expect(reloadedConfig.get('default.wallet')).toBe(CONFIG_DEFAULTS.default?.wallet)
+  })
 })

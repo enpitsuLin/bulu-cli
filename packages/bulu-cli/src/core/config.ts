@@ -29,6 +29,9 @@ export interface BuluConfig {
   chains?: Record<string, BuluConfigChain>
   hyperliquid?: {
     apiBase?: string
+    retry?: number
+    retryDelay?: number
+    timeout?: number
   }
 }
 

@@ -24,7 +24,7 @@ export default defineCittyPlugin({
   name: 'hyperliquid-client',
   setup({ args }) {
     const { testnet = false } = args as ParsedArgs<typeof hyperliquidClientArgs>
-    hyperliquidClientCtx.set(createHyperliquidClient(testnet))
+    hyperliquidClientCtx.set(createHyperliquidClient({ testnet }))
   },
   cleanup() {
     hyperliquidClientCtx.unset()
