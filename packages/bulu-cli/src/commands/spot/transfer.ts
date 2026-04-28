@@ -59,7 +59,6 @@ export default defineCommand({
         signatureChainId: client.isTestnet ? '0x66eee' : '0xa4b1',
         amount,
         toPerp: toPerpFlag,
-        nonce: 0,
       }
 
       output.success('Transfer summary')

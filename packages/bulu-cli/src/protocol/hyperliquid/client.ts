@@ -328,7 +328,7 @@ export function signHyperliquidUserAction(input: HyperliquidSignUserActionInput)
     },
     message: {
       hyperliquidChain: input.action.hyperliquidChain,
-      signatureChainId: input.action.signatureChainId,
+      signatureChainId: BigInt(input.action.signatureChainId).toString(),
       amount: input.action.amount,
       toPerp: input.action.toPerp,
       nonce: input.nonce,

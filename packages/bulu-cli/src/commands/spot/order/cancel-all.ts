@@ -55,10 +55,13 @@ export default defineCommand({
         return
       }
 
-      const cancels = spotOrders.map((o) => ({
-        a: lookup.byCanonical.get(o.coin.toUpperCase())!.asset,
-        o: o.oid,
-      }))
+      const cancels = spotOrders.map((o) => {
+        const market = lookup.byCanonical.get(o.coin.toUpperCase())
+        if (!market) {
+          throw new Error(`Failed to resolve asset for coin "${o.coin}"`)
+        }
+        return { a: market.asset, o: o.oid }
+      })
 
       const credential = await resolveTCXPassphrase()
       const { response } = await client.submitL1Action<HyperliquidCancelResponse>({
@@ -68,8 +71,9 @@ export default defineCommand({
         action: { type: 'cancel', cancels },
       })
 
-      const successCount = response.data.statuses.filter((s) => s === 'success').length
-      const errorCount = response.data.statuses.length - successCount
+      const statuses = Array.isArray(response.data?.statuses) ? response.data.statuses : []
+      const successCount = statuses.filter((s) => s === 'success').length
+      const errorCount = statuses.length - successCount
 
       if (errorCount === 0) {
         output.success(`Cancelled ${successCount} order${successCount !== 1 ? 's' : ''}`)

@@ -29,7 +29,7 @@ export interface HyperliquidUsdClassTransferAction {
   signatureChainId: string
   amount: string
   toPerp: boolean
-  nonce: number
+  nonce?: number
 }
 
 export type HyperliquidUserAction = HyperliquidUsdClassTransferAction
@@ -215,6 +215,7 @@ export interface HyperliquidFill {
   px: string
   sz: string
   side: 'A' | 'B'
+  /** Unix timestamp in milliseconds */
   time: number
   startPosition: string
   dir: string
