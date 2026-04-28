@@ -10,13 +10,23 @@ const BULU_CONFIG_DIR_ENV = 'BULU_CONFIG_DIR'
 const BULU_CONFIG_DEFAULT_DIR = 'bulu'
 const BULU_CONFIG_FILENAME = 'bulu.config.json'
 
+export interface BuluConfigChain {
+  rpc?: string
+  name?: string
+  nativeCurrency?: {
+    decimals: number
+    name: string
+    symbol: string
+  }
+}
+
 export interface BuluConfig {
   default?: {
     chain?: string
     wallet?: string
     format?: 'table' | 'csv' | 'json'
   }
-  chains?: Record<string, { rpc?: string }>
+  chains?: Record<string, BuluConfigChain>
   hyperliquid?: {
     apiBase?: string
   }
@@ -31,8 +41,12 @@ export const CONFIG_DEFAULTS: BuluConfig = {
     format: 'table',
   },
   chains: {
-    'eip155:1': { rpc: 'https://1rpc.io/eth' },
-    'eip155:11155111': { rpc: 'https://1rpc.io/sepolia' },
+    'eip155:1': {
+      rpc: 'https://1rpc.io/eth',
+    },
+    'eip155:11155111': {
+      rpc: 'https://1rpc.io/sepolia',
+    },
   },
 }
 

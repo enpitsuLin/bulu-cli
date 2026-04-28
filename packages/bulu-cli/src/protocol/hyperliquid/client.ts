@@ -1,13 +1,12 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { signTypedData } from '@bulu-cli/tcx-core'
 import { encode } from '@msgpack/msgpack'
-import { keccak_256 } from '@noble/hashes/sha3.js'
+import { concat, hexToBytes, hexToNumber, keccak256, numberToHex, sliceHex } from 'viem'
 import { ofetch } from 'ofetch'
 import { createContext } from 'unctx'
 import { useConfig } from '#/core/config'
 import type {
   HyperliquidClient,
-  HyperliquidConnection,
   HyperliquidExchangeSignature,
   HyperliquidOpenOrder,
   HyperliquidOrderStatusResponse,
@@ -43,95 +42,20 @@ export class HyperliquidRequestError extends Error {
   }
 }
 
-function normalizeApiBase(apiBase: string): string {
-  return apiBase.trim().replace(/\/+$/, '')
-}
-
-function concatBytes(chunks: Uint8Array[]): Uint8Array {
-  const size = chunks.reduce((total, chunk) => total + chunk.length, 0)
-  const merged = new Uint8Array(size)
-  let offset = 0
-
-  for (const chunk of chunks) {
-    merged.set(chunk, offset)
-    offset += chunk.length
-  }
-
-  return merged
-}
-
-function stripHexPrefix(value: string): string {
-  return value.startsWith('0x') || value.startsWith('0X') ? value.slice(2) : value
-}
-
-function hexToBytes(hex: string): Uint8Array {
-  const normalized = hex.length % 2 === 0 ? hex : `0${hex}`
-  return Uint8Array.from(Buffer.from(normalized, 'hex'))
-}
-
-function isExplicitTrue(value: string): boolean {
-  return ['1', 'true', 'yes', 'on', 'testnet'].includes(value)
-}
-
-function isExplicitFalse(value: string): boolean {
-  return ['0', 'false', 'no', 'off', 'mainnet'].includes(value)
-}
-
-export function isHyperliquidTestnetValue(value?: string | null): boolean {
-  if (value == null) {
-    return false
-  }
-
-  const normalized = value.trim().toLowerCase()
-  if (!normalized) {
-    return false
-  }
-
-  if (isExplicitTrue(normalized)) {
-    return true
-  }
-
-  if (isExplicitFalse(normalized)) {
-    return false
-  }
-
-  return normalized.includes('testnet')
-}
-
-export function resolveHyperliquidConnection(
-  configuredApiBase: string | undefined,
-  opts: {
-    testnet?: boolean
-    envValue?: string | undefined
-  } = {},
-): HyperliquidConnection {
-  if (configuredApiBase?.trim()) {
-    const apiBase = normalizeApiBase(configuredApiBase)
-    return {
-      apiBase,
-      isTestnet: isHyperliquidTestnetValue(apiBase),
-    }
-  }
-
-  const useTestnet = Boolean(opts.testnet) || isHyperliquidTestnetValue(opts.envValue)
-  return {
-    apiBase: useTestnet ? HYPERLIQUID_TESTNET_API_URL : HYPERLIQUID_MAINNET_API_URL,
-    isTestnet: useTestnet,
-  }
-}
-
-export function createHyperliquidClient(
-  opts: {
-    testnet?: boolean
-    envValue?: string | undefined
-  } = {},
-): HyperliquidClient {
+function resolveApiBase(testnet: boolean): string {
   const config = useConfig()
-  const connection = resolveHyperliquidConnection(config.get('hyperliquid.apiBase'), opts)
+  const apiBase = config.get('hyperliquid.apiBase')?.trim()
+  if (apiBase) return apiBase
+  if (testnet) return HYPERLIQUID_TESTNET_API_URL
+  return HYPERLIQUID_MAINNET_API_URL
+}
+
+export function createHyperliquidClient(testnet: boolean): HyperliquidClient {
+  const apiBase = resolveApiBase(testnet)
   let spotMetaPromise: Promise<HyperliquidSpotMeta> | undefined
   let spotMetaAndAssetCtxsPromise: Promise<HyperliquidSpotMetaAndAssetCtxs> | undefined
   const request = ofetch.create({
-    baseURL: connection.apiBase,
+    baseURL: apiBase,
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -151,8 +75,8 @@ export function createHyperliquidClient(
   })
 
   return {
-    apiBase: connection.apiBase,
-    isTestnet: connection.isTestnet,
+    apiBase: apiBase,
+    isTestnet: testnet,
     async getSpotMeta() {
       if (!spotMetaPromise) {
         if (spotMetaAndAssetCtxsPromise) {
@@ -219,7 +143,7 @@ export function createHyperliquidClient(
         action: input.action,
         nonce,
         vaultAddress: input.vaultAddress,
-        isTestnet: connection.isTestnet,
+        isTestnet: testnet,
       })
       const { response } = await request<{ status: 'ok'; response: T }>('/exchange', {
         body: {
@@ -302,30 +226,28 @@ export function signHyperliquidL1Action(input: HyperliquidSignL1ActionInput): Hy
 
 function getL1ActionHash(action: Record<string, unknown>, nonce: number, vaultAddress?: string): string {
   const msgpackBytes = Uint8Array.from(encode(action))
-  const nonceBytes = Buffer.alloc(8)
-  nonceBytes.writeBigUInt64BE(BigInt(nonce))
+  const nonceBytes = hexToBytes(numberToHex(BigInt(nonce), { size: 8 }))
 
-  const chunks: Uint8Array[] = [msgpackBytes, Uint8Array.from(nonceBytes)]
+  const chunks: Uint8Array[] = [msgpackBytes, nonceBytes]
   if (vaultAddress?.trim()) {
-    chunks.push(Uint8Array.of(0x01), hexToBytes(stripHexPrefix(vaultAddress.toLowerCase())))
+    chunks.push(new Uint8Array([0x01]), hexToBytes(vaultAddress.toLowerCase() as `0x${string}`))
   } else {
-    chunks.push(Uint8Array.of(0x00))
+    chunks.push(new Uint8Array([0x00]))
   }
 
-  const hashBytes = Uint8Array.from(keccak_256(concatBytes(chunks)))
-  return `0x${Buffer.from(hashBytes).toString('hex')}`
+  return keccak256(concat(chunks))
 }
 
 function splitSignature(signature: string): HyperliquidExchangeSignature {
-  const normalized = stripHexPrefix(signature)
-  if (normalized.length !== 130) {
+  const sig = signature as `0x${string}`
+  if (sig.length !== 132) {
     throw new Error('Unexpected signature length from tcx-core')
   }
 
-  const rawV = Number.parseInt(normalized.slice(128, 130), 16)
+  const rawV = hexToNumber(sliceHex(sig, 64))
   return {
-    r: `0x${normalized.slice(0, 64)}`,
-    s: `0x${normalized.slice(64, 128)}`,
+    r: sliceHex(sig, 0, 32),
+    s: sliceHex(sig, 32, 64),
     v: rawV < 27 ? rawV + 27 : rawV,
   }
 }

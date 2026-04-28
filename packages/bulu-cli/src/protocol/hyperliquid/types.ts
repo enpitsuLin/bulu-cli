@@ -1,8 +1,3 @@
-export interface HyperliquidConnection {
-  apiBase: string
-  isTestnet: boolean
-}
-
 export interface SpotOrderWire {
   a: number
   b: boolean

@@ -38,12 +38,12 @@
     "@bulu-cli/tcx-core": "workspace:*",
     "@clack/prompts": "^1.2.0",
     "@msgpack/msgpack": "^3.1.3",
-    "@noble/hashes": "^2.2.0",
     "citty": "^0.2.2",
     "console-table-printer": "^2.15.0",
     "defu": "^6.1.7",
     "ofetch": "^1.5.1",
     "unctx": "^2.5.0",
-    "uqr": "^0.1.3"
+    "uqr": "^0.1.3",
+    "viem": "^2.48.4"
   }
 }
