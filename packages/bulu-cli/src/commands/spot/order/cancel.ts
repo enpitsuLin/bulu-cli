@@ -2,6 +2,7 @@ import { defineCommand } from 'citty'
 import { getVaultPath, useConfig } from '#/core/config'
 import { useOutput, withOutputArgs } from '#/core/output'
 import { resolveTCXPassphrase } from '#/core/tcx'
+import { withHyperliquidClientArgs } from '#/plugins/hyperliquid-client'
 import { type HyperliquidCancelResponse, resolveSpotMarket, useHyperliquidClient } from '#/protocol/hyperliquid'
 
 function parseOid(value: string): number {
@@ -15,32 +16,29 @@ function parseOid(value: string): number {
 
 export default defineCommand({
   meta: { name: 'cancel', description: 'Cancel a Hyperliquid spot order' },
-  args: withOutputArgs({
-    market: {
-      type: 'positional',
-      description: 'Spot market, for example PURR/USDC or @1',
-      required: true,
-    },
-    id: {
-      type: 'positional',
-      description: 'Order id or client order id',
-      required: true,
-    },
-    wallet: {
-      type: 'string',
-      description: 'Wallet name or id; defaults to config.default.wallet',
-    },
-    cloid: {
-      type: 'boolean',
-      description: 'Interpret id as a client order id',
-      default: false,
-    },
-    testnet: {
-      type: 'boolean',
-      description: 'Use Hyperliquid testnet when config.hyperliquid.apiBase is not set',
-      default: false,
-    },
-  }),
+  args: withHyperliquidClientArgs(
+    withOutputArgs({
+      market: {
+        type: 'positional',
+        description: 'Spot market, for example PURR/USDC or @1',
+        required: true,
+      },
+      id: {
+        type: 'positional',
+        description: 'Order id or client order id',
+        required: true,
+      },
+      wallet: {
+        type: 'string',
+        description: 'Wallet name or id; defaults to config.default.wallet',
+      },
+      cloid: {
+        type: 'boolean',
+        description: 'Interpret id as a client order id',
+        default: false,
+      },
+    }),
+  ),
   async run({ args }) {
     const config = useConfig()
     const client = useHyperliquidClient()

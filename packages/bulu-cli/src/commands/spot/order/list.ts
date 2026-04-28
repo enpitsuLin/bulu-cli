@@ -2,26 +2,24 @@ import { defineCommand } from 'citty'
 import { getVaultPath, useConfig } from '#/core/config'
 import { useOutput, withOutputArgs } from '#/core/output'
 import { resolveWalletAddress } from '#/core/wallet'
+import { withHyperliquidClientArgs } from '#/plugins/hyperliquid-client'
 import { formatSpotCoin, isSpotCoin, resolveSpotMarket, useHyperliquidClient } from '#/protocol/hyperliquid'
 
 export default defineCommand({
   meta: { name: 'list', description: 'List open Hyperliquid spot orders' },
-  args: withOutputArgs({
-    market: {
-      type: 'positional',
-      description: 'Optional market alias, for example PURR/USDC or @1',
-      required: false,
-    },
-    wallet: {
-      type: 'string',
-      description: 'Wallet name or id; defaults to config.default.wallet',
-    },
-    testnet: {
-      type: 'boolean',
-      description: 'Use Hyperliquid testnet when config.hyperliquid.apiBase is not set',
-      default: false,
-    },
-  }),
+  args: withHyperliquidClientArgs(
+    withOutputArgs({
+      market: {
+        type: 'positional',
+        description: 'Optional market alias, for example PURR/USDC or @1',
+        required: false,
+      },
+      wallet: {
+        type: 'string',
+        description: 'Wallet name or id; defaults to config.default.wallet',
+      },
+    }),
+  ),
   async run({ args }) {
     const config = useConfig()
     const client = useHyperliquidClient()

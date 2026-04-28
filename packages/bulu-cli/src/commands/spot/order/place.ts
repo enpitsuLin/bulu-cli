@@ -2,6 +2,7 @@ import { defineCommand } from 'citty'
 import { getVaultPath, useConfig } from '#/core/config'
 import { useOutput, withOutputArgs } from '#/core/output'
 import { resolveTCXPassphrase } from '#/core/tcx'
+import { withHyperliquidClientArgs } from '#/plugins/hyperliquid-client'
 import {
   buildMarketPriceFromMid,
   type HyperliquidPlaceOrderResponse,
@@ -40,55 +41,52 @@ function normalizeTif(tif: string): 'Alo' | 'Ioc' | 'Gtc' {
 
 export default defineCommand({
   meta: { name: 'place', description: 'Place a Hyperliquid spot order' },
-  args: withOutputArgs({
-    market: {
-      type: 'positional',
-      description: 'Spot market, for example PURR/USDC or @1',
-      required: true,
-    },
-    side: {
-      type: 'positional',
-      description: 'Order side: buy or sell',
-      required: true,
-    },
-    size: {
-      type: 'positional',
-      description: 'Order size in base asset units',
-      required: true,
-    },
-    wallet: {
-      type: 'string',
-      description: 'Wallet name or id; defaults to config.default.wallet',
-    },
-    type: {
-      type: 'string',
-      description: 'Order type: limit or market',
-      default: 'limit',
-    },
-    price: {
-      type: 'string',
-      description: 'Limit price; required for limit orders',
-    },
-    tif: {
-      type: 'string',
-      description: 'Time in force for limit orders: gtc, ioc, alo',
-      default: 'gtc',
-    },
-    slippage: {
-      type: 'string',
-      description: 'Market-order slippage as a decimal ratio, for example 0.03',
-      default: '0.03',
-    },
-    cloid: {
-      type: 'string',
-      description: 'Optional 16-byte client order id in hex form, for example 0x1234...',
-    },
-    testnet: {
-      type: 'boolean',
-      description: 'Use Hyperliquid testnet when config.hyperliquid.apiBase is not set',
-      default: false,
-    },
-  }),
+  args: withHyperliquidClientArgs(
+    withOutputArgs({
+      market: {
+        type: 'positional',
+        description: 'Spot market, for example PURR/USDC or @1',
+        required: true,
+      },
+      side: {
+        type: 'positional',
+        description: 'Order side: buy or sell',
+        required: true,
+      },
+      size: {
+        type: 'positional',
+        description: 'Order size in base asset units',
+        required: true,
+      },
+      wallet: {
+        type: 'string',
+        description: 'Wallet name or id; defaults to config.default.wallet',
+      },
+      type: {
+        type: 'string',
+        description: 'Order type: limit or market',
+        default: 'limit',
+      },
+      price: {
+        type: 'string',
+        description: 'Limit price; required for limit orders',
+      },
+      tif: {
+        type: 'string',
+        description: 'Time in force for limit orders: gtc, ioc, alo',
+        default: 'gtc',
+      },
+      slippage: {
+        type: 'string',
+        description: 'Market-order slippage as a decimal ratio, for example 0.03',
+        default: '0.03',
+      },
+      cloid: {
+        type: 'string',
+        description: 'Optional 16-byte client order id in hex form, for example 0x1234...',
+      },
+    }),
+  ),
   async run({ args }) {
     const config = useConfig()
     const client = useHyperliquidClient()

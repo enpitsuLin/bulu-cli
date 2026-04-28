@@ -1,39 +1,30 @@
-import { defineCittyPlugin } from 'citty'
+import { defineCittyPlugin, type ParsedArgs, type ArgsDef, type Resolvable } from 'citty'
 import { createHyperliquidClient, hyperliquidClientCtx } from '#/protocol/hyperliquid/client'
 
-function parseBooleanFlagValue(value: string): boolean {
-  return !['0', 'false', 'no', 'off'].includes(value.trim().toLowerCase())
-}
+export const hyperliquidClientArgs = {
+  testnet: {
+    type: 'boolean',
+    description: 'Should interact with Hyperliquid testnet',
+    default: false,
+  },
+} satisfies ArgsDef
 
-function parseSpotTestnetFlag(rawArgs: string[]): boolean | undefined {
-  let testnet: boolean | undefined
+export async function withHyperliquidClientArgs<T extends ArgsDef = ArgsDef>(
+  args: Resolvable<T>,
+): Promise<typeof hyperliquidClientArgs & T> {
+  const resolveArgs = typeof args === 'function' ? args() : args
 
-  for (const arg of rawArgs) {
-    if (arg === '--testnet') {
-      testnet = true
-      continue
-    }
-    if (arg === '--no-testnet') {
-      testnet = false
-      continue
-    }
-    if (arg.startsWith('--testnet=')) {
-      testnet = parseBooleanFlagValue(arg.slice('--testnet='.length))
-    }
+  return {
+    ...(await resolveArgs),
+    ...hyperliquidClientArgs,
   }
-
-  return testnet
 }
 
 export default defineCittyPlugin({
   name: 'hyperliquid-client',
-  setup({ rawArgs }) {
-    hyperliquidClientCtx.set(
-      createHyperliquidClient({
-        testnet: parseSpotTestnetFlag(rawArgs),
-        envValue: process.env.BULU_HYPERLIQUID,
-      }),
-    )
+  setup({ args }) {
+    const { testnet = false } = args as ParsedArgs<typeof hyperliquidClientArgs>
+    hyperliquidClientCtx.set(createHyperliquidClient(testnet))
   },
   cleanup() {
     hyperliquidClientCtx.unset()

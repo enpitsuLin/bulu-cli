@@ -7,7 +7,6 @@ import { createContext } from 'unctx'
 import { useConfig } from '#/core/config'
 import type {
   HyperliquidClient,
-  HyperliquidConnection,
   HyperliquidExchangeSignature,
   HyperliquidOpenOrder,
   HyperliquidOrderStatusResponse,
@@ -43,73 +42,20 @@ export class HyperliquidRequestError extends Error {
   }
 }
 
-function normalizeApiBase(apiBase: string): string {
-  return apiBase.trim().replace(/\/+$/, '')
-}
-
-function isExplicitTrue(value: string): boolean {
-  return ['1', 'true', 'yes', 'on', 'testnet'].includes(value)
-}
-
-function isExplicitFalse(value: string): boolean {
-  return ['0', 'false', 'no', 'off', 'mainnet'].includes(value)
-}
-
-export function isHyperliquidTestnetValue(value?: string | null): boolean {
-  if (value == null) {
-    return false
-  }
-
-  const normalized = value.trim().toLowerCase()
-  if (!normalized) {
-    return false
-  }
-
-  if (isExplicitTrue(normalized)) {
-    return true
-  }
-
-  if (isExplicitFalse(normalized)) {
-    return false
-  }
-
-  return normalized.includes('testnet')
-}
-
-export function resolveHyperliquidConnection(
-  configuredApiBase: string | undefined,
-  opts: {
-    testnet?: boolean
-    envValue?: string | undefined
-  } = {},
-): HyperliquidConnection {
-  if (configuredApiBase?.trim()) {
-    const apiBase = normalizeApiBase(configuredApiBase)
-    return {
-      apiBase,
-      isTestnet: isHyperliquidTestnetValue(apiBase),
-    }
-  }
-
-  const useTestnet = Boolean(opts.testnet) || isHyperliquidTestnetValue(opts.envValue)
-  return {
-    apiBase: useTestnet ? HYPERLIQUID_TESTNET_API_URL : HYPERLIQUID_MAINNET_API_URL,
-    isTestnet: useTestnet,
-  }
-}
-
-export function createHyperliquidClient(
-  opts: {
-    testnet?: boolean
-    envValue?: string | undefined
-  } = {},
-): HyperliquidClient {
+function resolveApiBase(testnet: boolean): string {
   const config = useConfig()
-  const connection = resolveHyperliquidConnection(config.get('hyperliquid.apiBase'), opts)
+  const apiBase = config.get('hyperliquid.apiBase')?.trim()
+  if (apiBase) return apiBase
+  if (testnet) return HYPERLIQUID_TESTNET_API_URL
+  return HYPERLIQUID_MAINNET_API_URL
+}
+
+export function createHyperliquidClient(testnet: boolean): HyperliquidClient {
+  const apiBase = resolveApiBase(testnet)
   let spotMetaPromise: Promise<HyperliquidSpotMeta> | undefined
   let spotMetaAndAssetCtxsPromise: Promise<HyperliquidSpotMetaAndAssetCtxs> | undefined
   const request = ofetch.create({
-    baseURL: connection.apiBase,
+    baseURL: apiBase,
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -129,8 +75,8 @@ export function createHyperliquidClient(
   })
 
   return {
-    apiBase: connection.apiBase,
-    isTestnet: connection.isTestnet,
+    apiBase: apiBase,
+    isTestnet: testnet,
     async getSpotMeta() {
       if (!spotMetaPromise) {
         if (spotMetaAndAssetCtxsPromise) {
@@ -197,7 +143,7 @@ export function createHyperliquidClient(
         action: input.action,
         nonce,
         vaultAddress: input.vaultAddress,
-        isTestnet: connection.isTestnet,
+        isTestnet: testnet,
       })
       const { response } = await request<{ status: 'ok'; response: T }>('/exchange', {
         body: {
