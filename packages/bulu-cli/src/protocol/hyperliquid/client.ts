@@ -9,6 +9,7 @@ import { useConfig } from '#/core/config'
 import type {
   HyperliquidClient,
   HyperliquidExchangeSignature,
+  HyperliquidFill,
   HyperliquidOpenOrder,
   HyperliquidOrderStatusResponse,
   HyperliquidSignL1ActionInput,
@@ -132,6 +133,14 @@ export function createHyperliquidClient(options: CreateHyperliquidClientOptions)
           type: 'frontendOpenOrders',
           user: user.toLowerCase(),
           dex: '',
+        },
+      })
+    },
+    async getUserFills(user: string) {
+      return request<HyperliquidFill[]>('/info', {
+        body: {
+          type: 'userFills',
+          user: user.toLowerCase(),
         },
       })
     },

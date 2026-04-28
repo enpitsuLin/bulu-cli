@@ -1,6 +1,7 @@
 export { useHyperliquidClient } from './client'
 export type {
   HyperliquidCancelResponse,
+  HyperliquidFill,
   HyperliquidModifyResponse,
   HyperliquidPlaceOrderResponse,
   SpotOrderWire,

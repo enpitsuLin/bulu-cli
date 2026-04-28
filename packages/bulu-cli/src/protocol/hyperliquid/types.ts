@@ -40,6 +40,7 @@ export interface HyperliquidClient {
   getSpotMetaAndAssetCtxs(): Promise<HyperliquidSpotMetaAndAssetCtxs>
   getSpotBalances(user: string): Promise<HyperliquidSpotBalancesResponse>
   getOpenOrders(user: string): Promise<HyperliquidOpenOrder[]>
+  getUserFills(user: string): Promise<HyperliquidFill[]>
   getOrderStatus(user: string, oid: number | string): Promise<HyperliquidOrderStatusResponse>
   getAllMids(): Promise<Record<string, string>>
   submitL1Action<T>(input: HyperliquidSubmitL1ActionInput): Promise<HyperliquidSubmitL1ActionResult<T>>
@@ -187,4 +188,25 @@ export interface HyperliquidSpotMarketLookup {
   markets: HyperliquidResolvedSpotMarket[]
   byCanonical: Map<string, HyperliquidResolvedSpotMarket>
   aliases: Map<string, HyperliquidResolvedSpotMarket>
+}
+
+export interface HyperliquidFill {
+  coin: string
+  px: string
+  sz: string
+  side: 'A' | 'B'
+  time: number
+  startPosition: string
+  dir: string
+  closedPnl: string
+  hash: string
+  oid: number
+  crossed: boolean
+  fee: string
+  feeToken: string
+  tid: number
+  builderFee?: string
+  cloid?: string | null
+  liquidation?: { liquidatedUser: string; markPx: string; method: string } | null
+  twapId?: string | null
 }
