@@ -2,6 +2,7 @@ import { AsyncLocalStorage } from 'node:async_hooks'
 import { signTypedData } from '@bulu-cli/tcx-core'
 import { encode } from '@msgpack/msgpack'
 import { concat, hexToBytes, hexToNumber, keccak256, numberToHex, sliceHex } from 'viem'
+import { defu } from 'defu'
 import { ofetch } from 'ofetch'
 import { createContext } from 'unctx'
 import { useConfig } from '#/core/config'
@@ -42,6 +43,13 @@ export class HyperliquidRequestError extends Error {
   }
 }
 
+export interface CreateHyperliquidClientOptions {
+  testnet: boolean
+  retry?: number
+  retryDelay?: number
+  timeout?: number
+}
+
 function resolveApiBase(testnet: boolean): string {
   const config = useConfig()
   const apiBase = config.get('hyperliquid.apiBase')?.trim()
@@ -50,8 +58,15 @@ function resolveApiBase(testnet: boolean): string {
   return HYPERLIQUID_MAINNET_API_URL
 }
 
-export function createHyperliquidClient(testnet: boolean): HyperliquidClient {
+export function createHyperliquidClient(options: CreateHyperliquidClientOptions): HyperliquidClient {
+  const { testnet } = options
   const apiBase = resolveApiBase(testnet)
+  const config = useConfig()
+  const resolved = defu(options, config.get('hyperliquid') ?? {}, {
+    retry: 3,
+    retryDelay: 200,
+    timeout: 15000,
+  })
   let spotMetaPromise: Promise<HyperliquidSpotMeta> | undefined
   let spotMetaAndAssetCtxsPromise: Promise<HyperliquidSpotMetaAndAssetCtxs> | undefined
   const request = ofetch.create({
@@ -60,6 +75,9 @@ export function createHyperliquidClient(testnet: boolean): HyperliquidClient {
     headers: {
       'Content-Type': 'application/json',
     },
+    retry: resolved.retry,
+    retryDelay: resolved.retryDelay,
+    timeout: resolved.timeout,
     onRequestError({ error }) {
       throw toHyperliquidRequestError({
         error,
@@ -173,8 +191,26 @@ function toHyperliquidRequestError(input: {
   const data =
     input.data ??
     (input.error != null && typeof input.error === 'object' && 'data' in input.error ? input.error.data : undefined)
+
   if (data != null) {
-    message = typeof data === 'string' ? data : JSON.stringify(data)
+    if (typeof data === 'object' && data !== null) {
+      const dataObj = data as Record<string, unknown>
+      if (dataObj.status === 'err' && typeof dataObj.response === 'string') {
+        message = dataObj.response
+      } else {
+        message = JSON.stringify(data)
+      }
+    } else {
+      message = String(data)
+    }
+  }
+
+  if (input.status === 429) {
+    const retryAfter =
+      typeof data === 'object' && data !== null && typeof (data as Record<string, unknown>).retryAfter === 'number'
+        ? (data as Record<string, unknown>).retryAfter
+        : undefined
+    message = retryAfter != null ? `Rate limited, retry after ${retryAfter}s: ${message}` : `Rate limited: ${message}`
   }
 
   return new HyperliquidRequestError({
