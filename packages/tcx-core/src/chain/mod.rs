@@ -33,6 +33,14 @@ pub(crate) trait ChainSigner: std::fmt::Debug + Send + Sync {
     message: &[u8],
   ) -> CoreResult<SignedMessage>;
 
+  /// Sign raw bytes: hash then ECDSA, without any personal-sign prefix.
+  fn sign(
+    &self,
+    keystore: &mut tcx_keystore::Keystore,
+    derivation_path: &str,
+    message_bytes: &[u8],
+  ) -> CoreResult<SignedMessage>;
+
   /// Sign raw transaction bytes and return the recoverable signature.
   fn sign_transaction(
     &self,
