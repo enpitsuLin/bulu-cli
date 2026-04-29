@@ -80,6 +80,24 @@ impl ChainSigner for TronSigner {
     })
   }
 
+  fn sign(
+    &self,
+    keystore: &mut TcxKeystore,
+    derivation_path: &str,
+    message_bytes: &[u8],
+  ) -> CoreResult<SignedMessage> {
+    let hash = keccak256(message_bytes);
+
+    let mut sign_result = keystore
+      .secp256k1_ecdsa_sign_recoverable(&hash, derivation_path)
+      .map_core_err()?;
+    sign_result[64] += 27;
+
+    Ok(SignedMessage {
+      signature: format!("0x{}", sign_result.to_hex()),
+    })
+  }
+
   fn sign_transaction(
     &self,
     keystore: &mut TcxKeystore,

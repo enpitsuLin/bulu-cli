@@ -237,6 +237,28 @@ pub fn sign_message(
   crate::signing::sign_message(name, chain_id, message, credential, vault_path).into_napi()
 }
 
+#[napi(js_name = "signRaw")]
+/// Signs raw message bytes: hash then ECDSA, without any personal-sign prefix.
+///
+/// Unlike `signMessage`, this function does not apply the EIP-191 / TRON
+/// personal-sign prefix. The bytes are hashed directly and signed.
+pub fn sign_raw(
+  name: String,
+  chain_id: String,
+  message_bytes: &[u8],
+  credential: String,
+  vault_path: String,
+) -> Result<SignedMessage> {
+  crate::signing::sign_raw(
+    name,
+    chain_id,
+    message_bytes.to_vec(),
+    credential,
+    vault_path,
+  )
+  .into_napi()
+}
+
 #[napi(js_name = "signTransaction")]
 /// Signs an unsigned chain-specific transaction hex using the default chain
 /// conventions.

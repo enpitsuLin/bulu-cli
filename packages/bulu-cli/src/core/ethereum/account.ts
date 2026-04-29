@@ -1,4 +1,4 @@
-import { getWallet, signMessage, signTransaction, signTypedData } from '@bulu-cli/tcx-core'
+import { getWallet, signMessage, signRaw, signTransaction, signTypedData } from '@bulu-cli/tcx-core'
 import { hexToBigInt, serializeTransaction } from 'viem'
 import { toAccount } from 'viem/accounts'
 import type { LocalAccount } from 'viem/accounts'
@@ -24,16 +24,15 @@ export function toBuluAccount(opts: ToBuluAccountOptions): LocalAccount {
   return toAccount({
     address,
     async signMessage({ message }) {
-      const messageStr =
-        typeof message === 'string' ? message : typeof message.raw === 'string' ? message.raw : undefined
-
-      if (messageStr === undefined) {
-        // TODO: tcx-core does not yet support raw byte array / hash signing (NAPI only accepts String, and the Rust layer only performs EIP-191 personal-sign).
-        // Support for Uint8Array message.raw will be added once tcx-core exposes a raw sign NAPI binding.
-        throw new Error('Raw byte array messages are not supported by tcx-core; pass a string or hex string instead')
+      if (typeof message === 'string') {
+        const result = signMessage(opts.walletName, caip2, message, opts.credential, opts.vaultPath)
+        return result.signature as `0x${string}`
       }
-
-      const result = signMessage(opts.walletName, caip2, messageStr, opts.credential, opts.vaultPath)
+      if (message.raw instanceof Uint8Array) {
+        const result = signRaw(opts.walletName, caip2, message.raw, opts.credential, opts.vaultPath)
+        return result.signature as `0x${string}`
+      }
+      const result = signMessage(opts.walletName, caip2, message.raw, opts.credential, opts.vaultPath)
       return result.signature as `0x${string}`
     },
     async signTransaction(transaction, options) {
