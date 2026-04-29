@@ -1,8 +1,9 @@
 import { defineCommand } from 'citty'
 import { getVaultPath, useConfig } from '#/core/config'
-import { useOutput, withOutputArgs } from '#/core/output'
+import { withArgs } from '#/core/args'
+import { useOutput, outputArgs } from '#/core/output'
 import { resolveTCXPassphrase } from '#/core/tcx'
-import { withHyperliquidClientArgs } from '#/plugins/hyperliquid-client'
+import { hyperliquidClientArgs } from '#/plugins/hyperliquid-client'
 import {
   buildMarketPriceFromMid,
   type HyperliquidPlaceOrderResponse,
@@ -41,8 +42,8 @@ function normalizeTif(tif: string): 'Alo' | 'Ioc' | 'Gtc' {
 
 export default defineCommand({
   meta: { name: 'place', description: 'Place a Hyperliquid spot order' },
-  args: withHyperliquidClientArgs(
-    withOutputArgs({
+  args: withArgs(
+    {
       market: {
         type: 'positional',
         description: 'Spot market, for example PURR/USDC or @1',
@@ -85,7 +86,9 @@ export default defineCommand({
         type: 'string',
         description: 'Optional 16-byte client order id in hex form, for example 0x1234...',
       },
-    }),
+    },
+    outputArgs,
+    hyperliquidClientArgs,
   ),
   async run({ args }) {
     const config = useConfig()

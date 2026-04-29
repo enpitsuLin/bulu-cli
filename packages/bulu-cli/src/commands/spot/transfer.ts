@@ -1,14 +1,15 @@
 import { defineCommand } from 'citty'
 import { getVaultPath, useConfig } from '#/core/config'
-import { useOutput, withOutputArgs } from '#/core/output'
+import { withArgs } from '#/core/args'
+import { useOutput, outputArgs } from '#/core/output'
 import { resolveTCXPassphrase } from '#/core/tcx'
-import { withHyperliquidClientArgs } from '#/plugins/hyperliquid-client'
+import { hyperliquidClientArgs } from '#/plugins/hyperliquid-client'
 import { toHyperliquidWireValue, useHyperliquidClient } from '#/protocol/hyperliquid'
 
 export default defineCommand({
   meta: { name: 'transfer', description: 'Transfer USDC between spot and perpetual accounts' },
-  args: withHyperliquidClientArgs(
-    withOutputArgs({
+  args: withArgs(
+    {
       amount: {
         type: 'positional',
         description: 'USDC amount to transfer',
@@ -28,7 +29,9 @@ export default defineCommand({
         description: 'Transfer from perpetual to spot',
         default: false,
       },
-    }),
+    },
+    outputArgs,
+    hyperliquidClientArgs,
   ),
   async run({ args }) {
     const config = useConfig()

@@ -1,23 +1,26 @@
 import { deleteWallet } from '@bulu-cli/tcx-core'
 import { defineCommand } from 'citty'
-import { useOutput } from '#/core/output'
+import { withArgs } from '#/core/args'
+import { useOutput, outputArgs } from '#/core/output'
 import { getVaultPath } from '#/core/config'
-import { withOutputArgs } from '#/core/output'
 
 export default defineCommand({
   meta: { name: 'delete', description: 'Delete a wallet from the local vault' },
-  args: withOutputArgs({
-    name: {
-      type: 'positional',
-      description: 'Wallet name or ID',
-      required: true,
+  args: withArgs(
+    {
+      name: {
+        type: 'positional',
+        description: 'Wallet name or ID',
+        required: true,
+      },
+      confirm: {
+        type: 'boolean',
+        description: 'Confirm deletion',
+        default: false,
+      },
     },
-    confirm: {
-      type: 'boolean',
-      description: 'Confirm deletion',
-      default: false,
-    },
-  }),
+    outputArgs,
+  ),
   async run({ args }) {
     const out = useOutput()
     if (!args.confirm) {

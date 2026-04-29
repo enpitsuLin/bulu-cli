@@ -1,10 +1,11 @@
 import { useConfig } from '#/core/config'
-import { useOutput, withOutputArgs } from '#/core/output'
+import { withArgs } from '#/core/args'
+import { useOutput, outputArgs } from '#/core/output'
 import { defineCommand } from 'citty'
 
 export default defineCommand({
   meta: { name: 'list', description: 'List config values' },
-  args: withOutputArgs({}),
+  args: withArgs({}, outputArgs),
   async run() {
     const config = useConfig()
     const output = useOutput()

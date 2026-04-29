@@ -1,18 +1,21 @@
 import { defineCommand } from 'citty'
-import { useOutput, withOutputArgs } from '#/core/output'
-import { withHyperliquidClientArgs } from '#/plugins/hyperliquid-client'
+import { withArgs } from '#/core/args'
+import { useOutput, outputArgs } from '#/core/output'
+import { hyperliquidClientArgs } from '#/plugins/hyperliquid-client'
 import { buildSpotMarketLookup, resolveSpotMarket, useHyperliquidClient } from '#/protocol/hyperliquid'
 
 export default defineCommand({
   meta: { name: 'markets', description: 'List Hyperliquid spot markets' },
-  args: withHyperliquidClientArgs(
-    withOutputArgs({
+  args: withArgs(
+    {
       market: {
         type: 'positional',
         description: 'Optional market alias, for example PURR/USDC or @1',
         required: false,
       },
-    }),
+    },
+    outputArgs,
+    hyperliquidClientArgs,
   ),
   async run({ args }) {
     const client = useHyperliquidClient()

@@ -1,8 +1,8 @@
 import { listApiKey, type ApiKeyInfo } from '@bulu-cli/tcx-core'
 import { defineCommand } from 'citty'
 import { getVaultPath } from '#/core/config'
-import { useOutput } from '#/core/output'
-import { withOutputArgs } from '#/core/output'
+import { withArgs } from '#/core/args'
+import { useOutput, outputArgs } from '#/core/output'
 import { formatOptionalTimestamp } from '#/core/time'
 
 function formatApiKeysForTable(apiKeys: ApiKeyInfo[]) {
@@ -17,7 +17,7 @@ function formatApiKeysForTable(apiKeys: ApiKeyInfo[]) {
 
 export default defineCommand({
   meta: { name: 'list', description: 'List all API keys' },
-  args: withOutputArgs({}),
+  args: withArgs({}, outputArgs),
   async run() {
     const vaultPath = getVaultPath()
     const apiKeys = listApiKey(vaultPath)

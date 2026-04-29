@@ -2,7 +2,7 @@ import { styleText } from 'node:util'
 import { Table } from 'console-table-printer'
 import { createContext } from 'unctx'
 import { AsyncLocalStorage } from 'node:async_hooks'
-import type { ArgsDef, Resolvable } from 'citty'
+import type { ArgsDef } from 'citty'
 
 export const outputCtx = createContext<OutputOptions>({
   asyncContext: true,
@@ -33,7 +33,7 @@ export interface Output {
   warn(msg: string): void
 }
 
-const outputArgs = {
+export const outputArgs = {
   json: {
     type: 'boolean',
     description: 'Force JSON output',
@@ -47,15 +47,6 @@ const outputArgs = {
 } satisfies ArgsDef
 
 export type OutputArgs = typeof outputArgs
-
-export async function withOutputArgs<T extends ArgsDef = ArgsDef>(args: Resolvable<T>): Promise<typeof outputArgs & T> {
-  const resolveArgs = typeof args === 'function' ? args() : args
-
-  return {
-    ...(await resolveArgs),
-    ...outputArgs,
-  }
-}
 
 function write(str: string) {
   process.stdout.write(`${str}\n`)

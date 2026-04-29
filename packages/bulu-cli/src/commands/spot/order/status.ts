@@ -1,8 +1,9 @@
 import { defineCommand } from 'citty'
 import { getVaultPath, useConfig } from '#/core/config'
-import { useOutput, withOutputArgs } from '#/core/output'
+import { withArgs } from '#/core/args'
+import { useOutput, outputArgs } from '#/core/output'
 import { resolveWalletAddress } from '#/core/wallet'
-import { withHyperliquidClientArgs } from '#/plugins/hyperliquid-client'
+import { hyperliquidClientArgs } from '#/plugins/hyperliquid-client'
 import { formatSpotCoin, isSpotCoin, useHyperliquidClient } from '#/protocol/hyperliquid'
 
 function parseOrderIdentifier(value: string): number | string {
@@ -24,8 +25,8 @@ function parseOrderIdentifier(value: string): number | string {
 
 export default defineCommand({
   meta: { name: 'status', description: 'Query Hyperliquid spot order status by oid or cloid' },
-  args: withHyperliquidClientArgs(
-    withOutputArgs({
+  args: withArgs(
+    {
       id: {
         type: 'positional',
         description: 'Order id or client order id',
@@ -35,7 +36,9 @@ export default defineCommand({
         type: 'string',
         description: 'Wallet name or id; defaults to config.default.wallet',
       },
-    }),
+    },
+    outputArgs,
+    hyperliquidClientArgs,
   ),
   async run({ args }) {
     const config = useConfig()
