@@ -1,9 +1,10 @@
 import { defineCommand } from 'citty'
 import { getVaultPath, useConfig } from '#/core/config'
-import { useOutput, withOutputArgs } from '#/core/output'
+import { withArgs } from '#/core/args'
+import { useOutput, outputArgs } from '#/core/output'
 import { resolveWalletAddress } from '#/core/wallet'
 import { resolveTCXPassphrase } from '#/core/tcx'
-import { withHyperliquidClientArgs } from '#/plugins/hyperliquid-client'
+import { hyperliquidClientArgs } from '#/plugins/hyperliquid-client'
 import {
   formatSpotCoin,
   isSpotCoin,
@@ -47,8 +48,8 @@ function parseOrderIdentifier(value: string): number | string {
 
 export default defineCommand({
   meta: { name: 'modify', description: 'Modify a Hyperliquid spot order' },
-  args: withHyperliquidClientArgs(
-    withOutputArgs({
+  args: withArgs(
+    {
       market: {
         type: 'positional',
         description: 'Spot market, for example PURR/USDC or @1',
@@ -75,7 +76,9 @@ export default defineCommand({
         type: 'string',
         description: 'New time in force: gtc, ioc, alo',
       },
-    }),
+    },
+    outputArgs,
+    hyperliquidClientArgs,
   ),
   async run({ args }) {
     const config = useConfig()

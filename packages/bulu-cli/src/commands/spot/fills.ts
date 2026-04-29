@@ -1,15 +1,16 @@
 import { defineCommand } from 'citty'
 import { useConfig } from '#/core/config'
-import { useOutput, withOutputArgs } from '#/core/output'
+import { withArgs } from '#/core/args'
+import { useOutput, outputArgs } from '#/core/output'
 import { resolveWalletAddress } from '#/core/wallet'
 import { getVaultPath } from '#/core/config'
-import { withHyperliquidClientArgs } from '#/plugins/hyperliquid-client'
+import { hyperliquidClientArgs } from '#/plugins/hyperliquid-client'
 import { formatSpotCoin, isSpotCoin, resolveSpotMarket, useHyperliquidClient } from '#/protocol/hyperliquid'
 
 export default defineCommand({
   meta: { name: 'fills', description: 'Show spot trade history (user fills)' },
-  args: withHyperliquidClientArgs(
-    withOutputArgs({
+  args: withArgs(
+    {
       market: {
         type: 'positional',
         description: 'Optional market alias, for example PURR/USDC or @1',
@@ -19,7 +20,9 @@ export default defineCommand({
         type: 'string',
         description: 'Wallet name or id; defaults to config.default.wallet',
       },
-    }),
+    },
+    outputArgs,
+    hyperliquidClientArgs,
   ),
   async run({ args }) {
     const config = useConfig()

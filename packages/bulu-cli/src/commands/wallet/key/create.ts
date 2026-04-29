@@ -1,8 +1,8 @@
 import { createApiKey } from '@bulu-cli/tcx-core'
 import { defineCommand } from 'citty'
 import { getVaultPath, useConfig } from '#/core/config'
-import { useOutput } from '#/core/output'
-import { withOutputArgs } from '#/core/output'
+import { withArgs } from '#/core/args'
+import { useOutput, outputArgs } from '#/core/output'
 import { resolveTCXPassphrase } from '#/core/tcx'
 import { formatTimestamp } from '#/core/time'
 
@@ -19,25 +19,28 @@ export default defineCommand({
     name: 'create',
     description: 'Create an API key for agent-mode signing',
   },
-  args: withOutputArgs({
-    name: {
-      type: 'positional',
-      description: 'API key name',
-      required: true,
+  args: withArgs(
+    {
+      name: {
+        type: 'positional',
+        description: 'API key name',
+        required: true,
+      },
+      wallet: {
+        type: 'string',
+        description: 'Comma-separated wallet names or ids to bind (defaults to active wallet)',
+      },
+      policy: {
+        type: 'string',
+        description: 'Comma-separated policy names or ids to attach',
+      },
+      'expires-at': {
+        type: 'string',
+        description: 'Optional expiry timestamp (Unix seconds)',
+      },
     },
-    wallet: {
-      type: 'string',
-      description: 'Comma-separated wallet names or ids to bind (defaults to active wallet)',
-    },
-    policy: {
-      type: 'string',
-      description: 'Comma-separated policy names or ids to attach',
-    },
-    'expires-at': {
-      type: 'string',
-      description: 'Optional expiry timestamp (Unix seconds)',
-    },
-  }),
+    outputArgs,
+  ),
   async run({ args }) {
     const vaultPath = getVaultPath()
     const config = useConfig()

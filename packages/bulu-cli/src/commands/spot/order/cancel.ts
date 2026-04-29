@@ -1,8 +1,9 @@
 import { defineCommand } from 'citty'
 import { getVaultPath, useConfig } from '#/core/config'
-import { useOutput, withOutputArgs } from '#/core/output'
+import { withArgs } from '#/core/args'
+import { useOutput, outputArgs } from '#/core/output'
 import { resolveTCXPassphrase } from '#/core/tcx'
-import { withHyperliquidClientArgs } from '#/plugins/hyperliquid-client'
+import { hyperliquidClientArgs } from '#/plugins/hyperliquid-client'
 import { type HyperliquidCancelResponse, resolveSpotMarket, useHyperliquidClient } from '#/protocol/hyperliquid'
 
 function parseOid(value: string): number {
@@ -16,8 +17,8 @@ function parseOid(value: string): number {
 
 export default defineCommand({
   meta: { name: 'cancel', description: 'Cancel a Hyperliquid spot order' },
-  args: withHyperliquidClientArgs(
-    withOutputArgs({
+  args: withArgs(
+    {
       market: {
         type: 'positional',
         description: 'Spot market, for example PURR/USDC or @1',
@@ -37,7 +38,9 @@ export default defineCommand({
         description: 'Interpret id as a client order id',
         default: false,
       },
-    }),
+    },
+    outputArgs,
+    hyperliquidClientArgs,
   ),
   async run({ args }) {
     const config = useConfig()

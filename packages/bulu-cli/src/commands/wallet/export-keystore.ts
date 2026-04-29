@@ -1,9 +1,9 @@
 import { defineCommand } from 'citty'
 import { renderUnicodeCompact } from 'uqr'
 import { getVaultPath } from '#/core/config'
-import { useOutput } from '#/core/output'
+import { withArgs } from '#/core/args'
+import { useOutput, outputArgs } from '#/core/output'
 import { exportEthKeystoreV3 } from '@bulu-cli/tcx-core'
-import { withOutputArgs } from '#/core/output'
 import { resolveTCXPassphrase } from '#/core/tcx'
 
 export default defineCommand({
@@ -11,28 +11,31 @@ export default defineCommand({
     name: 'export-keystore',
     description: 'Export Ethereum keystore V3 JSON',
   },
-  args: withOutputArgs({
-    wallet: {
-      type: 'positional',
-      description: 'Wallet name or id',
-      required: true,
+  args: withArgs(
+    {
+      wallet: {
+        type: 'positional',
+        description: 'Wallet name or id',
+        required: true,
+      },
+      confirm: {
+        type: 'boolean',
+        description: 'Confirm that you understand the security risks of exporting sensitive key material',
+        required: false,
+      },
+      keystorePassword: {
+        type: 'string',
+        description: 'Password to encrypt the exported keystore V3. Defaults to the wallet passphrase if omitted.',
+        required: false,
+      },
+      qr: {
+        type: 'boolean',
+        description: 'Display the exported keystore as a QR code in the terminal',
+        required: false,
+      },
     },
-    confirm: {
-      type: 'boolean',
-      description: 'Confirm that you understand the security risks of exporting sensitive key material',
-      required: false,
-    },
-    keystorePassword: {
-      type: 'string',
-      description: 'Password to encrypt the exported keystore V3. Defaults to the wallet passphrase if omitted.',
-      required: false,
-    },
-    qr: {
-      type: 'boolean',
-      description: 'Display the exported keystore as a QR code in the terminal',
-      required: false,
-    },
-  }),
+    outputArgs,
+  ),
   async run({ args }) {
     const out = useOutput()
     if (!args.confirm) {

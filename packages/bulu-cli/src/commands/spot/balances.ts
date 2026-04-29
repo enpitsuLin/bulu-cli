@@ -1,19 +1,22 @@
 import { defineCommand } from 'citty'
 import { getVaultPath, useConfig } from '#/core/config'
-import { useOutput, withOutputArgs } from '#/core/output'
-import { withHyperliquidClientArgs } from '#/plugins/hyperliquid-client'
+import { withArgs } from '#/core/args'
+import { useOutput, outputArgs } from '#/core/output'
+import { hyperliquidClientArgs } from '#/plugins/hyperliquid-client'
 import { resolveWalletAddress } from '#/core/wallet'
 import { useHyperliquidClient } from '#/protocol/hyperliquid'
 
 export default defineCommand({
   meta: { name: 'balances', description: 'Show Hyperliquid spot balances for a wallet' },
-  args: withHyperliquidClientArgs(
-    withOutputArgs({
+  args: withArgs(
+    {
       wallet: {
         type: 'string',
         description: 'Wallet name or id; defaults to config.default.wallet',
       },
-    }),
+    },
+    outputArgs,
+    hyperliquidClientArgs,
   ),
   async run({ args }) {
     const config = useConfig()
