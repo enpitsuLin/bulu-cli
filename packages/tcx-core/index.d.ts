@@ -297,6 +297,13 @@ export interface SignedTransactionResult {
  * `bulu_key_...` API token (agent mode).
  */
 export declare function signMessage(name: string, chainId: string, message: string, credential: string, vaultPath: string): SignedMessage
+/**
+ * Signs raw message bytes: hash then ECDSA, without any personal-sign prefix.
+ *
+ * Unlike `signMessage`, this function does not apply the EIP-191 / TRON
+ * personal-sign prefix. The bytes are hashed directly and signed.
+ */
+export declare function signRaw(name: string, chainId: string, messageBytes: Uint8Array, credential: string, vaultPath: string): SignedMessage
 
 /**
  * Signs an unsigned chain-specific transaction hex using the default chain

@@ -36,6 +36,31 @@ pub(crate) fn sign_message(
   )
 }
 
+pub(crate) fn sign_raw(
+  name: String,
+  chain_id: String,
+  message_bytes: Vec<u8>,
+  credential: String,
+  vault_path: String,
+) -> CoreResult<SignedMessage> {
+  require_non_empty(&credential, "credential")?;
+
+  with_signing_request(
+    name,
+    chain_id,
+    credential,
+    vault_path,
+    PolicyOperation::SignMessage,
+    None,
+    move |unlocked_keystore, request| {
+      request
+        .resolved
+        .signer
+        .sign(unlocked_keystore, &request.derivation_path, &message_bytes)
+    },
+  )
+}
+
 pub(crate) fn sign_transaction(
   name: String,
   chain_id: String,
@@ -108,7 +133,7 @@ mod tests {
   use tcx_eth::transaction_types::Transaction as TcxEthTransaction;
   use tcx_keystore::keystore::IdentityNetwork;
 
-  use super::{sign_message, sign_transaction, sign_typed_data};
+  use super::{sign_message, sign_raw, sign_transaction, sign_typed_data};
   use crate::api_key;
   use crate::chain::{ethereum::ETHEREUM_SIGNER, tron::TRON_SIGNER, ChainSigner};
   use crate::policy::create_policy;
@@ -178,6 +203,36 @@ mod tests {
     assert_eq!(
       signed.signature,
       "0x521d0e4b5808b7fbeb53bf1b17c7c6d60432f5b13b7aa3aaed963a894c3bd99e23a3755ec06fa7a61b031192fb5fab6256e180e086c2671e0a574779bb8593df1b"
+    );
+
+    let _ = fs::remove_dir_all(vault_dir);
+  }
+
+  #[test]
+  fn sign_raw_signs_ethereum_without_personal_sign_prefix() {
+    let vault_dir = fixtures::temp_vault_dir("sign-raw-eth");
+    let vault_path = vault_dir.to_string_lossy().into_owned();
+    let wallet = import_wallet_mnemonic(
+      "Imported mnemonic".to_string(),
+      fixtures::TEST_MNEMONIC.to_string(),
+      fixtures::TEST_PASSWORD.to_string(),
+      vault_path.clone(),
+      None,
+    )
+    .expect("mnemonic import should succeed");
+
+    let signed = sign_raw(
+      wallet.meta.name,
+      default_eth_mainnet_chain_id().to_string(),
+      b"hello world".to_vec(),
+      fixtures::TEST_PASSWORD.to_string(),
+      vault_path,
+    )
+    .expect("ethereum raw signing should succeed");
+
+    assert_eq!(
+      signed.signature,
+      "0xf8d7836a213e0f720bc1ac95db1b76c42624d3eafc2fdad569b994ad6bdb04475825c7cb418dccdc13133a71e49dcc1650ad917c498379aeefe0c874237ad1d71b"
     );
 
     let _ = fs::remove_dir_all(vault_dir);
