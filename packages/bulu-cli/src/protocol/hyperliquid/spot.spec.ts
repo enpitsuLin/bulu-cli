@@ -56,19 +56,24 @@ describe('Hyperliquid spot helpers', () => {
     const lookup = buildSpotMarketLookup(SPOT_META_FIXTURE)
 
     expect(lookup.markets).toHaveLength(2)
+    expect(buildSpotMarketLookup(SPOT_META_FIXTURE)).toBe(lookup)
     expect(resolveSpotMarket(SPOT_META_FIXTURE, 'PURR/USDC').asset).toBe(10000)
+    expect(resolveSpotMarket(lookup, ' hfun/usdc ').asset).toBe(10001)
     expect(resolveSpotMarket(SPOT_META_FIXTURE, '@1').asset).toBe(10001)
-    expect(formatSpotCoin(SPOT_META_FIXTURE, '@1')).toBe('HFUN/USDC')
+    expect(formatSpotCoin(lookup, ' @1 ')).toBe('HFUN/USDC')
   })
 
   it('normalizes numeric wire values', () => {
     expect(toHyperliquidWireValue('001.2300')).toBe('1.23')
     expect(toHyperliquidWireValue('.5')).toBe('0.5')
     expect(toHyperliquidWireValue('0.0000')).toBe('0')
+    expect(toHyperliquidWireValue(1e-7)).toBe('0.0000001')
+    expect(toHyperliquidWireValue(1.23e5)).toBe('123000')
   })
 
   it('derives aggressive spot market prices from mids', () => {
     expect(buildMarketPriceFromMid('0.209265', true, '0.03', 0)).toBe('0.21554')
     expect(buildMarketPriceFromMid('123.456', false, 0.01, 2)).toBe('122.22')
+    expect(() => buildMarketPriceFromMid('123.456', false, 1, 2)).toThrow('non-positive market price')
   })
 })

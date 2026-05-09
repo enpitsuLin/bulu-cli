@@ -1,6 +1,13 @@
 import type { HyperliquidResolvedSpotMarket, HyperliquidSpotMarketLookup, HyperliquidSpotMeta } from './types'
 
+const lookupCache = new WeakMap<HyperliquidSpotMeta, HyperliquidSpotMarketLookup>()
+
 export function buildSpotMarketLookup(meta: HyperliquidSpotMeta): HyperliquidSpotMarketLookup {
+  const cached = lookupCache.get(meta)
+  if (cached) {
+    return cached
+  }
+
   const tokenByIndex = new Map(meta.tokens.map((token) => [token.index, token]))
   const byCanonical = new Map<string, HyperliquidResolvedSpotMarket>()
   const aliases = new Map<string, HyperliquidResolvedSpotMarket>()
@@ -31,20 +38,29 @@ export function buildSpotMarketLookup(meta: HyperliquidSpotMeta): HyperliquidSpo
     return market
   })
 
-  return {
+  const lookup = {
     markets,
     byCanonical,
     aliases,
   }
+
+  lookupCache.set(meta, lookup)
+  return lookup
 }
 
-export function resolveSpotMarket(meta: HyperliquidSpotMeta, input: string): HyperliquidResolvedSpotMarket {
+type SpotMarketSource = HyperliquidSpotMeta | HyperliquidSpotMarketLookup
+
+function getSpotMarketLookup(source: SpotMarketSource): HyperliquidSpotMarketLookup {
+  return 'byCanonical' in source ? source : buildSpotMarketLookup(source)
+}
+
+export function resolveSpotMarket(source: SpotMarketSource, input: string): HyperliquidResolvedSpotMarket {
   const key = input.trim().toUpperCase()
   if (!key) {
     throw new Error('Spot market is required')
   }
 
-  const lookup = buildSpotMarketLookup(meta)
+  const lookup = getSpotMarketLookup(source)
   const market = lookup.aliases.get(key) ?? lookup.byCanonical.get(key)
   if (!market) {
     const suggestions = lookup.markets
@@ -57,16 +73,16 @@ export function resolveSpotMarket(meta: HyperliquidSpotMeta, input: string): Hyp
   return market
 }
 
-export function isSpotCoin(meta: HyperliquidSpotMeta, coin: string): boolean {
-  return buildSpotMarketLookup(meta).byCanonical.has(coin.toUpperCase())
+export function isSpotCoin(source: SpotMarketSource, coin: string): boolean {
+  return getSpotMarketLookup(source).byCanonical.has(coin.trim().toUpperCase())
 }
 
-export function formatSpotCoin(meta: HyperliquidSpotMeta, coin: string): string {
-  return buildSpotMarketLookup(meta).byCanonical.get(coin.toUpperCase())?.displayName ?? coin
+export function formatSpotCoin(source: SpotMarketSource, coin: string): string {
+  return getSpotMarketLookup(source).byCanonical.get(coin.trim().toUpperCase())?.displayName ?? coin
 }
 
 export function toHyperliquidWireValue(value: string | number): string {
-  const normalized = String(value).trim()
+  const normalized = typeof value === 'number' ? numberToDecimalString(value) : value.trim()
   if (!normalized) {
     throw new Error('Numeric value is required')
   }
@@ -96,6 +112,39 @@ export function toHyperliquidWireValue(value: string | number): string {
   return fractionPart ? `${sign}${integerPart}.${fractionPart}` : `${sign}${integerPart}`
 }
 
+function numberToDecimalString(value: number): string {
+  if (!Number.isFinite(value)) {
+    throw new Error(`Invalid numeric value "${value}"`)
+  }
+
+  const serialized = String(value)
+  if (!/[eE]/.test(serialized)) {
+    return serialized
+  }
+
+  const [rawCoefficient, rawExponent] = serialized.toLowerCase().split('e')
+  const exponent = Number(rawExponent)
+  if (!Number.isInteger(exponent)) {
+    throw new Error(`Invalid numeric value "${value}"`)
+  }
+
+  const sign = rawCoefficient.startsWith('-') ? '-' : ''
+  const coefficient = sign ? rawCoefficient.slice(1) : rawCoefficient
+  const [integerPart, fractionPart = ''] = coefficient.split('.')
+  const digits = `${integerPart}${fractionPart}`
+  const decimalIndex = integerPart.length + exponent
+
+  if (decimalIndex <= 0) {
+    return `${sign}0.${'0'.repeat(Math.abs(decimalIndex))}${digits}`
+  }
+
+  if (decimalIndex >= digits.length) {
+    return `${sign}${digits}${'0'.repeat(decimalIndex - digits.length)}`
+  }
+
+  return `${sign}${digits.slice(0, decimalIndex)}.${digits.slice(decimalIndex)}`
+}
+
 export function buildMarketPriceFromMid(
   midPrice: string,
   isBuy: boolean,
@@ -114,7 +163,15 @@ export function buildMarketPriceFromMid(
   }
 
   const adjusted = mid * (isBuy ? 1 + slip : 1 - slip)
+  if (adjusted <= 0) {
+    throw new Error(`Slippage "${slippage}" derives a non-positive market price`)
+  }
+
   const roundedToPrecision = Number(adjusted.toPrecision(5))
+  if (roundedToPrecision <= 0) {
+    throw new Error(`Cannot derive a positive market price from mid "${midPrice}"`)
+  }
+
   const decimals = Math.max(0, 8 - szDecimals)
   return toHyperliquidWireValue(roundedToPrecision.toFixed(decimals))
 }
