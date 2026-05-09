@@ -15,7 +15,7 @@ export function resolvePerpDexIndex(dexs: HyperliquidPerpDexsResponse, dex: stri
   }
 
   const index = dexs.findIndex((entry) => entry?.name.toLowerCase() === normalized)
-  if (index <= 0) {
+  if (index < 0) {
     const suggestions = dexs
       .filter((entry): entry is NonNullable<(typeof dexs)[number]> => entry != null)
       .slice(0, 8)
@@ -46,8 +46,9 @@ export function buildPerpMarketLookup(meta: HyperliquidPerpMeta, perpDexIndex = 
   const byCoin = new Map<string, HyperliquidResolvedPerpMarket>()
   const aliases = new Map<string, HyperliquidResolvedPerpMarket>()
   const markets = meta.universe.map((entry, index) => {
+    const isBuilderDeployed = perpDexIndex > 0 || entry.name.includes(':')
     const market = {
-      asset: perpDexIndex > 0 ? 100000 + perpDexIndex * 10000 + index : index,
+      asset: isBuilderDeployed ? 100000 + perpDexIndex * 10000 + index : index,
       coin: entry.name,
       index,
       maxLeverage: entry.maxLeverage,

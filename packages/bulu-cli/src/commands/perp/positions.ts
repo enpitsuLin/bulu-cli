@@ -13,6 +13,19 @@ import {
   useHyperliquidClient,
 } from '#/protocol/hyperliquid'
 
+function formatPositionSide(size: string): 'Long' | 'Short' | 'Flat' {
+  const normalized = size.trim()
+  if (normalized.startsWith('-')) {
+    return 'Short'
+  }
+
+  if (/^(?:0|0\.0*)$/.test(normalized)) {
+    return 'Flat'
+  }
+
+  return 'Long'
+}
+
 export default defineCommand({
   meta: { name: 'positions', description: 'Show Hyperliquid perpetual account and open positions' },
   args: withArgs(
@@ -85,11 +98,10 @@ export default defineCommand({
         .filter((item) => !targetMarket || item.position.coin.toUpperCase() === targetMarket.coin.toUpperCase())
         .map((item) => {
           const position = item.position
-          const size = Number(position.szi)
 
           return {
             Coin: formatPerpCoin(lookup, position.coin),
-            Side: size > 0 ? 'Long' : size < 0 ? 'Short' : 'Flat',
+            Side: formatPositionSide(position.szi),
             Size: position.szi,
             'Entry Px': position.entryPx,
             'Position Value': position.positionValue,

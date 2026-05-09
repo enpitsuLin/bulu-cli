@@ -13,6 +13,20 @@ import {
   useHyperliquidClient,
 } from '#/protocol/hyperliquid'
 
+function formatFillDirection(direction: string): string {
+  const normalized = direction.trim()
+  const lower = normalized.toLowerCase()
+
+  if (lower === 'open long') return 'Open Long'
+  if (lower === 'open short') return 'Open Short'
+  if (lower === 'close long') return 'Close Long'
+  if (lower === 'close short') return 'Close Short'
+  if (lower === 'buy') return 'Buy'
+  if (lower === 'sell') return 'Sell'
+
+  return normalized
+}
+
 export default defineCommand({
   meta: { name: 'fills', description: 'Show Hyperliquid perpetual trade history' },
   args: withArgs(
@@ -60,7 +74,7 @@ export default defineCommand({
           Coin: formatPerpCoin(lookup, fill.coin),
           Time: new Date(fill.time).toISOString(),
           Side: fill.side === 'B' ? 'Buy' : 'Sell',
-          Dir: fill.dir,
+          Direction: formatFillDirection(fill.dir),
           Price: fill.px,
           Size: fill.sz,
           'Closed PnL': fill.closedPnl,
@@ -75,7 +89,7 @@ export default defineCommand({
       }
 
       output.table(rows, {
-        columns: ['Coin', 'Time', 'Side', 'Dir', 'Price', 'Size', 'Closed PnL', 'Fee', 'Taker', 'Oid'],
+        columns: ['Coin', 'Time', 'Side', 'Direction', 'Price', 'Size', 'Closed PnL', 'Fee', 'Taker', 'Oid'],
         title: `Hyperliquid perp fills (${rows.length})${dex ? ` [dex=${dex}]` : ''}${
           client.isTestnet ? ' [testnet]' : ' [mainnet]'
         }`,

@@ -3,6 +3,7 @@ import {
   buildPerpMarketPriceFromMid,
   buildPerpMarketLookup,
   formatPerpCoin,
+  isPerpCoin,
   resolvePerpDexIndex,
   resolvePerpMarket,
   toHyperliquidUsdInt,
@@ -17,7 +18,7 @@ const PERP_META_FIXTURE: HyperliquidPerpMeta = {
       maxLeverage: 50,
     },
     {
-      name: 'test:ABC',
+      name: 'ETH',
       szDecimals: 2,
       maxLeverage: 10,
       marginMode: 'strictIsolated',
@@ -39,6 +40,18 @@ const PERP_META_FIXTURE: HyperliquidPerpMeta = {
   ],
 }
 
+const BUILDER_PERP_META_FIXTURE: HyperliquidPerpMeta = {
+  universe: [
+    {
+      name: 'test:ABC',
+      szDecimals: 2,
+      maxLeverage: 10,
+      marginMode: 'strictIsolated',
+    },
+  ],
+  marginTables: [],
+}
+
 const PERP_DEXS_FIXTURE: HyperliquidPerpDexsResponse = [
   null,
   {
@@ -54,18 +67,25 @@ describe('Hyperliquid perp helpers', () => {
     expect(lookup.markets).toHaveLength(2)
     expect(buildPerpMarketLookup(PERP_META_FIXTURE)).toBe(lookup)
     expect(resolvePerpMarket(PERP_META_FIXTURE, 'btc').asset).toBe(0)
-    expect(resolvePerpMarket(lookup, 'test:abc').asset).toBe(1)
-    expect(resolvePerpMarket(lookup, 'abc').coin).toBe('test:ABC')
+    expect(resolvePerpMarket(lookup, 'ETH').asset).toBe(1)
+    expect(isPerpCoin(lookup, ' btc ')).toBe(true)
+    expect(isPerpCoin(lookup, 'PURR/USDC')).toBe(false)
     expect(formatPerpCoin(lookup, ' btc ')).toBe('BTC')
+    expect(formatPerpCoin(lookup, 'DOGE')).toBe('DOGE')
   })
 
   it('builds builder-deployed perp asset ids from dex index', () => {
-    const lookup = buildPerpMarketLookup(PERP_META_FIXTURE, 1)
+    const lookup = buildPerpMarketLookup(BUILDER_PERP_META_FIXTURE, 1)
+    const firstDexLookup = buildPerpMarketLookup(BUILDER_PERP_META_FIXTURE, 0)
 
     expect(resolvePerpDexIndex(PERP_DEXS_FIXTURE, 'test')).toBe(1)
     expect(resolvePerpDexIndex(PERP_DEXS_FIXTURE, '')).toBe(0)
-    expect(resolvePerpMarket(lookup, 'BTC').asset).toBe(110000)
-    expect(resolvePerpMarket(lookup, 'test:ABC').asset).toBe(110001)
+    expect(resolvePerpDexIndex([{ name: 'first' }], 'first')).toBe(0)
+    expect(() => resolvePerpDexIndex(PERP_DEXS_FIXTURE, 'missing')).toThrow('Unknown Hyperliquid perp dex')
+    expect(resolvePerpMarket(lookup, 'test:ABC').asset).toBe(110000)
+    expect(resolvePerpMarket(firstDexLookup, 'test:ABC').asset).toBe(100000)
+    expect(resolvePerpMarket(lookup, 'abc').coin).toBe('test:ABC')
+    expect(() => resolvePerpMarket(lookup, 'DOGE')).toThrow('Unknown Hyperliquid perp market')
   })
 
   it('converts USDC amounts to Hyperliquid raw integer units', () => {
