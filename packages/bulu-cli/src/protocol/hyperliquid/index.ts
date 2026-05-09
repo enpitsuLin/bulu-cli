@@ -1,10 +1,16 @@
 export { useHyperliquidClient } from './client'
 export type {
   HyperliquidCancelResponse,
+  HyperliquidClearinghouseState,
   HyperliquidFill,
   HyperliquidModifyResponse,
+  HyperliquidPerpAssetContext,
+  HyperliquidPerpMeta,
+  HyperliquidPerpMetaAndAssetCtxs,
   HyperliquidPlaceOrderResponse,
+  HyperliquidResolvedPerpMarket,
   SpotOrderWire,
+  PerpOrderWire,
 } from './types'
 export {
   buildMarketPriceFromMid,
@@ -14,3 +20,11 @@ export {
   resolveSpotMarket,
   toHyperliquidWireValue,
 } from './spot'
+export {
+  buildPerpMarketLookup,
+  formatPerpCoin,
+  isPerpCoin,
+  resolvePerpDexIndex,
+  resolvePerpMarket,
+  toHyperliquidUsdInt,
+} from './perp'
