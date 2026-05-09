@@ -74,6 +74,22 @@ export function createHyperliquidClient(options: CreateHyperliquidClientOptions)
   })
   let spotMetaPromise: Promise<HyperliquidSpotMeta> | undefined
   let spotMetaAndAssetCtxsPromise: Promise<HyperliquidSpotMetaAndAssetCtxs> | undefined
+  const rememberSpotMeta = (promise: Promise<HyperliquidSpotMeta>) => {
+    const next = promise.catch((error: unknown) => {
+      spotMetaPromise = undefined
+      throw error
+    })
+    spotMetaPromise = next
+    return next
+  }
+  const rememberSpotMetaAndAssetCtxs = (promise: Promise<HyperliquidSpotMetaAndAssetCtxs>) => {
+    const next = promise.catch((error: unknown) => {
+      spotMetaAndAssetCtxsPromise = undefined
+      throw error
+    })
+    spotMetaAndAssetCtxsPromise = next
+    return next
+  }
   const request = ofetch.create({
     baseURL: apiBase,
     method: 'POST',
@@ -103,25 +119,27 @@ export function createHyperliquidClient(options: CreateHyperliquidClientOptions)
     async getSpotMeta() {
       if (!spotMetaPromise) {
         if (spotMetaAndAssetCtxsPromise) {
-          spotMetaPromise = spotMetaAndAssetCtxsPromise.then(([spotMeta]) => spotMeta)
+          rememberSpotMeta(spotMetaAndAssetCtxsPromise.then(([spotMeta]) => spotMeta))
         } else {
-          spotMetaPromise = request<HyperliquidSpotMeta>('/info', { body: { type: 'spotMeta' } })
+          rememberSpotMeta(request<HyperliquidSpotMeta>('/info', { body: { type: 'spotMeta' } }))
         }
       }
 
-      return spotMetaPromise
+      return spotMetaPromise!
     },
     async getSpotMetaAndAssetCtxs() {
       if (!spotMetaAndAssetCtxsPromise) {
-        spotMetaAndAssetCtxsPromise = request<HyperliquidSpotMetaAndAssetCtxs>('/info', {
-          body: { type: 'spotMetaAndAssetCtxs' },
-        })
+        rememberSpotMetaAndAssetCtxs(
+          request<HyperliquidSpotMetaAndAssetCtxs>('/info', {
+            body: { type: 'spotMetaAndAssetCtxs' },
+          }),
+        )
       }
       if (!spotMetaPromise) {
-        spotMetaPromise = spotMetaAndAssetCtxsPromise.then(([spotMeta]) => spotMeta)
+        rememberSpotMeta(spotMetaAndAssetCtxsPromise!.then(([spotMeta]) => spotMeta))
       }
 
-      return spotMetaAndAssetCtxsPromise
+      return spotMetaAndAssetCtxsPromise!
     },
     async getSpotBalances(user: string) {
       return request<HyperliquidSpotBalancesResponse>('/info', {
