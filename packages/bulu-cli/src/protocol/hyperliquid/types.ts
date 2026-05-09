@@ -1,4 +1,4 @@
-export interface SpotOrderWire {
+export interface HyperliquidOrderWire {
   a: number
   b: boolean
   p: string
@@ -8,11 +8,16 @@ export interface SpotOrderWire {
   c?: string
 }
 
+export type SpotOrderWire = HyperliquidOrderWire
+export type PerpOrderWire = HyperliquidOrderWire
+
 export type HyperliquidAction =
-  | { type: 'order'; orders: SpotOrderWire[]; grouping: 'na' }
+  | { type: 'order'; orders: HyperliquidOrderWire[]; grouping: 'na' }
   | { type: 'cancel'; cancels: Array<{ a: number; o: number }> }
   | { type: 'cancelByCloid'; cancels: Array<{ asset: number; cloid: string }> }
-  | { type: 'modify'; oid: number | string; order: SpotOrderWire }
+  | { type: 'modify'; oid: number | string; order: HyperliquidOrderWire }
+  | { type: 'updateLeverage'; asset: number; isCross: boolean; leverage: number }
+  | { type: 'updateIsolatedMargin'; asset: number; isBuy: boolean; ntli: number }
 
 export interface HyperliquidSubmitL1ActionInput {
   walletName: string
@@ -57,11 +62,15 @@ export interface HyperliquidClient {
   isTestnet: boolean
   getSpotMeta(): Promise<HyperliquidSpotMeta>
   getSpotMetaAndAssetCtxs(): Promise<HyperliquidSpotMetaAndAssetCtxs>
+  getPerpDexs(): Promise<HyperliquidPerpDexsResponse>
+  getPerpMeta(dex?: string): Promise<HyperliquidPerpMeta>
+  getPerpMetaAndAssetCtxs(dex?: string): Promise<HyperliquidPerpMetaAndAssetCtxs>
+  getClearinghouseState(user: string, dex?: string): Promise<HyperliquidClearinghouseState>
   getSpotBalances(user: string): Promise<HyperliquidSpotBalancesResponse>
-  getOpenOrders(user: string): Promise<HyperliquidOpenOrder[]>
-  getUserFills(user: string): Promise<HyperliquidFill[]>
+  getOpenOrders(user: string, dex?: string): Promise<HyperliquidOpenOrder[]>
+  getUserFills(user: string, dex?: string): Promise<HyperliquidFill[]>
   getOrderStatus(user: string, oid: number | string): Promise<HyperliquidOrderStatusResponse>
-  getAllMids(): Promise<Record<string, string>>
+  getAllMids(dex?: string): Promise<Record<string, string>>
   submitL1Action<T>(input: HyperliquidSubmitL1ActionInput): Promise<HyperliquidSubmitL1ActionResult<T>>
   submitUserAction<T>(input: HyperliquidSubmitUserActionInput): Promise<HyperliquidSubmitL1ActionResult<T>>
 }
@@ -105,6 +114,102 @@ export interface HyperliquidSpotAssetContext {
 }
 
 export type HyperliquidSpotMetaAndAssetCtxs = [HyperliquidSpotMeta, HyperliquidSpotAssetContext[]]
+
+export interface HyperliquidPerpDex {
+  name: string
+  fullName?: string
+  deployer?: string
+  oracleUpdater?: string | null
+  feeRecipient?: string | null
+  assetToStreamingOiCap?: Array<[string, string]>
+  assetToFundingMultiplier?: Array<[string, string]>
+}
+
+export type HyperliquidPerpDexsResponse = Array<HyperliquidPerpDex | null>
+
+export interface HyperliquidPerpUniverseEntry {
+  name: string
+  szDecimals: number
+  maxLeverage: number
+  onlyIsolated?: boolean
+  isDelisted?: boolean
+  marginMode?: 'strictIsolated' | 'noCross' | string
+  marginTableId?: number
+}
+
+export interface HyperliquidPerpMarginTier {
+  lowerBound: string
+  maxLeverage: number
+}
+
+export interface HyperliquidPerpMarginTable {
+  description?: string
+  marginTiers: HyperliquidPerpMarginTier[]
+}
+
+export interface HyperliquidPerpMeta {
+  universe: HyperliquidPerpUniverseEntry[]
+  marginTables: Array<[number, HyperliquidPerpMarginTable]>
+  collateralToken?: number
+}
+
+export interface HyperliquidPerpAssetContext {
+  dayNtlVlm: string
+  funding: string
+  impactPxs?: [string, string] | string[]
+  markPx: string
+  midPx: string | null
+  openInterest: string
+  oraclePx: string
+  premium: string
+  prevDayPx: string
+  dayBaseVlm?: string
+}
+
+export type HyperliquidPerpMetaAndAssetCtxs = [HyperliquidPerpMeta, HyperliquidPerpAssetContext[]]
+
+export interface HyperliquidMarginSummary {
+  accountValue: string
+  totalNtlPos: string
+  totalRawUsd: string
+  totalMarginUsed: string
+}
+
+export interface HyperliquidPerpPosition {
+  coin: string
+  szi: string
+  leverage?: {
+    type: 'cross' | 'isolated' | string
+    value: number
+    rawUsd?: string
+  }
+  entryPx: string
+  positionValue: string
+  unrealizedPnl: string
+  returnOnEquity: string
+  liquidationPx?: string | null
+  marginUsed?: string
+  maxLeverage?: number
+  cumFunding?: {
+    allTime: string
+    sinceOpen: string
+    sinceChange: string
+  }
+}
+
+export interface HyperliquidAssetPosition {
+  type: 'oneWay' | string
+  position: HyperliquidPerpPosition
+}
+
+export interface HyperliquidClearinghouseState {
+  marginSummary: HyperliquidMarginSummary
+  crossMarginSummary: HyperliquidMarginSummary
+  crossMaintenanceMarginUsed: string
+  withdrawable: string
+  assetPositions: HyperliquidAssetPosition[]
+  time?: number
+}
 
 export interface HyperliquidSpotBalance {
   coin: string
@@ -208,6 +313,24 @@ export interface HyperliquidSpotMarketLookup {
   markets: HyperliquidResolvedSpotMarket[]
   byCanonical: Map<string, HyperliquidResolvedSpotMarket>
   aliases: Map<string, HyperliquidResolvedSpotMarket>
+}
+
+export interface HyperliquidResolvedPerpMarket {
+  asset: number
+  coin: string
+  index: number
+  maxLeverage: number
+  szDecimals: number
+  onlyIsolated: boolean
+  isDelisted: boolean
+  marginMode?: string
+  marginTableId?: number
+}
+
+export interface HyperliquidPerpMarketLookup {
+  markets: HyperliquidResolvedPerpMarket[]
+  byCoin: Map<string, HyperliquidResolvedPerpMarket>
+  aliases: Map<string, HyperliquidResolvedPerpMarket>
 }
 
 export interface HyperliquidFill {

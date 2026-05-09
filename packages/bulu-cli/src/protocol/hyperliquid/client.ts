@@ -12,6 +12,10 @@ import type {
   HyperliquidFill,
   HyperliquidOpenOrder,
   HyperliquidOrderStatusResponse,
+  HyperliquidClearinghouseState,
+  HyperliquidPerpDexsResponse,
+  HyperliquidPerpMeta,
+  HyperliquidPerpMetaAndAssetCtxs,
   HyperliquidSignL1ActionInput,
   HyperliquidSpotMeta,
   HyperliquidSpotBalancesResponse,
@@ -72,8 +76,19 @@ export function createHyperliquidClient(options: CreateHyperliquidClientOptions)
     retryDelay: 200,
     timeout: 15000,
   })
+  let perpDexsPromise: Promise<HyperliquidPerpDexsResponse> | undefined
   let spotMetaPromise: Promise<HyperliquidSpotMeta> | undefined
   let spotMetaAndAssetCtxsPromise: Promise<HyperliquidSpotMetaAndAssetCtxs> | undefined
+  const perpMetaPromises = new Map<string, Promise<HyperliquidPerpMeta>>()
+  const perpMetaAndAssetCtxsPromises = new Map<string, Promise<HyperliquidPerpMetaAndAssetCtxs>>()
+  const rememberPerpDexs = (promise: Promise<HyperliquidPerpDexsResponse>) => {
+    const next = promise.catch((error: unknown) => {
+      perpDexsPromise = undefined
+      throw error
+    })
+    perpDexsPromise = next
+    return next
+  }
   const rememberSpotMeta = (promise: Promise<HyperliquidSpotMeta>) => {
     const next = promise.catch((error: unknown) => {
       spotMetaPromise = undefined
@@ -88,6 +103,22 @@ export function createHyperliquidClient(options: CreateHyperliquidClientOptions)
       throw error
     })
     spotMetaAndAssetCtxsPromise = next
+    return next
+  }
+  const rememberPerpMeta = (dex: string, promise: Promise<HyperliquidPerpMeta>) => {
+    const next = promise.catch((error: unknown) => {
+      perpMetaPromises.delete(dex)
+      throw error
+    })
+    perpMetaPromises.set(dex, next)
+    return next
+  }
+  const rememberPerpMetaAndAssetCtxs = (dex: string, promise: Promise<HyperliquidPerpMetaAndAssetCtxs>) => {
+    const next = promise.catch((error: unknown) => {
+      perpMetaAndAssetCtxsPromises.delete(dex)
+      throw error
+    })
+    perpMetaAndAssetCtxsPromises.set(dex, next)
     return next
   }
   const request = ofetch.create({
@@ -141,6 +172,68 @@ export function createHyperliquidClient(options: CreateHyperliquidClientOptions)
 
       return spotMetaAndAssetCtxsPromise!
     },
+    async getPerpDexs() {
+      if (!perpDexsPromise) {
+        rememberPerpDexs(request<HyperliquidPerpDexsResponse>('/info', { body: { type: 'perpDexs' } }))
+      }
+
+      return perpDexsPromise!
+    },
+    async getPerpMeta(dex = '') {
+      const dexKey = dex.trim()
+      if (!perpMetaPromises.has(dexKey)) {
+        const metaAndAssetCtxsPromise = perpMetaAndAssetCtxsPromises.get(dexKey)
+        if (metaAndAssetCtxsPromise) {
+          rememberPerpMeta(
+            dexKey,
+            metaAndAssetCtxsPromise.then(([perpMeta]) => perpMeta),
+          )
+        } else {
+          rememberPerpMeta(
+            dexKey,
+            request<HyperliquidPerpMeta>('/info', {
+              body: {
+                type: 'meta',
+                dex: dexKey,
+              },
+            }),
+          )
+        }
+      }
+
+      return perpMetaPromises.get(dexKey)!
+    },
+    async getPerpMetaAndAssetCtxs(dex = '') {
+      const dexKey = dex.trim()
+      if (!perpMetaAndAssetCtxsPromises.has(dexKey)) {
+        rememberPerpMetaAndAssetCtxs(
+          dexKey,
+          request<HyperliquidPerpMetaAndAssetCtxs>('/info', {
+            body: {
+              type: 'metaAndAssetCtxs',
+              dex: dexKey,
+            },
+          }),
+        )
+      }
+      if (!perpMetaPromises.has(dexKey)) {
+        rememberPerpMeta(
+          dexKey,
+          perpMetaAndAssetCtxsPromises.get(dexKey)!.then(([perpMeta]) => perpMeta),
+        )
+      }
+
+      return perpMetaAndAssetCtxsPromises.get(dexKey)!
+    },
+    async getClearinghouseState(user: string, dex = '') {
+      return request<HyperliquidClearinghouseState>('/info', {
+        body: {
+          type: 'clearinghouseState',
+          user: user.toLowerCase(),
+          dex: dex.trim(),
+        },
+      })
+    },
     async getSpotBalances(user: string) {
       return request<HyperliquidSpotBalancesResponse>('/info', {
         body: {
@@ -149,20 +242,22 @@ export function createHyperliquidClient(options: CreateHyperliquidClientOptions)
         },
       })
     },
-    async getOpenOrders(user: string) {
+    async getOpenOrders(user: string, dex = '') {
       return request<HyperliquidOpenOrder[]>('/info', {
         body: {
           type: 'frontendOpenOrders',
           user: user.toLowerCase(),
-          dex: '',
+          dex: dex.trim(),
         },
       })
     },
-    async getUserFills(user: string) {
+    async getUserFills(user: string, dex = '') {
+      const dexKey = dex.trim()
       return request<HyperliquidFill[]>('/info', {
         body: {
           type: 'userFills',
           user: user.toLowerCase(),
+          ...(dexKey ? { dex: dexKey } : {}),
         },
       })
     },
@@ -175,11 +270,11 @@ export function createHyperliquidClient(options: CreateHyperliquidClientOptions)
         },
       })
     },
-    async getAllMids() {
+    async getAllMids(dex = '') {
       return request<Record<string, string>>('/info', {
         body: {
           type: 'allMids',
-          dex: '',
+          dex: dex.trim(),
         },
       })
     },
