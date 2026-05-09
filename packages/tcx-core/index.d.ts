@@ -297,6 +297,7 @@ export interface SignedTransactionResult {
  * `bulu_key_...` API token (agent mode).
  */
 export declare function signMessage(name: string, chainId: string, message: string, credential: string, vaultPath: string): SignedMessage
+
 /**
  * Signs raw message bytes: hash then ECDSA, without any personal-sign prefix.
  *

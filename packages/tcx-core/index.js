@@ -596,5 +596,6 @@ module.exports.listWallet = nativeBinding.listWallet
 module.exports.loadWallet = nativeBinding.loadWallet
 module.exports.revokeApiKey = nativeBinding.revokeApiKey
 module.exports.signMessage = nativeBinding.signMessage
+module.exports.signRaw = nativeBinding.signRaw
 module.exports.signTransaction = nativeBinding.signTransaction
 module.exports.signTypedData = nativeBinding.signTypedData
