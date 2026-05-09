@@ -130,3 +130,34 @@ export function toHyperliquidUsdInt(value: string | number): number {
 
   return Number(signed)
 }
+
+export function buildPerpMarketPriceFromMid(
+  midPrice: string,
+  isBuy: boolean,
+  slippage: string | number,
+  szDecimals: number,
+): string {
+  const mid = Number(midPrice)
+  const slip = Number(slippage)
+
+  if (!Number.isFinite(mid) || mid <= 0) {
+    throw new Error(`Cannot derive market price from mid "${midPrice}"`)
+  }
+
+  if (!Number.isFinite(slip) || slip < 0) {
+    throw new Error(`Invalid slippage value "${slippage}"`)
+  }
+
+  const adjusted = mid * (isBuy ? 1 + slip : 1 - slip)
+  if (adjusted <= 0) {
+    throw new Error(`Slippage "${slippage}" derives a non-positive market price`)
+  }
+
+  const roundedToPrecision = Number(adjusted.toPrecision(5))
+  if (roundedToPrecision <= 0) {
+    throw new Error(`Cannot derive a positive market price from mid "${midPrice}"`)
+  }
+
+  const decimals = Math.max(0, 6 - szDecimals)
+  return toHyperliquidWireValue(roundedToPrecision.toFixed(decimals))
+}

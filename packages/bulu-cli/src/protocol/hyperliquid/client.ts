@@ -252,11 +252,12 @@ export function createHyperliquidClient(options: CreateHyperliquidClientOptions)
       })
     },
     async getUserFills(user: string, dex = '') {
+      const dexKey = dex.trim()
       return request<HyperliquidFill[]>('/info', {
         body: {
           type: 'userFills',
           user: user.toLowerCase(),
-          dex: dex.trim(),
+          ...(dexKey ? { dex: dexKey } : {}),
         },
       })
     },

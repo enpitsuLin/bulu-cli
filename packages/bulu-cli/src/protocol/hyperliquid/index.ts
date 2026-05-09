@@ -21,6 +21,7 @@ export {
   toHyperliquidWireValue,
 } from './spot'
 export {
+  buildPerpMarketPriceFromMid,
   buildPerpMarketLookup,
   formatPerpCoin,
   isPerpCoin,

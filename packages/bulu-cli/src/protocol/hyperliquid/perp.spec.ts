@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  buildPerpMarketPriceFromMid,
   buildPerpMarketLookup,
   formatPerpCoin,
   resolvePerpDexIndex,
@@ -73,5 +74,11 @@ describe('Hyperliquid perp helpers', () => {
     expect(toHyperliquidUsdInt('0.000001')).toBe(1)
     expect(toHyperliquidUsdInt('-2.5')).toBe(-2_500_000)
     expect(() => toHyperliquidUsdInt('0.0000001')).toThrow('more than 6 decimal places')
+  })
+
+  it('derives aggressive perp market prices from mids', () => {
+    expect(buildPerpMarketPriceFromMid('97000.55', true, '0.01', 5)).toBe('97971')
+    expect(buildPerpMarketPriceFromMid('1.23456', false, 0.01, 1)).toBe('1.2222')
+    expect(() => buildPerpMarketPriceFromMid('1.23', false, 1, 1)).toThrow('non-positive market price')
   })
 })
