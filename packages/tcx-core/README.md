@@ -10,10 +10,12 @@ pnpm add @bulu-cli/tcx-core
 
 ## Usage
 
+All persistence APIs take an explicit `vaultPath`. The CLI resolves this path from its config, but the N-API package does not choose a default.
+
 ```ts
 import { createWallet, listWallet } from '@bulu-cli/tcx-core'
 
-const vaultPath = '.bulu'
+const vaultPath = '/path/to/bulu-vault'
 createWallet('main', 'password', vaultPath)
 
 const wallets = listWallet(vaultPath)
@@ -30,19 +32,21 @@ console.log(wallets)
 ## Agent Mode
 
 ```ts
-import { createApiKey, createPolicy, signTransaction } from '@bulu-cli/tcx-core'
+import { createApiKey, createPolicy, signTransaction, signTypedData } from '@bulu-cli/tcx-core'
+
+const vaultPath = '/path/to/bulu-vault'
 
 const policy = createPolicy(
   {
     name: 'BSC only',
     rules: [{ type: 'allowed_chains', chainIds: ['eip155:56'] }],
   },
-  '.bulu',
+  vaultPath,
 )
 
-const created = createApiKey('agent', ['main'], [policy.id], 'wallet-passphrase', undefined, '.bulu')
+const created = createApiKey('agent', ['main'], [policy.id], 'wallet-passphrase', undefined, vaultPath)
 
-const signed = signTransaction('main', 'eip155:56', '<unsigned-tx-hex>', created.token, '.bulu')
+const signed = signTransaction('main', 'eip155:56', '<unsigned-tx-hex>', created.token, vaultPath)
 ```
 
 You can also restrict typed data (EIP-712) signatures by `primaryType` and `domain.verifyingContract`:
@@ -59,10 +63,10 @@ const typedDataPolicy = createPolicy(
       },
     ],
   },
-  '.bulu',
+  vaultPath,
 )
 
-const agent = createApiKey('permit-agent', ['main'], [typedDataPolicy.id], 'wallet-passphrase', undefined, '.bulu')
+const agent = createApiKey('permit-agent', ['main'], [typedDataPolicy.id], 'wallet-passphrase', undefined, vaultPath)
 
-const signed = signTypedData('main', 'eip155:1', '<typed-data-json>', agent.token, '.bulu')
+const signed = signTypedData('main', 'eip155:1', '<typed-data-json>', agent.token, vaultPath)
 ```

@@ -1,13 +1,6 @@
 # @bulu-cli/core
 
-`bulu` is a local blockchain wallet management CLI tool. It supports creating, importing, signing, and policy-based authorization for Ethereum, Tron, and Bitcoin wallets.
-
-## Capabilities
-
-- **Multi-chain wallet management** — Create, import, export, and delete Ethereum / Tron / Bitcoin wallets. All key material is encrypted and stored in a local vault.
-- **Message & transaction signing** — Sign messages and transactions locally without uploading private keys to remote services.
-- **Agent mode** — Create revocable API keys and declarative signing policies (allowed chains, expiry, permission scopes) for secure automated/scripted signing.
-- **Configuration management** — Initialize and manage local CLI settings, including a customizable vault directory.
+`bulu` is a local wallet and trading CLI. It manages encrypted Ethereum and Tron wallets, signs messages and transactions locally, supports policy-based agent keys, and includes Hyperliquid spot/perp commands.
 
 ## Install
 
@@ -15,48 +8,91 @@
 pnpm add -g @bulu-cli/core
 ```
 
-> Requires Node.js >= 24.0.0.
+Requires Node.js >= 24.0.0.
 
-## Quick Start
+## Vault and Config
+
+The CLI stores its config at `~/.config/bulu/bulu.config.json` and its vault records under `~/.config/bulu/vault/` by default. Set `BULU_CONFIG_DIR` to use a different config and vault root.
+
+Credentials are resolved in this order:
+
+1. `TCX_PASSPHRASE` or `BULU_PASSPHRASE`
+2. `TCX_APIKEY` or `BULU_APIKEY`
+3. Interactive password prompt
+
+Passphrases and API keys are never persisted by the CLI.
+
+## Wallets
 
 ```bash
-# Initialize configuration
-bulu config init
-
-# Create a new wallet
-bulu wallet create
-
-# Import an existing wallet
-bulu wallet import
-
-# List local wallets
+bulu wallet create main
+bulu wallet import recovered --mnemonic
 bulu wallet list
-
-# Show wallet details
-bulu wallet info <wallet>
-
-# Export wallet (mnemonic / private key)
-bulu wallet export <wallet>
-
-# Delete a local wallet
-bulu wallet delete <wallet>
+bulu wallet info main
+bulu wallet switch main
+bulu wallet export main --confirm
+bulu wallet export-keystore main --confirm
+bulu wallet delete main --confirm
 ```
 
-## Command Overview
+Wallets derive Ethereum and Tron accounts by default. Mnemonic imports accept `--index <n>` to choose the default account index.
 
-| Command                       | Description                                  |
-| ----------------------------- | -------------------------------------------- |
-| `bulu config init`            | Initialize the CLI configuration file        |
-| `bulu wallet create`          | Create a new wallet                          |
-| `bulu wallet import`          | Import a wallet from mnemonic or private key |
-| `bulu wallet list`            | List all local wallets                       |
-| `bulu wallet info <wallet>`   | View wallet metadata                         |
-| `bulu wallet export <wallet>` | Export wallet keys                           |
-| `bulu wallet delete <wallet>` | Delete a local wallet                        |
-| `bulu sign message`           | Sign a message                               |
-| `bulu sign transaction`       | Sign a transaction                           |
+## Signing
 
-## Security Notes
+```bash
+bulu sign message "hello" --wallet main --chain-id eip155:1
+bulu sign tx <unsigned_tx_hex> --wallet main --chain-id eip155:1
+bulu sign typed-data '<typed_data_json>' --wallet main --chain-id eip155:1
+```
 
-- **Passphrases** and **API keys** are resolved via the environment variables `BULU_PASSPHRASE` / `TCX_PASSPHRASE` or `BULU_APIKEY` / `TCX_APIKEY`, or through an interactive prompt. They are **never persisted to disk**.
-- Wallet keys are stored in encrypted form inside `~/.bulu/vault/` (configurable). Raw private keys are never kept in plaintext in the vault.
+The `--chain-id` value is a CAIP-2 chain id such as `eip155:1`, `eip155:11155111`, or `tron:0x2b6653dc`.
+
+## Agent Mode
+
+```bash
+bulu wallet policy create policy.json
+bulu wallet key create bot --wallet main --policy eth-only --expires-at 1735689600
+bulu wallet key list
+bulu wallet key revoke bot --confirm
+```
+
+API keys can be bound to wallets and policies. A policy can restrict chains, expiry, EIP-712 primary types, and verifying contracts.
+
+## Config
+
+```bash
+bulu config list
+bulu config get default.wallet
+bulu config set default.wallet main
+bulu config set chains.eip155:1.rpc https://1rpc.io/eth
+```
+
+Common config keys include `default.wallet`, `default.format`, `chains.<caip2>.rpc`, and Hyperliquid settings such as `hyperliquid.apiBase`, `hyperliquid.retry`, `hyperliquid.retryDelay`, and `hyperliquid.timeout`.
+
+## Hyperliquid
+
+All spot and perp commands accept `--testnet`.
+
+```bash
+bulu spot markets
+bulu spot balances --wallet main
+bulu spot order place PURR/USDC buy 100 --price 0.01 --tif gtc
+bulu spot order place PURR/USDC sell 50 --type market --slippage 0.03
+bulu spot transfer 10 --to-perp --wallet main
+
+bulu perp markets
+bulu perp positions --wallet main
+bulu perp order place BTC buy 0.01 --type market
+bulu perp leverage BTC 5 --cross --wallet main
+```
+
+Market orders derive an IOC limit price from the current mid price plus the requested slippage. Client order ids (`--cloid`) must be 16-byte hex strings.
+
+## Output
+
+Every command accepts:
+
+- `--json` to force JSON output
+- `--format table|csv|json` to select output format
+
+Use `--json` when piping output into scripts.
