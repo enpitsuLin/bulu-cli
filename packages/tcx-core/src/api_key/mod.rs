@@ -5,7 +5,6 @@ use tcx_crypto::aes::ctr256;
 
 use crate::api_key::token::{hash_secret, API_KEY_TOKEN_PREFIX};
 use crate::error::{require_non_empty, require_trimmed, CoreError, CoreResult, ResultExt};
-use crate::strings::sanitize_optional_text;
 use crate::types::{
   ApiKeyInfo, CreatedApiKey, EncPairData, StoredApiKey, StoredEncryptedWalletKey,
 };
@@ -31,12 +30,11 @@ pub(crate) fn create_api_key(
   policy_ids: Vec<String>,
   passphrase: String,
   expires_at: Option<i64>,
-  vault_path_opt: Option<String>,
+  vault_path: String,
 ) -> CoreResult<CreatedApiKey> {
   require_non_empty(&passphrase, "passphrase")?;
 
   let normalized_name = require_trimmed(&name, "name")?;
-  let vault_path = resolve_optional_vault_path(vault_path_opt);
   let vault = VaultRepository::new(vault_path)?;
   if vault.api_key_name_exists(&normalized_name)? {
     return Err(CoreError::AlreadyExists {
@@ -54,12 +52,12 @@ pub(crate) fn create_api_key(
   let normalized_expires_at = expires_at;
 
   let secret = tcx_common::random_u8_32();
-  let nonce = tcx_common::random_u8_16();
   let encrypted_wallet_keys = resolved_wallets
     .iter()
     .map(|wallet| {
       let mut keystore = stored_keystore(wallet)?;
       let derived_key = keystore.get_derived_key(&passphrase).map_core_err()?;
+      let nonce = tcx_common::random_u8_16();
       let encrypted_derived_key =
         ctr256::encrypt_nopadding(derived_key.as_bytes(), &secret, &nonce).map_core_err()?;
 
@@ -96,10 +94,6 @@ pub(crate) fn create_api_key(
   })
 }
 
-fn resolve_optional_vault_path(vault_path_opt: Option<String>) -> String {
-  sanitize_optional_text(vault_path_opt).unwrap_or_else(|| ".bulu".to_string())
-}
-
 fn resolve_policy_ids(vault: &VaultRepository, policy_ids: Vec<String>) -> CoreResult<Vec<String>> {
   let mut seen = std::collections::HashSet::with_capacity(policy_ids.len());
   let mut resolved = Vec::with_capacity(policy_ids.len());
@@ -116,6 +110,7 @@ fn resolve_policy_ids(vault: &VaultRepository, policy_ids: Vec<String>) -> CoreR
 
 #[cfg(test)]
 mod tests {
+  use std::collections::HashSet;
   use std::fs;
   use std::path::{Path, PathBuf};
 
@@ -125,8 +120,8 @@ mod tests {
   use crate::chain::{ethereum::ETHEREUM_SIGNER, ChainSigner};
   use crate::policy::{create_policy, delete_policy};
   use crate::test_utils::fixtures;
-  use crate::types::{PolicyCreateInput, PolicyRule};
-  use crate::wallet::{delete_wallet, import_wallet_mnemonic};
+  use crate::types::{PolicyCreateInput, PolicyRule, StoredApiKey};
+  use crate::wallet::{delete_wallet, import_wallet_mnemonic, import_wallet_private_key};
 
   fn read_vault_text(path: &Path) -> String {
     fs::read_to_string(path).expect("vault JSON should be readable")
@@ -176,7 +171,7 @@ mod tests {
       vec![policy.id.clone()],
       fixtures::TEST_PASSWORD.to_string(),
       None,
-      Some(vault_path.clone()),
+      vault_path.clone(),
     )
     .expect("API key creation should succeed");
 
@@ -194,6 +189,53 @@ mod tests {
     let persisted = read_vault_text(&api_key_vault_path(&vault_dir, &created.api_key.id));
     assert!(persisted.contains("\"tokenHash\""));
     assert!(!persisted.contains(&created.token));
+
+    let _ = fs::remove_dir_all(vault_dir);
+  }
+
+  #[test]
+  fn create_api_key_uses_distinct_nonce_per_wallet_key() {
+    let (vault_dir, vault_path) = fixtures::temp_vault("api-key-nonces");
+    let wallet_one = import_wallet_mnemonic(
+      "API wallet one".to_string(),
+      fixtures::TEST_MNEMONIC.to_string(),
+      fixtures::TEST_PASSWORD.to_string(),
+      vault_path.clone(),
+      None,
+    )
+    .expect("first wallet import should succeed");
+    let wallet_two = import_wallet_private_key(
+      "API wallet two".to_string(),
+      fixtures::TEST_PRIVATE_KEY.to_string(),
+      fixtures::TEST_PASSWORD.to_string(),
+      vault_path.clone(),
+      None,
+    )
+    .expect("second wallet import should succeed");
+
+    let created = create_api_key(
+      "multi-wallet".to_string(),
+      vec![wallet_one.meta.id.clone(), wallet_two.meta.id.clone()],
+      vec![],
+      fixtures::TEST_PASSWORD.to_string(),
+      None,
+      vault_path.clone(),
+    )
+    .expect("API key creation should succeed");
+
+    let persisted: StoredApiKey = serde_json::from_str(&read_vault_text(&api_key_vault_path(
+      &vault_dir,
+      &created.api_key.id,
+    )))
+    .expect("stored API key should parse");
+    let nonces = persisted
+      .encrypted_wallet_keys
+      .iter()
+      .map(|item| item.encrypted_derived_key.nonce.as_str())
+      .collect::<HashSet<_>>();
+
+    assert_eq!(persisted.encrypted_wallet_keys.len(), 2);
+    assert_eq!(nonces.len(), 2);
 
     let _ = fs::remove_dir_all(vault_dir);
   }
@@ -223,7 +265,7 @@ mod tests {
       vec![policy.id.clone()],
       fixtures::TEST_PASSWORD.to_string(),
       None,
-      Some(vault_path.clone()),
+      vault_path.clone(),
     )
     .expect("API key creation should succeed");
 
