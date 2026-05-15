@@ -11,7 +11,7 @@ The repository is a pnpm monorepo containing two main packages:
 
 ## Technology Stack
 
-- **Package Manager**: `pnpm@10.33.4` (workspace-enabled)
+- **Package Manager**: `pnpm@11.1.2` (workspace-enabled)
 - **Node.js Engine**: `>= 24.0.0`
 - **TypeScript**: `^6.0.3` with `@typescript/native-preview` for fast declaration generation
 - **Rust Toolchain**: `nightly-2026-04-06` (pinned in `rust-toolchain.toml`)
@@ -123,8 +123,8 @@ pnpm --filter @bulu-cli/tcx-core test
 
 `simple-git-hooks` runs `lint-staged` on `pre-commit`:
 
-- `*.js|ts|tsx` → `oxlint --fix`
-- `*.js|ts|tsx|yml|yaml|md|json` → `prettier --write`
+- `*.@(js|ts|tsx)` → `oxlint --fix`
+- `*.@(js|ts|tsx|yml|yaml|md|json)` → `prettier --write`
 - `*.toml` → `taplo format`
 - `*.rs` → `rustfmt`
 
@@ -153,7 +153,7 @@ pnpm --filter @bulu-cli/tcx-core test
 
 Triggered on pushes to `main` and pull requests:
 
-1. **Lint Job** — installs Node/pnpm and Rust, runs `pnpm lint` and `cargo fmt --check`.
+1. **Lint Job** — installs Node/pnpm and Rust, runs `pnpm lint` and `cargo fmt --all -- --check`.
 2. **Build Matrix** (6 targets):
    - `x86_64-apple-darwin`
    - `x86_64-pc-windows-msvc`
@@ -184,6 +184,8 @@ Use `pnpm run release` (powered by `bumpp`). It interactively bumps:
 - `packages/bulu-cli/package.json`
 - `packages/tcx-core/package.json`
 - `packages/tcx-core/Cargo.toml`
+- `packages/tcx-core/index.js`
+- `Cargo.lock`
 
 The configured release flow runs `pnpm build`, creates a version commit, and creates a tag. Push is disabled by default in `bump.config.ts`.
 
