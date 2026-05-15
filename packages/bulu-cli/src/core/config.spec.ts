@@ -118,4 +118,12 @@ describe('createConfigContext', () => {
     expect(reloadedConfig.get('hyperliquid.timeout')).toBe(30000)
     expect(reloadedConfig.get('default.wallet')).toBe(CONFIG_DEFAULTS.default?.wallet)
   })
+
+  it('can ignore invalid config files for diagnostic commands', () => {
+    const cwd = createTempConfigDir()
+    writeFileSync(getConfigPath(cwd), '{')
+
+    expect(() => createConfigContext(cwd)).toThrow('Failed to read config file')
+    expect(createConfigContext(cwd, { allowInvalidConfig: true }).config).toEqual(CONFIG_DEFAULTS)
+  })
 })

@@ -3,8 +3,8 @@ import { defineCittyPlugin } from 'citty'
 
 export default defineCittyPlugin({
   name: 'config',
-  setup() {
-    configCtx.set(createConfigContext())
+  setup({ rawArgs }) {
+    configCtx.set(createConfigContext(undefined, { allowInvalidConfig: rawArgs.includes('doctor') }))
   },
   cleanup() {
     configCtx.unset()

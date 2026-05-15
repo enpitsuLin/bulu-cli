@@ -61,6 +61,10 @@ export interface ConfigContext {
   get<K extends string>(key: K extends ConfigPath ? never : K): any
 }
 
+export interface CreateConfigContextOptions {
+  allowInvalidConfig?: boolean
+}
+
 export const configCtx = createContext<ConfigContext>({
   asyncContext: true,
   AsyncLocalStorage,
@@ -103,9 +107,26 @@ function setPathValue(target: Record<string, unknown>, key: string, value: unkno
   current[segments.at(-1)!] = value
 }
 
-export function createConfigContext(cwd = getConfigDir()): ConfigContext {
+function readUserConfig(configPath: string, options?: CreateConfigContextOptions): BuluConfig {
+  if (!existsSync(configPath)) {
+    return {}
+  }
+
+  try {
+    return JSON.parse(readFileSync(configPath, 'utf8')) as BuluConfig
+  } catch (error) {
+    if (options?.allowInvalidConfig) {
+      return {}
+    }
+
+    const message = error instanceof Error ? error.message : String(error)
+    throw new Error(`Failed to read config file at ${configPath}: ${message}`)
+  }
+}
+
+export function createConfigContext(cwd = getConfigDir(), options?: CreateConfigContextOptions): ConfigContext {
   const configPath = getConfigPath(cwd)
-  const userConfig = existsSync(configPath) ? (JSON.parse(readFileSync(configPath, 'utf8')) as BuluConfig) : {}
+  const userConfig = readUserConfig(configPath, options)
   const config = {} as BuluConfig
   const refreshConfig = (): void => {
     Object.keys(config).forEach((key) => {
