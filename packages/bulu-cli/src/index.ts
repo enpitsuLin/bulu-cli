@@ -9,6 +9,7 @@ export const main = defineCommand({
     sign: import('./commands/sign/index').then((m) => m.default),
     spot: import('./commands/spot/index').then((m) => m.default),
     perp: import('./commands/perp/index').then((m) => m.default),
+    doctor: import('./commands/doctor').then((m) => m.default),
   },
   plugins: [Config, OutputArgs],
 })

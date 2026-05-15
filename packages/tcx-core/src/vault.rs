@@ -1,5 +1,7 @@
-use std::fs;
+use std::fs::{self, File, OpenOptions};
+use std::io::{ErrorKind, Write};
 use std::path::{Path, PathBuf};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -11,6 +13,7 @@ const WALLETS_DIR: &str = "wallets";
 const POLICIES_DIR: &str = "policies";
 const KEYS_DIR: &str = "keys";
 const JSON_FILE_EXTENSION: &str = "json";
+const TEMP_FILE_EXTENSION: &str = "tmp";
 
 #[cfg(unix)]
 const DIR_PERMISSIONS: u32 = 0o700;
@@ -235,11 +238,7 @@ impl VaultRepository {
     let path = self.json_file_path(dir, record_id);
     let payload = serde_json::to_string_pretty(record).map_core_err()?;
 
-    fs::write(&path, payload).map_err(|err| CoreError::VaultIo {
-      path: path.display().to_string(),
-      source: err,
-    })?;
-
+    write_file_atomically(&path, payload.as_bytes())?;
     set_file_permissions(&path);
     Ok(())
   }
@@ -417,6 +416,120 @@ fn resolve_named_record<'a, T>(
     resource: singular_label,
     identifier: identifier.into(),
   })
+}
+
+fn write_file_atomically(path: &Path, payload: &[u8]) -> CoreResult<()> {
+  let dir = path.parent().ok_or_else(|| {
+    CoreError::new(format!(
+      "vault record path `{}` has no parent directory",
+      path.display()
+    ))
+  })?;
+
+  let (temp_path, mut temp_file) = create_unique_temp_file(path)?;
+  let write_result = (|| -> std::io::Result<()> {
+    temp_file.write_all(payload)?;
+    temp_file.sync_all()
+  })();
+
+  if let Err(source) = write_result {
+    let _ = fs::remove_file(&temp_path);
+    return Err(CoreError::VaultIo {
+      path: temp_path.display().to_string(),
+      source,
+    });
+  }
+
+  drop(temp_file);
+
+  #[cfg(windows)]
+  if path.exists() {
+    fs::remove_file(path).map_err(|source| CoreError::VaultIo {
+      path: path.display().to_string(),
+      source,
+    })?;
+  }
+
+  fs::rename(&temp_path, path).map_err(|source| {
+    let _ = fs::remove_file(&temp_path);
+    CoreError::VaultIo {
+      path: path.display().to_string(),
+      source,
+    }
+  })?;
+
+  sync_dir(dir)?;
+  Ok(())
+}
+
+fn create_unique_temp_file(path: &Path) -> CoreResult<(PathBuf, File)> {
+  let file_name = path
+    .file_name()
+    .and_then(|name| name.to_str())
+    .ok_or_else(|| CoreError::new(format!("invalid vault record path `{}`", path.display())))?;
+  let timestamp = SystemTime::now()
+    .duration_since(UNIX_EPOCH)
+    .map_core_err()?
+    .as_nanos();
+
+  for attempt in 0..100u32 {
+    let temp_name = format!(
+      ".{file_name}.{}.{}.{}",
+      std::process::id(),
+      timestamp + u128::from(attempt),
+      TEMP_FILE_EXTENSION
+    );
+    let temp_path = path.with_file_name(temp_name);
+    match open_secure_temp_file(&temp_path) {
+      Ok(file) => return Ok((temp_path, file)),
+      Err(err) if err.kind() == ErrorKind::AlreadyExists => continue,
+      Err(source) => {
+        return Err(CoreError::VaultIo {
+          path: temp_path.display().to_string(),
+          source,
+        });
+      }
+    }
+  }
+
+  Err(CoreError::new(format!(
+    "failed to create a unique temporary vault record for `{}`",
+    path.display()
+  )))
+}
+
+#[cfg(unix)]
+fn open_secure_temp_file(path: &Path) -> std::io::Result<File> {
+  use std::os::unix::fs::OpenOptionsExt;
+
+  OpenOptions::new()
+    .write(true)
+    .create_new(true)
+    .mode(FILE_PERMISSIONS)
+    .open(path)
+}
+
+#[cfg(not(unix))]
+fn open_secure_temp_file(path: &Path) -> std::io::Result<File> {
+  OpenOptions::new().write(true).create_new(true).open(path)
+}
+
+#[cfg(unix)]
+fn sync_dir(path: &Path) -> CoreResult<()> {
+  let dir = File::open(path).map_err(|source| CoreError::VaultIo {
+    path: path.display().to_string(),
+    source,
+  })?;
+
+  dir.sync_all().map_err(|source| CoreError::VaultIo {
+    path: path.display().to_string(),
+    source,
+  })
+}
+
+#[cfg(not(unix))]
+fn sync_dir(_path: &Path) -> CoreResult<()> {
+  Ok(())
 }
 
 #[cfg(unix)]
