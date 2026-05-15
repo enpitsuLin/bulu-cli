@@ -25,7 +25,7 @@ export interface CipherParams {
 }
 
 /** Creates an API key bound to one or more wallets and optional declarative policies. */
-export declare function createApiKey(name: string, walletIds: Array<string>, policyIds: Array<string>, passphrase: string, expiresAt?: number, vaultPathOpt?: string): CreatedApiKey
+export declare function createApiKey(name: string, walletIds: Array<string>, policyIds: Array<string>, passphrase: string, expiresAt: number | undefined | null, vaultPath: string): CreatedApiKey
 
 /** Result returned when an API key is created. */
 export interface CreatedApiKey {

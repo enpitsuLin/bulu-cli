@@ -455,7 +455,7 @@ mod tests {
       vec![policy.id],
       fixtures::TEST_PASSWORD.to_string(),
       None,
-      Some(vault_path.clone()),
+      vault_path.clone(),
     )
     .expect("API key creation should succeed");
 
@@ -532,7 +532,7 @@ mod tests {
       vec![policy.id],
       fixtures::TEST_PASSWORD.to_string(),
       None,
-      Some(vault_path.clone()),
+      vault_path.clone(),
     )
     .expect("API key creation should succeed");
 
@@ -585,7 +585,7 @@ mod tests {
       vec![policy.id],
       fixtures::TEST_PASSWORD.to_string(),
       None,
-      Some(vault_path.clone()),
+      vault_path.clone(),
     )
     .expect("API key creation should succeed");
 
@@ -646,7 +646,7 @@ mod tests {
       vec![expired_policy.id.clone()],
       fixtures::TEST_PASSWORD.to_string(),
       None,
-      Some(vault_path.clone()),
+      vault_path.clone(),
     )
     .expect("API key creation should succeed");
 
@@ -697,7 +697,7 @@ mod tests {
       vec![],
       fixtures::TEST_PASSWORD.to_string(),
       Some(946_684_800),
-      Some(vault_path.clone()),
+      vault_path.clone(),
     )
     .expect("API key creation should succeed");
 
@@ -828,7 +828,7 @@ mod tests {
       vec![policy.id],
       fixtures::TEST_PASSWORD.to_string(),
       None,
-      Some(vault_path.clone()),
+      vault_path.clone(),
     )
     .expect("API key creation should succeed");
 

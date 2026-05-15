@@ -2,22 +2,22 @@
 
 ## Project Overview
 
-**bulu-cli** is a blockchain wallet management CLI tool built with TypeScript and Rust. It supports Ethereum, Tron, and Bitcoin wallets through a local vault-based architecture.
+**bulu-cli** is a local blockchain wallet and trading CLI built with TypeScript and Rust. It supports Ethereum and Tron wallets through a local vault-based architecture, policy-based agent signing, and Hyperliquid spot/perp trading commands.
 
 The repository is a pnpm monorepo containing two main packages:
 
-- **`packages/bulu-cli`** — TypeScript CLI application published as `@bulu-cli/core`. Built with `citty` for command routing and `tsdown` (Rolldown-based) for bundling.
+- **`packages/bulu-cli`** — TypeScript CLI application published as `@bulu-cli/core`. Built with `citty` for command routing and `tsdown` (Rolldown-based) for bundling. Also contains the Hyperliquid protocol client and spot/perp commands.
 - **`packages/tcx-core`** — Rust native package exposed to Node.js via `napi-rs`, published as `@bulu-cli/tcx-core`. Handles cryptographic wallet operations, signing, and vault persistence.
 
 ## Technology Stack
 
-- **Package Manager**: `pnpm@10.33.0` (workspace-enabled)
+- **Package Manager**: `pnpm@10.33.4` (workspace-enabled)
 - **Node.js Engine**: `>= 24.0.0`
-- **TypeScript**: `^6.0.2` with `@typescript/native-preview` for fast declaration generation
+- **TypeScript**: `^6.0.3` with `@typescript/native-preview` for fast declaration generation
 - **Rust Toolchain**: `nightly-2026-04-06` (pinned in `rust-toolchain.toml`)
 - **N-API Bindings**: `napi@3.0.0` + `napi-derive@3.0.0` + `napi-build@2`
 - **CLI Framework**: `citty` + `@clack/prompts`
-- **Testing**: `vitest@^4.1.2` for both Node.js integration tests and TypeScript unit tests
+- **Testing**: `vitest@^4.1.5` for both Node.js integration tests and TypeScript unit tests
 - **Linting**: `oxlint` (TypeScript), `cargo clippy` (Rust)
 - **Formatting**: `prettier` (TypeScript/JSON/Markdown/YAML), `taplo` (TOML), `cargo fmt` (Rust)
 
@@ -30,7 +30,7 @@ The repository is a pnpm monorepo containing two main packages:
 │   │   ├── src/
 │   │   │   ├── index.ts       # citty entrypoint
 │   │   │   ├── core/          # Shared args, config I/O, output formatters, tcx loader
-│   │   │   └── commands/      # config/, sign/, wallet/ subcommands
+│   │   │   └── commands/      # config/, sign/, wallet/, spot/, perp/ subcommands
 │   │   ├── tsdown.config.ts
 │   │   └── package.json
 │   └── tcx-core/              # Rust N-API package
@@ -41,8 +41,7 @@ The repository is a pnpm monorepo containing two main packages:
 │       ├── index.d.ts         # Auto-generated TypeScript declarations
 │       ├── Cargo.toml
 │       └── package.json
-├── scripts/
-│   └── bump-version.mjs       # Unified version bumper for JS and Rust packages
+├── bump.config.ts             # bumpp configuration for package version bumps
 ├── .github/
 │   ├── actions/               # Reusable composite actions (setup-node-pnpm, build-napi-binding)
 │   └── workflows/             # CI.yml, publish.yml
@@ -143,7 +142,7 @@ pnpm --filter @bulu-cli/tcx-core test
 - Run with `vitest run` (120-second timeout configured in `vitest.config.mts`).
 - Exercise the compiled N-API bindings directly, covering:
   - Wallet lifecycle
-  - Ethereum / Tron / Bitcoin message and transaction signing
+  - Ethereum / Tron message and transaction signing
   - API key + policy engine (allowed chains, expiry, revocation)
 
 > **Note:** Integration tests require a **release** build of the native bindings. Use `pnpm run build` (not `build:debug`) before running `pnpm run test`.
@@ -163,8 +162,8 @@ Triggered on pushes to `main` and pull requests:
    - `aarch64-unknown-linux-gnu`
    - `aarch64-pc-windows-msvc`
 3. **Test Jobs**:
-   - macOS/Windows bindings tested natively on x64 and ARM64 runners with Node 20 & 22
-   - Linux bindings tested inside Docker (`node:20-slim` / `node:22-slim`) on matching architecture runners
+   - macOS/Windows bindings tested natively on x64 and ARM64 runners with Node 24
+   - Linux bindings tested inside Docker (`node:24-slim`) on matching architecture runners
 
 ### Publish Workflow (`publish.yml`)
 
@@ -180,26 +179,18 @@ Triggered on tags matching `v*`:
 
 ### Version Bumping
 
-Use `pnpm run bump` (runs `scripts/bump-version.mjs`). It interactively bumps:
+Use `pnpm run release` (powered by `bumpp`). It interactively bumps:
 
 - `packages/bulu-cli/package.json`
 - `packages/tcx-core/package.json`
 - `packages/tcx-core/Cargo.toml`
-- `Cargo.lock`
 
-The script:
-
-1. Ensures all sources are in sync.
-2. Prompts for the next semver version.
-3. Runs `pnpm build` and auto-stages generated napi artifacts (`index.js`, `index.d.ts`, `browser.js`).
-4. Creates a commit `chore: release vX.Y.Z`, an annotated tag `vX.Y.Z`, and pushes both.
-
-Options include `--dry-run`, `--yes`, `--no-commit`, `--no-tag`, and `--no-push`.
+The configured release flow runs `pnpm build`, creates a version commit, and creates a tag. Push is disabled by default in `bump.config.ts`.
 
 ## Security Considerations
 
 - **Credentials** (passphrase or API key) are resolved via environment variables (`TCX_PASSPHRASE` / `BULU_PASSPHRASE` for passphrases, `TCX_APIKEY` / `BULU_APIKEY` for API keys) or an interactive `@clack/prompts` prompt. They are never persisted to disk.
-- **Vault data** (wallets, policies, API keys) is stored as JSON files in the local vault directory (`~/.bulu/vault/` by default, configurable via `bulu config`). Keystores are encrypted; the vault does not store raw private keys in plaintext.
+- **Vault data** (wallets, policies, API keys) is stored as JSON files in the local vault directory (`~/.config/bulu/vault/` by default, with the root overrideable via `BULU_CONFIG_DIR`). Keystores are encrypted; the vault does not store raw private keys in plaintext.
 - **Agent mode** allows creating revocable API keys and declarative signing policies. This enables automated/scripted signing without exposing the master passphrase.
 - **Static linking on Windows** (`+crt-static`) ensures the native module does not depend on a specific MSVC runtime being present on the target machine.
 
