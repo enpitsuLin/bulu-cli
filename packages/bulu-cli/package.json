@@ -2,7 +2,7 @@
   "name": "@bulu-cli/core",
   "description": "CLI for local Ethereum/Tron wallets, signing policies, and Hyperliquid trading",
   "type": "module",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/enpitsuLin/bulu-cli.git",
