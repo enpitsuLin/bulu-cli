@@ -4,6 +4,7 @@ import { withArgs } from '#/core/args'
 import { useOutput, outputArgs } from '#/core/output'
 import { resolveTCXPassphrase } from '#/core/tcx'
 import { hyperliquidClientArgs } from '#/plugins/hyperliquid-client'
+import { resolveCommandWallet } from '#/commands/hyperliquid'
 import {
   buildPerpMarketLookup,
   resolvePerpDexIndex,
@@ -53,10 +54,7 @@ export default defineCommand({
     const output = useOutput()
 
     try {
-      const walletName = args.wallet || config.config.default?.wallet
-      if (!walletName) {
-        throw new Error('Wallet is required; pass --wallet or set config.default.wallet')
-      }
+      const walletName = resolveCommandWallet(args.wallet, config.config.default?.wallet)
 
       if (args.cross === args.isolated) {
         throw new Error('Specify exactly one of --cross or --isolated')

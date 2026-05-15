@@ -4,16 +4,8 @@ import { withArgs } from '#/core/args'
 import { useOutput, outputArgs } from '#/core/output'
 import { resolveTCXPassphrase } from '#/core/tcx'
 import { hyperliquidClientArgs } from '#/plugins/hyperliquid-client'
+import { parseOid, resolveCommandWallet } from '#/commands/hyperliquid'
 import { type HyperliquidCancelResponse, resolveSpotMarket, useHyperliquidClient } from '#/protocol/hyperliquid'
-
-function parseOid(value: string): number {
-  const oid = Number(value)
-  if (!Number.isSafeInteger(oid) || oid < 0) {
-    throw new Error(`Invalid order id "${value}"`)
-  }
-
-  return oid
-}
 
 export default defineCommand({
   meta: { name: 'cancel', description: 'Cancel a Hyperliquid spot order' },
@@ -48,10 +40,7 @@ export default defineCommand({
     const output = useOutput()
 
     try {
-      const walletName = args.wallet || config.config.default?.wallet
-      if (!walletName) {
-        throw new Error('Wallet is required; pass --wallet or set config.default.wallet')
-      }
+      const walletName = resolveCommandWallet(args.wallet, config.config.default?.wallet)
 
       const spotMeta = await client.getSpotMeta()
       const market = resolveSpotMarket(spotMeta, args.market)

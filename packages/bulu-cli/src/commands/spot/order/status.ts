@@ -4,24 +4,8 @@ import { withArgs } from '#/core/args'
 import { useOutput, outputArgs } from '#/core/output'
 import { resolveWalletAddress } from '#/core/wallet'
 import { hyperliquidClientArgs } from '#/plugins/hyperliquid-client'
+import { parseOrderIdentifier, resolveCommandWallet } from '#/commands/hyperliquid'
 import { formatSpotCoin, isSpotCoin, useHyperliquidClient } from '#/protocol/hyperliquid'
-
-function parseOrderIdentifier(value: string): number | string {
-  if (/^0x[0-9a-f]{32}$/i.test(value)) {
-    return value
-  }
-
-  if (value.startsWith('0x') || value.startsWith('0X')) {
-    throw new Error(`Invalid cloid "${value}", expected 16 bytes in hex, e.g. 0x1234...abcd`)
-  }
-
-  const oid = Number(value)
-  if (!Number.isSafeInteger(oid) || oid < 0) {
-    throw new Error(`Invalid order id "${value}"`)
-  }
-
-  return oid
-}
 
 export default defineCommand({
   meta: { name: 'status', description: 'Query Hyperliquid spot order status by oid or cloid' },
@@ -46,10 +30,7 @@ export default defineCommand({
     const output = useOutput()
 
     try {
-      const walletName = args.wallet || config.config.default?.wallet
-      if (!walletName) {
-        throw new Error('Wallet is required; pass --wallet or set config.default.wallet')
-      }
+      const walletName = resolveCommandWallet(args.wallet, config.config.default?.wallet)
 
       const spotMeta = await client.getSpotMeta()
       const vaultPath = getVaultPath()

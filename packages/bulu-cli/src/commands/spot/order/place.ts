@@ -5,40 +5,20 @@ import { useOutput, outputArgs } from '#/core/output'
 import { resolveTCXPassphrase } from '#/core/tcx'
 import { hyperliquidClientArgs } from '#/plugins/hyperliquid-client'
 import {
+  assertCloid,
+  createHyperliquidOrderWire,
+  normalizeOrderSide,
+  normalizeTif,
+  resolveCommandWallet,
+  writePlaceOrderStatuses,
+} from '#/commands/hyperliquid'
+import {
   buildMarketPriceFromMid,
   type HyperliquidPlaceOrderResponse,
   resolveSpotMarket,
-  type SpotOrderWire,
   toHyperliquidWireValue,
   useHyperliquidClient,
 } from '#/protocol/hyperliquid'
-
-function normalizeSide(side: string): boolean {
-  const normalized = side.trim().toLowerCase()
-  if (normalized === 'buy' || normalized === 'bid' || normalized === 'b') {
-    return true
-  }
-  if (normalized === 'sell' || normalized === 'ask' || normalized === 'a') {
-    return false
-  }
-
-  throw new Error(`Unsupported side "${side}", expected buy or sell`)
-}
-
-function normalizeTif(tif: string): 'Alo' | 'Ioc' | 'Gtc' {
-  const normalized = tif.trim().toLowerCase()
-  if (normalized === 'alo') {
-    return 'Alo'
-  }
-  if (normalized === 'ioc') {
-    return 'Ioc'
-  }
-  if (normalized === 'gtc') {
-    return 'Gtc'
-  }
-
-  throw new Error(`Unsupported tif "${tif}", expected gtc, ioc, or alo`)
-}
 
 export default defineCommand({
   meta: { name: 'place', description: 'Place a Hyperliquid spot order' },
@@ -96,14 +76,11 @@ export default defineCommand({
     const output = useOutput()
 
     try {
-      const walletName = args.wallet || config.config.default?.wallet
-      if (!walletName) {
-        throw new Error('Wallet is required; pass --wallet or set config.default.wallet')
-      }
+      const walletName = resolveCommandWallet(args.wallet, config.config.default?.wallet)
 
       const spotMeta = await client.getSpotMeta()
       const market = resolveSpotMarket(spotMeta, args.market)
-      const isBuy = normalizeSide(args.side)
+      const isBuy = normalizeOrderSide(args.side)
       const orderType = args.type.trim().toLowerCase()
       const size = toHyperliquidWireValue(args.size)
 
@@ -131,30 +108,23 @@ export default defineCommand({
         throw new Error(`Unsupported order type "${args.type}", expected limit or market`)
       }
 
-      if (args.cloid && !/^0x[0-9a-f]{32}$/i.test(args.cloid)) {
-        throw new Error('cloid must be 16 bytes in hex, e.g. 0x1234...abcd')
-      }
-
-      const orderWire: SpotOrderWire = {
-        a: market.asset,
-        b: isBuy,
-        p: limitPx,
-        s: size,
-        r: false,
-        t: {
-          limit: {
-            tif,
-          },
-        },
-      }
-
       if (args.cloid) {
-        orderWire.c = args.cloid
+        assertCloid(args.cloid)
       }
 
       const action = {
         type: 'order' as const,
-        orders: [orderWire],
+        orders: [
+          createHyperliquidOrderWire({
+            asset: market.asset,
+            isBuy,
+            price: limitPx,
+            size,
+            reduceOnly: false,
+            tif,
+            cloid: args.cloid,
+          }),
+        ],
         grouping: 'na' as const,
       }
       output.success('Order summary')
@@ -174,15 +144,7 @@ export default defineCommand({
         action,
       })
 
-      for (const status of response.data.statuses) {
-        if ('error' in status) {
-          output.warn(`Order rejected: ${status.error}`)
-        } else if ('filled' in status) {
-          output.success(`Filled ${status.filled.totalSz} @ ${status.filled.avgPx} (oid=${status.filled.oid})`)
-        } else if ('resting' in status) {
-          output.success(`Order resting (oid=${status.resting.oid})`)
-        }
-      }
+      writePlaceOrderStatuses(output, response.data.statuses)
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       output.warn(`Error: ${message}`)

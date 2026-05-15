@@ -6,6 +6,12 @@ import { resolveWalletAddress } from '#/core/wallet'
 import { resolveTCXPassphrase } from '#/core/tcx'
 import { hyperliquidClientArgs } from '#/plugins/hyperliquid-client'
 import {
+  createHyperliquidOrderWire,
+  normalizeTif,
+  parseOrderIdentifier,
+  resolveCommandWallet,
+} from '#/commands/hyperliquid'
+import {
   formatSpotCoin,
   isSpotCoin,
   resolveSpotMarket,
@@ -13,38 +19,6 @@ import {
   type HyperliquidModifyResponse,
   useHyperliquidClient,
 } from '#/protocol/hyperliquid'
-
-function normalizeTif(tif: string): 'Alo' | 'Ioc' | 'Gtc' {
-  const normalized = tif.trim().toLowerCase()
-  if (normalized === 'alo') {
-    return 'Alo'
-  }
-  if (normalized === 'ioc') {
-    return 'Ioc'
-  }
-  if (normalized === 'gtc') {
-    return 'Gtc'
-  }
-
-  throw new Error(`Unsupported tif "${tif}", expected gtc, ioc, or alo`)
-}
-
-function parseOrderIdentifier(value: string): number | string {
-  if (/^0x[0-9a-f]{32}$/i.test(value)) {
-    return value
-  }
-
-  if (value.startsWith('0x') || value.startsWith('0X')) {
-    throw new Error(`Invalid cloid "${value}", expected 16 bytes in hex, e.g. 0x1234...abcd`)
-  }
-
-  const oid = Number(value)
-  if (!Number.isSafeInteger(oid) || oid < 0) {
-    throw new Error(`Invalid order id "${value}"`)
-  }
-
-  return oid
-}
 
 export default defineCommand({
   meta: { name: 'modify', description: 'Modify a Hyperliquid spot order' },
@@ -86,10 +60,7 @@ export default defineCommand({
     const output = useOutput()
 
     try {
-      const walletName = args.wallet || config.config.default?.wallet
-      if (!walletName) {
-        throw new Error('Wallet is required; pass --wallet or set config.default.wallet')
-      }
+      const walletName = resolveCommandWallet(args.wallet, config.config.default?.wallet)
 
       if (!args.price && !args.size && !args.tif) {
         throw new Error('At least one of --price, --size, or --tif must be provided')
@@ -125,23 +96,17 @@ export default defineCommand({
       const newSize = args.size ? toHyperliquidWireValue(args.size) : originalOrder.sz
       const newTif = args.tif ? normalizeTif(args.tif) : normalizeTif(originalOrder.tif)
 
-      const orderWire = {
-        a: market.asset,
-        b: originalOrder.side === 'B',
-        p: newPrice,
-        s: newSize,
-        r: originalOrder.reduceOnly,
-        t: {
-          limit: {
-            tif: newTif,
-          },
-        },
-      }
-
       const action = {
         type: 'modify' as const,
         oid: orderId,
-        order: orderWire,
+        order: createHyperliquidOrderWire({
+          asset: market.asset,
+          isBuy: originalOrder.side === 'B',
+          price: newPrice,
+          size: newSize,
+          reduceOnly: originalOrder.reduceOnly,
+          tif: newTif,
+        }),
       }
 
       output.success('Modify order summary')
