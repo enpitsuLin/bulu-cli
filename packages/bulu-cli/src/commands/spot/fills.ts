@@ -5,6 +5,7 @@ import { useOutput, outputArgs } from '#/core/output'
 import { resolveWalletAddress } from '#/core/wallet'
 import { getVaultPath } from '#/core/config'
 import { hyperliquidClientArgs } from '#/plugins/hyperliquid-client'
+import { resolveCommandWallet } from '#/commands/hyperliquid'
 import { formatSpotCoin, isSpotCoin, resolveSpotMarket, useHyperliquidClient } from '#/protocol/hyperliquid'
 
 export default defineCommand({
@@ -30,10 +31,7 @@ export default defineCommand({
     const output = useOutput()
 
     try {
-      const walletName = args.wallet || config.config.default?.wallet
-      if (!walletName) {
-        throw new Error('Wallet is required; pass --wallet or set config.default.wallet')
-      }
+      const walletName = resolveCommandWallet(args.wallet, config.config.default?.wallet)
 
       const spotMeta = await client.getSpotMeta()
       const targetMarket = args.market ? resolveSpotMarket(spotMeta, args.market) : null
