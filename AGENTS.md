@@ -11,7 +11,7 @@ The repository is a pnpm monorepo containing two main packages:
 
 ## Technology Stack
 
-- **Package Manager**: `pnpm@11.1.2` (workspace-enabled)
+- **Package Manager**: `pnpm@11.5.1` (workspace-enabled)
 - **Node.js Engine**: `>= 24.0.0`
 - **TypeScript**: `^6.0.3` with `@typescript/native-preview` for fast declaration generation
 - **Rust Toolchain**: `nightly-2026-04-06` (pinned in `rust-toolchain.toml`)

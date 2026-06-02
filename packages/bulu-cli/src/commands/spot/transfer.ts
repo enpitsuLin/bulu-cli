@@ -2,7 +2,7 @@ import { defineCommand } from 'citty'
 import { getVaultPath, useConfig } from '#/core/config'
 import { withArgs } from '#/core/args'
 import { useOutput, outputArgs } from '#/core/output'
-import { resolveTCXPassphrase } from '#/core/tcx'
+import { resolveTCXCredential } from '#/core/tcx'
 import { hyperliquidClientArgs } from '#/plugins/hyperliquid-client'
 import { resolveCommandWallet } from '#/commands/hyperliquid'
 import { toHyperliquidWireValue, useHyperliquidClient } from '#/protocol/hyperliquid'
@@ -52,7 +52,7 @@ export default defineCommand({
       const amount = toHyperliquidWireValue(args.amount)
 
       const vaultPath = getVaultPath()
-      const credential = await resolveTCXPassphrase()
+      const credential = await resolveTCXCredential()
 
       const action = {
         type: 'usdClassTransfer' as const,

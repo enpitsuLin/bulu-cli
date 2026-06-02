@@ -12,6 +12,7 @@
     "lint:oxlint": "oxlint .",
     "lint:rs": "cargo clippy -p bulu_cli_tcx_core --all-targets",
     "test": "pnpm --filter \"./packages/*\" run test",
+    "typecheck": "pnpm --filter @bulu-cli/core run typecheck",
     "release": "bumpp",
     "prepare": "simple-git-hooks"
   },

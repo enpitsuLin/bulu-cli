@@ -52,6 +52,15 @@ function write(str: string) {
   process.stdout.write(`${str}\n`)
 }
 
+function escapeCsvCell(value: unknown): string {
+  const cell = String(value ?? '')
+  if (!/[",\r\n]/.test(cell)) {
+    return cell
+  }
+
+  return `"${cell.replaceAll('"', '""')}"`
+}
+
 export function useOutput(): Output {
   const opts = useOutputOptions()
   const isJson = opts.json || opts.format === 'json'
@@ -72,9 +81,9 @@ export function useOutput(): Output {
       }
       if (opts.format === 'csv') {
         const { columns } = tableOpts
-        write(columns.join(','))
+        write(columns.map(escapeCsvCell).join(','))
         for (const row of rows) {
-          write(columns.map((c) => String(row[c] ?? '')).join(','))
+          write(columns.map((c) => escapeCsvCell(row[c])).join(','))
         }
         return
       }

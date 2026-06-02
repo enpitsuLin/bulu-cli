@@ -1,6 +1,6 @@
 import { isCancel, password } from '@clack/prompts'
 
-export async function resolveTCXPassphrase(): Promise<string> {
+export async function resolveTCXCredential(): Promise<string> {
   const passphrase = process.env.TCX_PASSPHRASE || process.env.BULU_PASSPHRASE
   if (passphrase) {
     return passphrase
@@ -21,3 +21,5 @@ export async function resolveTCXPassphrase(): Promise<string> {
 
   return result
 }
+
+export const resolveTCXPassphrase = resolveTCXCredential

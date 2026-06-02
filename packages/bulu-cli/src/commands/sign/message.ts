@@ -3,7 +3,7 @@ import { signMessage } from '@bulu-cli/tcx-core'
 import { getVaultPath } from '#/core/config'
 import { withArgs } from '#/core/args'
 import { useOutput, outputArgs } from '#/core/output'
-import { resolveTCXPassphrase } from '#/core/tcx'
+import { resolveTCXCredential } from '#/core/tcx'
 
 export default defineCommand({
   meta: { name: 'message', description: 'Sign a message' },
@@ -31,10 +31,10 @@ export default defineCommand({
     const vaultPath = getVaultPath()
     const out = useOutput()
 
-    const passphrase = await resolveTCXPassphrase()
+    const credential = await resolveTCXCredential()
 
     try {
-      const result = signMessage(args.wallet, args['chain-id'], args.message, passphrase, vaultPath)
+      const result = signMessage(args.wallet, args['chain-id'], args.message, credential, vaultPath)
       out.data({ signature: result.signature })
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)

@@ -3,7 +3,7 @@ import { getVaultPath, useConfig } from '#/core/config'
 import { withArgs } from '#/core/args'
 import { useOutput, outputArgs } from '#/core/output'
 import { resolveWalletAddress } from '#/core/wallet'
-import { resolveTCXPassphrase } from '#/core/tcx'
+import { resolveTCXCredential } from '#/core/tcx'
 import { hyperliquidClientArgs } from '#/plugins/hyperliquid-client'
 import {
   createHyperliquidOrderWire,
@@ -127,7 +127,7 @@ export default defineCommand({
       output.data(`  Price: ${newPrice} (was ${originalOrder.limitPx})`)
       output.data(`  TIF:   ${newTif} (was ${originalOrder.tif})`)
 
-      const credential = await resolveTCXPassphrase()
+      const credential = await resolveTCXCredential()
       const { response } = await client.submitL1Action<HyperliquidModifyResponse>({
         walletName,
         credential,
